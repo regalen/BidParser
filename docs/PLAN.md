@@ -154,7 +154,7 @@ Status as of the current checkpoint:
 6. **Post-Phase Audit & Fixes — complete**
    - Full codebase audit against PLAN.md and AGENTS.md specs.
    - Wired the daily retention background task (`_retention_loop()` in `main.py` lifespan → `cleanup_old_parse_jobs()`).
-   - Added `useBlocker` navigation blocking to `ChangePasswordPage.tsx` (prevents back-button escape before password change).
+   - `ChangePasswordPage.tsx` is kept on-page by the `App.tsx` route guard alone (every other route redirects to `/change-password` when `must_change_password=True`). An earlier `useBlocker` implementation was removed because it requires a data router and renders blank under the declarative `BrowserRouter`.
    - Fixed golden fixture naming: `samples/outputs/` files renamed from `*_pdf_parsed.xlsx` / `*_xlsx_parsed.xlsx` to `*_parsed.xlsx` per `output_mapping.md`. PDF and XLSX variants of the same quote share one golden file.
    - Added symlinks in `backend/tests/fixtures/` pointing to the five sample inputs.
    - Added negative assertion tests for Hardware PDF and XLSX Quote D isolation (checks cost is Quote D's 20017.57, not Quote C's 5903.72).
@@ -261,7 +261,8 @@ Status as of the current checkpoint:
 ```python
 class User(Base):
     id: int                                # PK
-    username: str                          # unique, case-insensitive
+    username: str                          # unique, case-insensitive (sign-in handle)
+    name: str | None                       # display name surfaced in UI + reports
     password_hash: str                     # bcrypt
     role: Literal["admin", "user"]
     must_change_password: bool             # True after admin-issued reset; cleared on change
@@ -289,7 +290,7 @@ class ParseJob(Base):
     # inline in the UI and discarded (source file deleted, no row, no output).
 ```
 
-Schema is managed by a single initial Alembic migration. SQLite database stored as a docker volume.
+Schema is managed by Alembic migrations: `0001_initial` defines `users` + `parse_jobs`; `0002_user_name` adds the `name` column and backfills `name = username` for any rows created before it ran. SQLite database stored as a docker volume.
 
 ## Authentication & Authorization
 
@@ -334,9 +335,9 @@ Either bucket exhausting returns `429 Too Many Requests` with `Retry-After: <sec
 
 | Method | Path | Body | Response |
 |---|---|---|---|
-| `GET` | `/users` | — | `[{id, username, role, must_change_password, created_at}]` |
-| `POST` | `/users` | `{username, role}` | Creates user with password `changeme` and `must_change_password=True`. Returns the user. |
-| `PATCH` | `/users/{id}` | `{username?, role?, reset_password?: bool}` | Updates fields. If `reset_password=true`, resets to `changeme` and sets `must_change_password=True`. |
+| `GET` | `/users` | — | `[{id, username, name, role, must_change_password, created_at}]` |
+| `POST` | `/users` | `{username, name, role}` | Creates user with password `changeme` and `must_change_password=True`. `name` is required (1–255 chars) and is the human-readable display name shown in the UI and on reports. Returns the user. |
+| `PATCH` | `/users/{id}` | `{username?, name?, role?, reset_password?: bool}` | Updates any subset of fields. If `reset_password=true`, resets the password to `changeme` and sets `must_change_password=True`. |
 | `DELETE` | `/users/{id}` | — | Forbidden on self. |
 
 ## Parser Library
@@ -420,20 +421,30 @@ All five Nutanix file types map to "Foreign Uplift" (the only template defined i
 - `/settings` — admin-only user CRUD.
 - A 401 from any API call clears the auth state and redirects to `/login`. A 403 with `password_change_required` redirects to `/change-password`.
 
-**Design tokens** (`styles.css` + `tailwind.config.ts`): translate the wireframe's CSS custom properties (`--ink #2a2a2a`, `--paper #fdfcf8`, `--accent #0077d4`, success `#10b981/#ecfdf5/#047857`, destructive `#dc2626/#fef2f2/#fecaca`) into shared CSS variables and Tailwind theme extensions. Inter is loaded via `@fontsource/inter` (so it works offline in the Docker image).
+**Design language**: aligned with ProductLens (the operator's other internal app) so users get a coherent experience across both. The earlier V4 wireframe's warm paper/ink palette has been superseded; only the V4 *layout* (left settings card + right dropzone/history split, sticky header, Footer) is retained — the chrome itself is slate.
+
+**Design tokens** (`styles.css` + `tailwind.config.ts`):
+- Page background `#f8fafc` (slate-50). Cards `#ffffff` with `border-slate-200` and `shadow-sm`, `rounded-xl`.
+- Text: headings `text-slate-900`, body `text-slate-600`, faint labels `text-slate-400` with `text-xs font-bold uppercase tracking-wider`.
+- Accent: `#0077d4` (kept from the wireframe; same colour ProductLens uses for `primary`). Soft `#e6f1fb`. Used for the logo tile, primary buttons, focus rings, and the accent-tinted CRM-export download button.
+- Success/emerald: `#ecfdf5` / `#10b981` / `#047857` for the CRM template callout and the parsed progress bar.
+- Destructive: `#fef2f2` / `#fecaca` / `#dc2626` for the Reset button and Delete user hover.
+- Shared utility classes in `src/styles.css`: `.label`, `.field`, `.button`, `.button-primary`, `.button-danger`, `.icon-button`, `.card`, `.toast`. Inter is loaded via `@fontsource/inter` (so it works offline in the Docker image).
+- Shared `Footer` component (`BidParser v0.1.0` + GitHub + Report-an-Issue links) is rendered at the bottom of every full-page route.
 
 **`DashboardPage.tsx`** is the V4 layout. Concrete construction (matches `docs/design/project/variants.jsx` lines 149–470):
 
-- **AppHeader** (56px): app logo on the left (lettered tile + wordmark), `AccountChip` on the right (avatar with user initials + username + dropdown with "Settings" — admins only — and "Logout").
-- **Page title row**: "New quote" + "UPLOAD A VENDOR QUOTE / BID TO PARSE" label on the left, `ResetButton` (destructive red styling) on the right.
+- **AppHeader** (h-16, sticky, white with `border-slate-200` + `shadow-sm`): app logo on the left (accent-blue rounded tile with the `FileText` icon and a soft `shadow-accent/20`, plus the `BidParser` wordmark in `text-slate-900` `font-semibold tracking-tight`). On the right: `AccountChip` shows an inline "Settings" link for admins, the user's display name (`user.name || user.username`) with `@username` underneath as a faint caption, and a ghost icon button that flips to red-50 on hover for sign-out.
+- **Page title row**: "New quote" + "Upload a vendor quote and we'll convert it to a CRM-ready workbook." on the left, `ResetButton` (red-50 ghost) on the right.
 - **Two-column layout** (`gap-6`, `align-items: stretch`):
-  - **`ParseSettingsCard`** (left, 320px wide, bordered card):
+  - **`ParseSettingsCard`** (left, 320px wide, `.card`):
     - `VendorSelect` — single option "Nutanix" for MVP (still a real select with a chevron, future-proofed for Dell/Lenovo).
     - `FileTypeSelect` — populated from `/api/parsers` filtered by vendor; shows the five Nutanix display names. Helper: "Types depend on the vendor."
-    - Dashed divider, then `NutanixSettingsBlock` (visible only when vendor=Nutanix):
+    - The Nutanix-specific block + CRM template callout are **only rendered when both vendor and file type are selected**. Until then, the card jumps from the two cascading selects straight to the Upload & parse button.
+    - When the gate clears, a dashed divider appears and `NutanixSettingsBlock` renders:
       - `EXCHANGE RATE · USD → AUD` — numeric input, 4 d.p., pre-filled from `/api/me` (user's last value); empty for brand-new users.
       - `MARGIN · %, 2 d.p.` — numeric input, 2 d.p., pre-filled from `/api/me`.
-    - `CrmTemplateCallout` (emerald `#ecfdf5`/`#10b981`/`#047857`): label `CRM IMPORT TEMPLATE`, `AUTO` tag, value derived from the selected parser's `crm_template` ("Foreign Uplift" for every Nutanix parser).
+    - `CrmTemplateCallout` (emerald `#ecfdf5`/`#10b981`/`#047857`): label `CRM IMPORT TEMPLATE`, `AUTO` tag, value derived from the selected parser's `crm_template` ("Foreign Uplift" for every Nutanix parser). Renders alongside the Nutanix block under the same gate.
     - Faint divider, then **Upload & parse** primary button (accent `#0077d4`). Disabled until vendor + file type + FX + margin + one file in dropzone are all valid.
     - Centered helper text under the button: "Output will automatically download once completed."
 
@@ -447,11 +458,13 @@ All five Nutanix file types map to "Foreign Uplift" (the only template defined i
       - Body rows: ellipsised filename with PDF/XLSX badge, vendor, file type display name, FX (4 d.p., right-aligned, tabular-nums), margin (with % suffix), relative time, two icon buttons per row (download original = neutral icon-button; download CRM export = accent-tinted icon-button).
       - Pagination footer (slate-50): "SHOWING X – Y OF Z", prev-page chevron (disabled on page 1), numeric page buttons (active = inverted dark fill), next-page chevron. **Dynamic page size**: the right column is constrained to match the left settings card's height, so the table body's available height is computed at render and on resize. `pageSize = floor((bodyHeight - rowOffset) / rowHeight)` rounded down, minimum 1. The API call is `/api/history?limit={pageSize}&offset={page * pageSize}`. ResizeObserver recomputes on window resize; current page is preserved when possible.
 
-**`LoginPage.tsx`**: matches the V4 design language exactly — same Inter typography, paper-tint background, AppHeader on top (logo only, no AccountChip), and a single centered bordered card. Username + password inputs styled as the `.sel` boxes from the wireframe (1.5px ink border, 8px radius), primary "Sign in" button styled as the accent-blue `.btn.primary`. Error chip on invalid credentials, dedicated 429 messaging ("Too many attempts — try again in N seconds"). After success, redirect to `/dashboard` (or `/change-password` if `must_change_password`).
+**`LoginPage.tsx`**: ProductLens-style chrome — slate-50 page background, no `AppHeader`, a centered white card (`rounded-xl`, `shadow-xl`, `border-slate-200`), accent-blue 48×48 icon tile at the top (`LogIn` from lucide-react), `Welcome Back` heading + `Sign in to BidParser` subtitle. Inputs use the shared `.field` class (slate-200 border, accent focus ring). Primary "Sign in" button is the shared `.button button-primary` (uppercase tracked, accent fill, `Loader2` spinner while busy). Error chip on invalid credentials, dedicated 429 messaging ("Too many attempts — try again in N seconds"). Shared `Footer` at the bottom. After success, redirect to `/dashboard` (or `/change-password` if `must_change_password`).
 
-**`ChangePasswordPage.tsx`**: same V4 visual language as `LoginPage.tsx` — AppHeader, paper-tint background, centered bordered card. Prompted automatically on first login of a fresh admin or any reset user. Old password + new password + confirm. Inline rules helper text under the new password field: "≥ 8 characters, must include an uppercase letter, a digit, and a symbol." Submit button stays disabled until all three rules + match check pass. On success → `/dashboard`. Back-button navigation away is blocked.
+**`ChangePasswordPage.tsx`**: same chrome as `LoginPage.tsx` (slate-50 background, centered white card, `KeyRound` icon tile, shared `Footer`). Old password + new password + confirm. Under the New password field, a live rule checklist lights up emerald with a check as each rule is satisfied: ≥ 8 chars, uppercase letter, digit, symbol. A separate inline hint under Confirm shows `Passwords don't match` until they do. Submit button stays disabled until all rules + the match check pass; spinner during save. On success → `/dashboard`. Navigation away is enforced by `App.tsx` route guards (no `useBlocker`).
 
-**`SettingsPage.tsx`** (admin only): a simple table of users with Add / Edit / Delete / Reset Password actions. Modal for create/edit. Self-delete is blocked client-side and server-side.
+**`SettingsPage.tsx`** (admin only): ProductLens-style **card grid** of users (one card per user across 1/2/3 columns by breakpoint). Each card has a circled role icon (red `Shield` for admin, slate `User` for user) on a tinted background, the user's display name (`user.name || user.username`) as the bold headline, `@username` + a red/slate role pill underneath, and Edit/Reset-Password/Delete icon actions that fade in on hover. A status row at the bottom shows `Password change required` (amber bold) or `Account active`, with the created-at date on the right.
+
+**`UserModal.tsx`** (open from the create/edit actions): white dialog over a `slate-900/40` backdrop. Fields in order: **Full name** (required, autofocus, placeholder `"John Doe"`, helper "Displayed in the UI and on reports."), **Username** (required, lowercase sign-in handle), **Role** (`user` / `admin`). Submit button is disabled until both name and username are non-empty; spinner while saving. Self-delete is blocked client-side and server-side (`/api/users/{id}` returns `409` if the action would leave zero admins).
 
 ## Docker & Deployment
 
