@@ -86,6 +86,18 @@ def test_parser_extracts_expected_line_items(slug: str, filename: str, quoted_to
     assert [(item.vpn, item.term, item.msrp, item.cost, item.qty) for item in result.line_items] == expected
 
 
+@pytest.mark.parametrize("slug", ["nutanix_hardware_only_pdf", "nutanix_hardware_only_xlsx"])
+def test_hardware_parser_excludes_quote_c_rows(slug: str) -> None:
+    """Quote C has NX-1175S-G10-6517P-CM at USD 5,903.72 cost; Quote D has it at USD 20,017.57.
+    If Quote C rows leaked in, we'd see the wrong price or extra items."""
+    ext = "pdf" if slug.endswith("_pdf") else "xlsx"
+    result = get_parser(slug).parse(SAMPLES / f"XQ-4108785.{ext}")
+    assert len(result.line_items) == 11, "Expected exactly 11 Quote D line items"
+    lead_item = result.line_items[0]
+    assert lead_item.vpn == "NX-1175S-G10-6517P-CM"
+    assert lead_item.cost == Decimal("20017.57"), "Must be Quote D price, not Quote C's 5903.72"
+
+
 def test_nutanix_renewal_pdf_extracts_serials_dates_and_totals() -> None:
     result = get_parser("nutanix_renewal_pdf").parse(SAMPLES / "XQ-4128926.pdf")
 

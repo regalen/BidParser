@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useBlocker, useNavigate } from 'react-router-dom';
 
 import { ApiError } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
@@ -13,6 +13,9 @@ export function ChangePasswordPage() {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  useBlocker(() => !done);
 
   const valid = useMemo(() => {
     return newPassword.length >= 8 && /[A-Z]/.test(newPassword) && /\d/.test(newPassword) && /[^A-Za-z0-9]/.test(newPassword) && newPassword === confirm;
@@ -24,6 +27,7 @@ export function ChangePasswordPage() {
     setError('');
     try {
       await changePassword(oldPassword, newPassword);
+      setDone(true);
       navigate('/dashboard', { replace: true });
     } catch (caught) {
       if (caught instanceof ApiError && Array.isArray(caught.detail)) {

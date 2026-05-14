@@ -4,13 +4,14 @@ This file is the canonical project reference for AI coding agents working in thi
 
 ## Project Status
 
-This repo is in MVP implementation. Phase 1 (Foundation + Parser Library), Phase 2 (Backend App Surface), Phase 3 (Frontend App), and Phase 4 (Local End-to-End Polish) have been scaffolded and verified locally. The current artefacts are:
+All five MVP phases are complete and the codebase has been audited against the plan. The current artefacts are:
 
-- `backend/` — parser package plus the Phase 2 FastAPI app surface. It currently contains the parser contract, registry, shared PDF/XLSX helpers, five Nutanix parsers, the Foreign Uplift template writer, SQLite/SQLAlchemy models, Alembic initial migration, storage, parse orchestration, auth/session/rate-limit dependencies, `/auth/*`, `/me`, admin `/users`, `/parsers`, `/parse`, and history/download endpoints. Pytest covers parser extraction, cell-by-cell workbook output equivalence, auth, user admin, parse API roundtrip, history/downloads, and rate limiting.
-- `frontend/` — Phase 3 React/Vite/TypeScript app plus Phase 4 polish. It currently contains Tailwind/Inter styling, API client, auth context, route shell, login, forced password change, V4 side-panel dashboard, Nutanix parser selection from `/api/parsers`, FX/margin inputs from `/api/me`, single-file dropzone/progress state, auto-download on parse, validation toasts, dynamic recent-uploads pagination/download actions, auth-expiry redirects, and admin user settings.
+- `backend/` — parser package plus FastAPI app surface. Contains the parser contract, registry, shared PDF/XLSX helpers, five Nutanix parsers, the Foreign Uplift template writer, SQLite/SQLAlchemy models, Alembic initial migration, storage, parse orchestration, daily retention background task, auth/session/rate-limit dependencies, `/auth/*`, `/me`, admin `/users`, `/parsers`, `/parse`, and history/download endpoints. SPA static file serving is wired for production (serves the built frontend from `/app/static/` when the directory exists). Pytest covers parser extraction, Quote D isolation (negative assertion against Quote C pricing), cell-by-cell workbook output equivalence, auth, user admin, parse API roundtrip, history/downloads, and rate limiting.
+- `frontend/` — React/Vite/TypeScript app. Contains Tailwind/Inter styling, API client, auth context, route shell, login, forced password change (with `useBlocker` navigation blocking), V4 side-panel dashboard, Nutanix parser selection from `/api/parsers`, FX/margin inputs from `/api/me`, single-file dropzone/progress state, auto-download on parse, validation toasts, dynamic recent-uploads pagination/download actions, auth-expiry redirects, and admin user settings. Components are extracted into individual files per the plan's repo layout.
 
 - `samples/inputs/` — real supplier quote files. Three PDFs (`XQ-4076249.pdf`, `XQ-4108785.pdf`, `XQ-4128926.pdf`) and two XLSXs (`XQ-4076249.xlsx`, `XQ-4108785.xlsx`). All five are supplier-issued inputs the parser must handle. `XQ-4108785.pdf` and `XQ-4108785.xlsx` are the *same engagement* delivered in two envelopes; both parsers extract from **Quote D** (reseller-facing breakdown) within those files and produce matching totals (`USD 22,491.87`).
-- `samples/outputs/` — golden `XQ-*_parsed.xlsx` fixtures, one per input. Used by the template-writer regression tests; regenerated whenever an output rule changes.
+- `samples/outputs/` — golden `XQ-*_parsed.xlsx` fixtures, one per quote number (not per input file — PDF and XLSX variants of the same quote share one golden file since they produce identical output). Used by the template-writer regression tests; regenerated whenever an output rule changes. Naming follows the spec: `<basename>_parsed.xlsx` (e.g. `XQ-4076249_parsed.xlsx`).
+- `backend/tests/fixtures/` — symlinks to the five sample inputs in `samples/inputs/`.
 - `samples/template/ANZ-GENERIC_ForeignUplift.xlsx` — the standardised internal template that parsed line items are written into. Field mapping is locked in `docs/output_mapping.md`; do not interpret cell positions from this file directly.
 - `docs/nutanix_software_only_pdf.md` — human-written extraction spec for the "Software Only (PDF)" format (Nutanix subscription quotes).
 - `docs/nutanix_software_only_xlsx.md` — human-written extraction spec for the "Software Only (XLSX)" format (same data as Software Only PDF, delivered as a workbook).
@@ -21,12 +22,15 @@ This repo is in MVP implementation. Phase 1 (Foundation + Parser Library), Phase
 - `docs/PLAN.md` — the full MVP implementation plan. Read this before writing any code — it covers repo layout, parser interface, API surface, auth, Docker setup, GitHub Actions, and testing strategy.
 - `docs/design/` — Claude Design handoff bundle for the V4 side-panel UI. Read `docs/design/README.md` before implementing frontend work.
 
-Recent implementation notes:
+Implementation notes:
 
 - Parser slugs, package names, and spec docs are vendor-prefixed for future supplier expansion. Use `nutanix_software_only_pdf`, `nutanix_software_only_xlsx`, `nutanix_renewal_pdf`, `nutanix_hardware_only_pdf`, and `nutanix_hardware_only_xlsx`; do not reintroduce vendorless parser slugs.
 - The frontend is locally runnable with Vite and proxies `/api` to the backend at `http://127.0.0.1:8000` by default. If port 8000 is occupied, run Vite with `VITE_API_PROXY_TARGET=http://127.0.0.1:<port>` to point at an alternate backend.
-- Phase 4 local verification used an isolated SQLite/upload directory under `/private/tmp/bidparser-phase4`, backend on `http://127.0.0.1:8010`, and frontend on `http://127.0.0.1:5174` with `VITE_API_PROXY_TARGET=http://127.0.0.1:8010`.
-- Phase 4 exercised all five committed sample inputs through the HTTP API. All returned `X-Validation: match`; generated workbooks were spot-checked for `K3 = 5.25` margin and `V3 = 0.7354` FX rate. A deliberately invalid PDF returned `422` and did not add a history row.
+- In Docker, `DATABASE_URL` and `UPLOAD_DIR` are set explicitly to `/data/db.sqlite` and `/data/files` (the `/data` volume). The `_root()` fallback in `config.py` is only used in local development.
+- `main.py` lifespan starts a daily `_retention_loop()` background task that calls `cleanup_old_parse_jobs()` to delete expired ParseJob rows and their files after `RETENTION_DAYS`.
+- `ChangePasswordPage` uses `useBlocker` from react-router-dom v7 to prevent navigation away until password change succeeds.
+- Golden fixture files in `samples/outputs/` are named `<basename>_parsed.xlsx` (one per quote number, not per input file). PDF and XLSX parsers for the same quote both compare against the same golden file.
+- Hardware parser tests include a negative assertion checking that NX-1175S-G10-6517P-CM has Quote D's cost (USD 20,017.57), not Quote C's (USD 5,903.72).
 
 Current implementation checkpoint:
 
@@ -34,11 +38,13 @@ Current implementation checkpoint:
 - Phase 2 is complete.
 - Phase 3 is complete.
 - Phase 4 is complete.
+- Phase 5 is complete.
+- Post-phase audit completed: retention task wired, ChangePasswordPage navigation blocking added, golden fixture naming fixed, negative assertion tests for Quote D isolation added, frontend components extracted into separate files per plan.
 - Verification commands:
   - `cd backend && .venv/bin/python -m pytest -q`
   - `cd frontend && npm run build`
-- Last known result: backend `15 passed`; frontend production build succeeded.
-- Next phase: Phase 5, Production Packaging (Dockerfile, consumer `docker-compose.yml`, `.env.example`, deployment README notes, and reverse-proxy guidance).
+- Last known result: backend `17 passed`; frontend production build succeeded.
+- All MVP phases are complete. GitHub Actions CI/CD publishing is deferred until explicitly requested.
 
 Sample → format mapping:
 
@@ -354,4 +360,5 @@ Computed total = quoted total = `$22,491.87` (the zero-priced rows contribute `$
 - `cd backend && .venv/bin/uvicorn app.main:app --reload` — local backend API dev server.
 - `cd frontend && npm run dev` — Vite frontend dev server, proxying `/api` to `http://127.0.0.1:8000`.
 - `cd frontend && npm run build` — TypeScript + production frontend build.
-- Root `docker-compose.yml` is not scaffolded yet. Docker packaging is Phase 5.
+- `docker compose up -d` — run the production container (after `cp .env.example .env` and setting `SESSION_SECRET`).
+- `docker compose build` — local image build from the repo root `Dockerfile`.

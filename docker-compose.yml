@@ -1,0 +1,25 @@
+services:
+  bidparser:
+    image: ghcr.io/regalen/bidparser:latest
+    container_name: bidparser
+    ports:
+      - "127.0.0.1:3447:3447"
+    volumes:
+      - ${DATA_DIR:-bidparser-data}:/data
+    environment:
+      - PORT=3447
+      - DATABASE_URL=sqlite:////data/db.sqlite
+      - UPLOAD_DIR=/data/files
+      - SESSION_SECRET=${SESSION_SECRET:?Set SESSION_SECRET in .env}
+      - SESSION_LIFETIME_HOURS=${SESSION_LIFETIME_HOURS:-12}
+      - BOOTSTRAP_ADMIN_USERNAME=${BOOTSTRAP_ADMIN_USERNAME:-admin}
+      - BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD:-changeme}
+      - RETENTION_DAYS=${RETENTION_DAYS:-90}
+      - RATE_LIMIT_AUTH_PER_MIN=${RATE_LIMIT_AUTH_PER_MIN:-5}
+      - MAX_UPLOAD_MB=${MAX_UPLOAD_MB:-10}
+      - FORWARDED_ALLOW_IPS=${FORWARDED_ALLOW_IPS:-*}
+      - BASE_URL=${BASE_URL:-http://localhost:3447}
+    restart: unless-stopped
+
+volumes:
+  bidparser-data:

@@ -33,9 +33,9 @@ Status as of the current checkpoint:
 - **Phase 2 complete**: backend database, auth, storage, parse orchestration, and API surface are implemented.
 - **Phase 3 complete**: frontend app is scaffolded and wired to the backend API.
 - **Phase 4 complete**: local end-to-end polish has been run against backend and frontend dev servers.
-- **Phase 5 next**: production packaging.
+- **Phase 5 complete**: production packaging (Dockerfile, docker-compose.yml, .env.example, GitHub Actions workflow scaffold).
 - Verification commands: `cd backend && .venv/bin/python -m pytest -q`; `cd frontend && npm run build`
-- Last known result: backend `15 passed`; frontend production build succeeded.
+- Last known result: backend `17 passed`; frontend production build succeeded.
 - Parser naming has been vendor-prefixed throughout code and docs to leave room for future suppliers. The five MVP slugs are `nutanix_software_only_pdf`, `nutanix_software_only_xlsx`, `nutanix_renewal_pdf`, `nutanix_hardware_only_pdf`, and `nutanix_hardware_only_xlsx`.
 - Local dev servers verified during Phase 3: backend on `http://127.0.0.1:8000`, frontend on `http://localhost:5173`, with Vite proxying `/api` to the backend.
 - Phase 4 also verified an alternate-port local setup: backend on `http://127.0.0.1:8010`, frontend on `http://127.0.0.1:5174`, with `VITE_API_PROXY_TARGET=http://127.0.0.1:8010`. This is useful when port 8000 is already occupied.
@@ -108,8 +108,15 @@ Status as of the current checkpoint:
    - `frontend/src/api/client.ts`
    - `frontend/src/auth/AuthContext.tsx`
    - `frontend/src/components/AppHeader.tsx`
+   - `frontend/src/components/AccountChip.tsx`
    - `frontend/src/components/Dropzone.tsx`
+   - `frontend/src/components/ProgressPanel.tsx`
    - `frontend/src/components/ParseSettingsCard.tsx`
+   - `frontend/src/components/VendorSelect.tsx`
+   - `frontend/src/components/FileTypeSelect.tsx`
+   - `frontend/src/components/NutanixSettingsBlock.tsx`
+   - `frontend/src/components/CrmTemplateCallout.tsx`
+   - `frontend/src/components/ResetButton.tsx`
    - `frontend/src/components/RecentUploadsTable.tsx`
    - `frontend/src/components/Toast.tsx`
    - `frontend/src/components/UserModal.tsx`
@@ -131,9 +138,28 @@ Status as of the current checkpoint:
    - Recent Uploads now computes page size from available table height and keeps pagination state coherent after resize.
    - Vite proxy target is configurable via `VITE_API_PROXY_TARGET`, defaulting to `http://127.0.0.1:8000`.
 
-5. **Production Packaging**
-   - Add Dockerfile, consumer `docker-compose.yml`, `.env.example`, deployment README notes, and reverse-proxy guidance.
-   - GitHub Actions / GHCR publishing is deferred until explicitly requested; do not add or trigger the release workflow in the first implementation pass.
+5. **Production Packaging — complete**
+   - Add Dockerfile, consumer `docker-compose.yml`, `.env.example`, and reverse-proxy guidance.
+   - GitHub Actions workflow scaffolded at `.github/workflows/build.yml` but deferred — not triggered until explicitly requested.
+   - `main.py` updated with SPA static file serving (mounts `static/` with `index.html` fallback when the directory exists).
+
+   Implemented files:
+   - `Dockerfile` (multi-stage: Node FE build → Python runtime)
+   - `docker-compose.yml` (consumer-facing, ghcr.io image, `/data` volume)
+   - `.env.example` (all configurable env vars documented)
+   - `.dockerignore`
+   - `.github/workflows/build.yml` (deferred multi-arch build & push)
+   - `backend/app/main.py` (updated: SPA static file serving for production)
+
+6. **Post-Phase Audit & Fixes — complete**
+   - Full codebase audit against PLAN.md and AGENTS.md specs.
+   - Wired the daily retention background task (`_retention_loop()` in `main.py` lifespan → `cleanup_old_parse_jobs()`).
+   - Added `useBlocker` navigation blocking to `ChangePasswordPage.tsx` (prevents back-button escape before password change).
+   - Fixed golden fixture naming: `samples/outputs/` files renamed from `*_pdf_parsed.xlsx` / `*_xlsx_parsed.xlsx` to `*_parsed.xlsx` per `output_mapping.md`. PDF and XLSX variants of the same quote share one golden file.
+   - Added symlinks in `backend/tests/fixtures/` pointing to the five sample inputs.
+   - Added negative assertion tests for Hardware PDF and XLSX Quote D isolation (checks cost is Quote D's 20017.57, not Quote C's 5903.72).
+   - Added `BASE_URL` placeholder to `docker-compose.yml` and `.env.example`.
+   - Extracted 7 inlined frontend components into separate files per the repo layout spec: `AccountChip`, `VendorSelect`, `FileTypeSelect`, `NutanixSettingsBlock`, `CrmTemplateCallout`, `ResetButton`, `ProgressPanel`.
 
 ## Repository Layout
 

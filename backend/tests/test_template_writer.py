@@ -16,11 +16,11 @@ OUTPUTS = ROOT / "samples" / "outputs"
 
 
 CASES = [
-    ("nutanix_software_only_pdf", "XQ-4076249.pdf", "XQ-4076249_pdf_parsed.xlsx"),
-    ("nutanix_software_only_xlsx", "XQ-4076249.xlsx", "XQ-4076249_xlsx_parsed.xlsx"),
-    ("nutanix_hardware_only_pdf", "XQ-4108785.pdf", "XQ-4108785_pdf_parsed.xlsx"),
-    ("nutanix_hardware_only_xlsx", "XQ-4108785.xlsx", "XQ-4108785_xlsx_parsed.xlsx"),
-    ("nutanix_renewal_pdf", "XQ-4128926.pdf", "XQ-4128926_pdf_parsed.xlsx"),
+    ("nutanix_software_only_pdf", "XQ-4076249.pdf", "XQ-4076249_parsed.xlsx"),
+    ("nutanix_software_only_xlsx", "XQ-4076249.xlsx", "XQ-4076249_parsed.xlsx"),
+    ("nutanix_hardware_only_pdf", "XQ-4108785.pdf", "XQ-4108785_parsed.xlsx"),
+    ("nutanix_hardware_only_xlsx", "XQ-4108785.xlsx", "XQ-4108785_parsed.xlsx"),
+    ("nutanix_renewal_pdf", "XQ-4128926.pdf", "XQ-4128926_parsed.xlsx"),
 ]
 
 

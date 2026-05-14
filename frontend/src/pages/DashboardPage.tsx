@@ -1,4 +1,3 @@
-import { RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { api, ApiError } from '../api/client';
@@ -7,6 +6,7 @@ import { AppHeader } from '../components/AppHeader';
 import { Dropzone, type UploadState } from '../components/Dropzone';
 import { ParseSettingsCard } from '../components/ParseSettingsCard';
 import { RecentUploadsTable } from '../components/RecentUploadsTable';
+import { ResetButton } from '../components/ResetButton';
 import { ToastStack, type ToastMessage } from '../components/Toast';
 import type { ApiErrorDetail, HistoryRow, ParserInfo } from '../types';
 
@@ -142,10 +142,7 @@ export function DashboardPage() {
             <h1 className="text-[26px] font-semibold leading-none tracking-normal text-ink">New quote</h1>
             <div className="label label-faint mt-2">Upload a vendor quote / bid to parse</div>
           </div>
-          <button type="button" className="button border-red-200 bg-red-50 text-red-600" onClick={resetForm}>
-            <RotateCcw size={13} />
-            Reset
-          </button>
+          <ResetButton onClick={resetForm} />
         </div>
 
         <div className="mt-8 flex flex-1 flex-col gap-6 md:flex-row md:items-stretch">
