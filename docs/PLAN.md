@@ -2,9 +2,9 @@
 
 ## Context
 
-Sales currently re-keys supplier quotes from various PDF/XLSX layouts into the internal `samples/template/ANZ-GENERIC_ForeignUplift.xlsx` template. The parser logic is already designed, validated by hand, and documented — see `CLAUDE.md` plus the five per-format spec files in `docs/` (`software_only_pdf.md`, `software_only_xlsx.md`, `renewal_pdf.md`, `hardware_only_pdf.md`, `hardware_only_xlsx.md`) and the output mapping in `docs/output_mapping.md`. Five sample inputs have been parsed end-to-end and the resulting `XQ-*_parsed.xlsx` files under `samples/outputs/` match expected totals — they serve as golden fixtures for the template-writer regression test.
+Sales currently re-keys supplier quotes from various PDF/XLSX layouts into the internal `samples/template/ANZ-GENERIC_ForeignUplift.xlsx` template. The parser logic is already designed, validated by hand, and documented — see `AGENTS.md` plus the five per-format spec files in `docs/` (`nutanix_software_only_pdf.md`, `nutanix_software_only_xlsx.md`, `nutanix_renewal_pdf.md`, `nutanix_hardware_only_pdf.md`, `nutanix_hardware_only_xlsx.md`) and the output mapping in `docs/output_mapping.md`. Five sample inputs have been parsed end-to-end and the resulting `XQ-*_parsed.xlsx` files under `samples/outputs/` match expected totals — they serve as golden fixtures for the template-writer regression test.
 
-This plan covers the **MVP web app** that wraps that parser library: authentication, an upload-and-parse dashboard, per-user settings, admin user management, and a recent-uploads history. The visual design is locked to the V4 "Side panel" wireframe from the Claude Design handoff (unpacked in `/tmp/design_unpack/bidparser/`).
+This plan covers the **MVP web app** that wraps that parser library: authentication, an upload-and-parse dashboard, per-user settings, admin user management, and a recent-uploads history. The visual design is locked to the V4 "Side panel" wireframe from the Claude Design handoff committed under `docs/design/`.
 
 **Scope locked with the user:**
 - **Single vendor**: Nutanix only. Architecture stays pluggable (registry-driven) so Dell/Lenovo can drop in later, but no other vendor ships in MVP.
@@ -13,6 +13,7 @@ This plan covers the **MVP web app** that wraps that parser library: authenticat
 - **Per-user remembered FX rate & margin** — the last values used by each user are persisted on their account and pre-fill on next login.
 - **Env-var admin bootstrap** — `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD` seed the first admin on a fresh DB; defaults are `admin` / `changeme`; admin is created with `must_change_password=True`.
 - **Stack**: Python/FastAPI backend + React/Vite/TypeScript frontend, deployed via `docker compose`. Tailwind for styling; Inter throughout per the design.
+- **Local development first**: implement and verify with normal local backend/frontend dev servers. Docker remains the production packaging path and is wired after the local app is working.
 
 **Out of scope for MVP** (deferred):
 - Multi-file batch upload.
@@ -22,10 +23,122 @@ This plan covers the **MVP web app** that wraps that parser library: authenticat
 - Multi-tenancy / org boundaries.
 - Email notifications, SSO, audit log beyond ParseJob history.
 
+## Implementation Phases
+
+Build this in milestones. Each phase should leave the repo in a runnable or testable state before moving to the next.
+
+Status as of the current checkpoint:
+
+- **Phase 1 complete**: parser package, five Nutanix parsers, Foreign Uplift template writer, and Phase 1 tests are implemented.
+- **Phase 2 complete**: backend database, auth, storage, parse orchestration, and API surface are implemented.
+- **Phase 3 complete**: frontend app is scaffolded and wired to the backend API.
+- **Phase 4 complete**: local end-to-end polish has been run against backend and frontend dev servers.
+- **Phase 5 next**: production packaging.
+- Verification commands: `cd backend && .venv/bin/python -m pytest -q`; `cd frontend && npm run build`
+- Last known result: backend `15 passed`; frontend production build succeeded.
+- Parser naming has been vendor-prefixed throughout code and docs to leave room for future suppliers. The five MVP slugs are `nutanix_software_only_pdf`, `nutanix_software_only_xlsx`, `nutanix_renewal_pdf`, `nutanix_hardware_only_pdf`, and `nutanix_hardware_only_xlsx`.
+- Local dev servers verified during Phase 3: backend on `http://127.0.0.1:8000`, frontend on `http://localhost:5173`, with Vite proxying `/api` to the backend.
+- Phase 4 also verified an alternate-port local setup: backend on `http://127.0.0.1:8010`, frontend on `http://127.0.0.1:5174`, with `VITE_API_PROXY_TARGET=http://127.0.0.1:8010`. This is useful when port 8000 is already occupied.
+
+1. **Foundation + Parser Library — complete**
+   - Scaffold `backend/` with FastAPI project metadata, parser models, registry, shared PDF/XLSX utilities, and the five Nutanix parsers.
+   - Add golden JSON fixtures and parser tests for all five committed sample inputs.
+   - Implement `template_writer.py` from `docs/output_mapping.md` and compare against committed `samples/outputs/` workbooks.
+
+   Implemented files:
+   - `backend/pyproject.toml`
+   - `backend/app/parsers/base.py`
+   - `backend/app/parsers/cleaning.py`
+   - `backend/app/parsers/pdf_utils.py`
+   - `backend/app/parsers/xlsx_utils.py`
+   - `backend/app/parsers/registry.py`
+   - `backend/app/parsers/nutanix_software_only_pdf/parser.py`
+   - `backend/app/parsers/nutanix_software_only_xlsx/parser.py`
+   - `backend/app/parsers/nutanix_renewal_pdf/parser.py`
+   - `backend/app/parsers/nutanix_hardware_only_pdf/parser.py`
+   - `backend/app/parsers/nutanix_hardware_only_xlsx/parser.py`
+   - `backend/app/output/template_writer.py`
+   - `backend/tests/test_parsers.py`
+   - `backend/tests/test_template_writer.py`
+
+2. **Backend App Surface — complete**
+   - Add SQLite/SQLAlchemy models, Alembic initial migration, config, storage, parse orchestration, retention helper, and API schemas.
+   - Implement auth/session/rate-limit dependencies, `/auth/*`, `/me`, admin `/users`, `/parsers`, `/parse`, and history/download endpoints.
+   - Verify locally with `pytest -q` from `backend/`.
+
+   Implemented files:
+   - `backend/app/main.py`
+   - `backend/app/config.py`
+   - `backend/app/db.py`
+   - `backend/app/models.py`
+   - `backend/app/storage.py`
+   - `backend/app/auth/passwords.py`
+   - `backend/app/auth/sessions.py`
+   - `backend/app/auth/deps.py`
+   - `backend/app/auth/rate_limit.py`
+   - `backend/app/api/schemas.py`
+   - `backend/app/api/routes_auth.py`
+   - `backend/app/api/routes_users.py`
+   - `backend/app/api/routes_me.py`
+   - `backend/app/api/routes_parse.py`
+   - `backend/app/services/parse_service.py`
+   - `backend/app/services/retention.py`
+   - `backend/alembic.ini`
+   - `backend/alembic/env.py`
+   - `backend/alembic/versions/0001_initial.py`
+   - `backend/tests/test_phase2_api.py`
+
+3. **Frontend App — complete**
+   - Scaffold `frontend/` with Vite, React, TypeScript, Tailwind, Inter, router, API client, auth context, and shared design tokens.
+   - Implement login, forced password change, dashboard, settings, dropzone/progress state, auto-download, toasts, and recent uploads.
+   - Verify locally with `npm run build`.
+
+   Implemented files:
+   - `frontend/package.json`
+   - `frontend/package-lock.json`
+   - `frontend/index.html`
+   - `frontend/tsconfig.json`
+   - `frontend/vite.config.ts`
+   - `frontend/postcss.config.js`
+   - `frontend/tailwind.config.ts`
+   - `frontend/src/main.tsx`
+   - `frontend/src/App.tsx`
+   - `frontend/src/styles.css`
+   - `frontend/src/types.ts`
+   - `frontend/src/api/client.ts`
+   - `frontend/src/auth/AuthContext.tsx`
+   - `frontend/src/components/AppHeader.tsx`
+   - `frontend/src/components/Dropzone.tsx`
+   - `frontend/src/components/ParseSettingsCard.tsx`
+   - `frontend/src/components/RecentUploadsTable.tsx`
+   - `frontend/src/components/Toast.tsx`
+   - `frontend/src/components/UserModal.tsx`
+   - `frontend/src/pages/LoginPage.tsx`
+   - `frontend/src/pages/ChangePasswordPage.tsx`
+   - `frontend/src/pages/DashboardPage.tsx`
+   - `frontend/src/pages/SettingsPage.tsx`
+
+4. **Local End-to-End Polish — complete**
+   - Run backend and frontend dev servers together, complete the verification flow with sample files, tune errors and loading states, and fix any parser/template drift.
+   - Confirm local HTTP cookies are usable without `Secure`; production/proxied HTTPS still sets `Secure`.
+
+   Completed Phase 4 notes:
+   - All five committed sample inputs were parsed through the local HTTP API and returned `X-Validation: match`.
+   - Generated outputs were spot-checked for per-parse template values: column K margin `5.25`, column V FX rate `0.7354`.
+   - Invalid-PDF failure behavior was verified: `422` response, inline-friendly error payload, and no new history row.
+   - Local HTTP session cookies were verified without `Secure`.
+   - Frontend auth polish now reacts to API `401` and `password_change_required` responses so routing returns to `/login` or `/change-password` as specified.
+   - Recent Uploads now computes page size from available table height and keeps pagination state coherent after resize.
+   - Vite proxy target is configurable via `VITE_API_PROXY_TARGET`, defaulting to `http://127.0.0.1:8000`.
+
+5. **Production Packaging**
+   - Add Dockerfile, consumer `docker-compose.yml`, `.env.example`, deployment README notes, and reverse-proxy guidance.
+   - GitHub Actions / GHCR publishing is deferred until explicitly requested; do not add or trigger the release workflow in the first implementation pass.
+
 ## Repository Layout
 
 ```
-/home/adem/Documents/parser/
+<project-root>/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                       # FastAPI app, routers, startup hook (bootstrap admin)
@@ -48,11 +161,11 @@ This plan covers the **MVP web app** that wraps that parser library: authenticat
 │   │   │   ├── registry.py               # PARSER_REGISTRY (explicit list)
 │   │   │   ├── pdf_utils.py              # pdfplumber column/row helpers
 │   │   │   ├── xlsx_utils.py             # openpyxl header-map / cell-anchor helpers
-│   │   │   ├── software_only_pdf/parser.py
-│   │   │   ├── software_only_xlsx/parser.py
-│   │   │   ├── renewal_pdf/parser.py
-│   │   │   ├── hardware_only_pdf/parser.py
-│   │   │   └── hardware_only_xlsx/parser.py
+│   │   │   ├── nutanix_software_only_pdf/parser.py
+│   │   │   ├── nutanix_software_only_xlsx/parser.py
+│   │   │   ├── nutanix_renewal_pdf/parser.py
+│   │   │   ├── nutanix_hardware_only_pdf/parser.py
+│   │   │   └── nutanix_hardware_only_xlsx/parser.py
 │   │   ├── output/
 │   │   │   └── template_writer.py        # implements output_mapping.md (writes Foreign Uplift xlsx)
 │   │   ├── services/
@@ -62,11 +175,11 @@ This plan covers the **MVP web app** that wraps that parser library: authenticat
 │   ├── tests/
 │   │   ├── fixtures/                     # Symlinks to ../../../samples/inputs/*.pdf and *.xlsx
 │   │   ├── expected/                     # Golden JSONs per sample
-│   │   ├── test_software_only_pdf.py
-│   │   ├── test_software_only_xlsx.py
-│   │   ├── test_renewal_pdf.py
-│   │   ├── test_hardware_only_pdf.py
-│   │   ├── test_hardware_only_xlsx.py
+│   │   ├── test_nutanix_software_only_pdf.py
+│   │   ├── test_nutanix_software_only_xlsx.py
+│   │   ├── test_nutanix_renewal_pdf.py
+│   │   ├── test_nutanix_hardware_only_pdf.py
+│   │   ├── test_nutanix_hardware_only_xlsx.py
 │   │   ├── test_template_writer.py       # Compares emitted xlsx against samples/outputs/XQ-*_parsed.xlsx
 │   │   ├── test_auth.py                  # login, lockout, change-password
 │   │   ├── test_users_admin.py           # admin-only CRUD
@@ -80,7 +193,7 @@ This plan covers the **MVP web app** that wraps that parser library: authenticat
 │   │   ├── App.tsx                       # Router + auth-aware shell
 │   │   ├── api/client.ts                 # fetch wrapper (credentials: include, X-Requested-With), 401 redirect handler
 │   │   ├── auth/AuthContext.tsx          # current user state, login/logout/changePassword actions
-│   │   ├── design/tokens.ts              # CSS custom properties for V4 colours/spacings/typography
+│   │   ├── styles.css                    # CSS custom properties and shared utility classes from the V4 wireframe
 │   │   ├── pages/
 │   │   │   ├── LoginPage.tsx
 │   │   │   ├── ChangePasswordPage.tsx
@@ -107,13 +220,14 @@ This plan covers the **MVP web app** that wraps that parser library: authenticat
 ├── Dockerfile                            # multi-stage: Node FE build → Python runtime with FE bundled at /app/static/
 ├── docker-compose.yml                    # consumer-facing: pulls image from ghcr.io
 ├── .env.example                          # SESSION_SECRET, BOOTSTRAP_*, etc.
-├── .github/workflows/build.yml           # Build & push multi-arch image to ghcr.io
+├── .github/workflows/build.yml           # Deferred: build & push multi-arch image to ghcr.io
 ├── samples/
 │   ├── inputs/                           # existing supplier-issued source files (5 fixtures)
 │   ├── outputs/                          # existing XQ-*_parsed.xlsx golden fixtures
 │   └── template/                         # ANZ-GENERIC_ForeignUplift.xlsx (the output template)
 ├── docs/                                 # PLAN.md, output_mapping.md, per-format specs
-└── CLAUDE.md                             # auto-loaded project guidance
+├── AGENTS.md                             # canonical project guidance
+└── CLAUDE.md                             # compatibility pointer to AGENTS.md
 ```
 
 ## Data Model
@@ -134,7 +248,7 @@ class ParseJob(Base):
     id: int                                # PK (also surfaces in URLs)
     user_id: int                           # FK User
     vendor: str                            # "Nutanix"
-    parser_slug: str                       # e.g. "renewal_pdf"
+    parser_slug: str                       # e.g. "nutanix_renewal_pdf"
     source_filename: str                   # original upload name (for display)
     source_path: str                       # disk path of stored original (UUID-named)
     output_path: str                       # disk path of stored *_parsed.xlsx
@@ -201,13 +315,13 @@ Either bucket exhausting returns `429 Too Many Requests` with `Retry-After: <sec
 
 ## Parser Library
 
-Already designed. The MVP imports it as-is. See `CLAUDE.md` for:
+Already designed. The MVP imports it as-is. See `AGENTS.md` for:
 - The `LineItem` / `QuoteMetadata` / `ValidationResult` / `ParseResult` shape (incl. canonical field naming `vpn`/`cost`/`qty`/`term`/`msrp`).
 - `BaseParser` ABC and the explicit `PARSER_REGISTRY` list.
 - Anchor-based extraction rules (mandatory — never hard-code rows or columns).
 - Per-format extraction algorithms for all five Nutanix formats.
 
-Per-format spec files in `docs/` (`software_only_pdf.md`, `software_only_xlsx.md`, `renewal_pdf.md`, `hardware_only_pdf.md`, `hardware_only_xlsx.md`) are the authoritative extraction guides.
+Per-format spec files in `docs/` (`nutanix_software_only_pdf.md`, `nutanix_software_only_xlsx.md`, `nutanix_renewal_pdf.md`, `nutanix_hardware_only_pdf.md`, `nutanix_hardware_only_xlsx.md`) are the authoritative extraction guides.
 
 The Nutanix file-type dropdown surfaces these five formats by their `display_name`. Vendor → file-type cascade is driven by the registry: `list_parsers()` filtered by `vendor == "Nutanix"`.
 
@@ -230,7 +344,7 @@ A regression test reads the five committed `samples/outputs/XQ-*_parsed.xlsx` fi
 `POST /api/parse` (multipart/form-data):
 - `file`: single uploaded file. **Max 10 MB**, enforced client-side (reject before upload) and server-side (returns `413 Payload Too Large`). Accepted MIME: `application/pdf`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`.
 - `vendor`: `"Nutanix"`.
-- `parser_slug`: one of `software_only_pdf`, `software_only_xlsx`, `renewal_pdf`, `hardware_only_pdf`, `hardware_only_xlsx`.
+- `parser_slug`: one of `nutanix_software_only_pdf`, `nutanix_software_only_xlsx`, `nutanix_renewal_pdf`, `nutanix_hardware_only_pdf`, `nutanix_hardware_only_xlsx`.
 - `fx_rate`: float, validated 4 d.p.
 - `margin`: float, validated 2 d.p.
 
@@ -280,9 +394,9 @@ All five Nutanix file types map to "Foreign Uplift" (the only template defined i
 - `/settings` — admin-only user CRUD.
 - A 401 from any API call clears the auth state and redirects to `/login`. A 403 with `password_change_required` redirects to `/change-password`.
 
-**Design tokens** (`design/tokens.ts`): translate the wireframe's CSS custom properties (`--ink #2a2a2a`, `--paper #fdfcf8`, `--accent #0077d4`, success `#10b981/#ecfdf5/#047857`, destructive `#dc2626/#fef2f2/#fecaca`) into Tailwind theme extensions. Inter loaded via `@fontsource/inter` (so it works offline in the Docker image).
+**Design tokens** (`styles.css` + `tailwind.config.ts`): translate the wireframe's CSS custom properties (`--ink #2a2a2a`, `--paper #fdfcf8`, `--accent #0077d4`, success `#10b981/#ecfdf5/#047857`, destructive `#dc2626/#fef2f2/#fecaca`) into shared CSS variables and Tailwind theme extensions. Inter is loaded via `@fontsource/inter` (so it works offline in the Docker image).
 
-**`DashboardPage.tsx`** is the V4 layout. Concrete construction (matches `/tmp/design_unpack/bidparser/project/variants.jsx` lines 149–470):
+**`DashboardPage.tsx`** is the V4 layout. Concrete construction (matches `docs/design/project/variants.jsx` lines 149–470):
 
 - **AppHeader** (56px): app logo on the left (lettered tile + wordmark), `AccountChip` on the right (avatar with user initials + username + dropdown with "Settings" — admins only — and "Logout").
 - **Page title row**: "New quote" + "UPLOAD A VENDOR QUOTE / BID TO PARSE" label on the left, `ResetButton` (destructive red styling) on the right.
@@ -373,7 +487,7 @@ Setting `DATA_DIR=/opt/bidparser/data` in the operator's `.env` swaps the named 
 App is intended to sit behind an upstream nginx-proxy-manager instance which handles TLS, HSTS, and routing. The container therefore:
 - **Binds only to `127.0.0.1`** so it is unreachable from the public internet — only NPM (running on the same host) can proxy to it.
 - **Honours `X-Forwarded-*` headers** via uvicorn's `--proxy-headers` flag and the `FORWARDED_ALLOW_IPS` setting. Rate limiting reads the real client IP from the forwarded chain, not the proxy IP.
-- **Sets the session cookie `Secure` flag from `X-Forwarded-Proto`** — when NPM terminates TLS, the proxied request arrives as HTTP but the cookie still needs to be `Secure`. The auth middleware reads `request.url.scheme` after the proxy-headers middleware processes it.
+- **Sets the session cookie `Secure` flag only for HTTPS requests** — local HTTP development keeps `Secure=False` so the browser accepts the cookie. In production behind NPM, `X-Forwarded-Proto=https` makes `request.url.scheme` resolve to HTTPS after proxy-header processing, so the cookie is issued with `Secure=True`.
 
 Operator configuration on the NPM side (called out in the README):
 - Proxy host: `http://127.0.0.1:3447` (or the docker network alias if NPM is dockerised on a shared network).
@@ -382,9 +496,9 @@ Operator configuration on the NPM side (called out in the README):
 - Force SSL + HSTS are recommended; both are NPM-side toggles.
 - WebSocket support is not required by MVP.
 
-### Build & release — GitHub Actions
+### Build & release — GitHub Actions (deferred)
 
-`.github/workflows/build.yml`, triggered on:
+Do not add or trigger this workflow during the first implementation pass. Once the local app is working and production packaging is ready, add `.github/workflows/build.yml`, triggered on:
 - Push to `main` → tags `latest` + `sha-<7-char-sha>`.
 - Push of a `v*` tag → tags the semver version + `latest`.
 
@@ -421,7 +535,7 @@ Subsequent updates: `docker compose pull && docker compose up -d`. Alembic migra
 
 Backend (`pytest -q` from `backend/` or `docker compose exec backend pytest -q`):
 
-- **Parser tests** (one per format): golden JSON in `tests/expected/`, parametrised against the corresponding sample. Already designed; the existing CLAUDE.md per-format edge-case lists drive the test names.
+- **Parser tests** (one per format): golden JSON in `tests/expected/`, parametrised against the corresponding sample. Already designed; the existing `AGENTS.md` per-format edge-case lists drive the test names.
 - **Template writer test**: `test_template_writer.py` loads each committed `samples/outputs/XQ-*_parsed.xlsx`, feeds the equivalent `LineItem` list (built from the parser's golden output for that sample) into `template_writer.write(...)`, and asserts the produced workbook matches cell-by-cell (sheet name, headers, every populated cell coordinate, the `*` end-loop row).
 - **Auth**: login success, wrong password, missing user, locked-out IP (5 attempts in <60s → 429), locked-out *username* (5 attempts on one username from different IPs → 429), `must_change_password` gate blocks `/api/parse` and unblocks after change-password. Password rules: rejects passwords < 8 chars, missing uppercase, missing digit, or missing symbol.
 - **User admin**: non-admin gets 403 on `/users`, admin can CRUD, admin cannot delete self, admin cannot demote/delete the last remaining admin (409 Conflict), reset_password forces must_change_password=True and writes the literal `changeme` hash.
@@ -435,7 +549,7 @@ Frontend (`npm run test` with Vitest; `npm run build` for the prod bundle):
 ## Verification — End-to-End
 
 1. `cp .env.example .env`, then set `SESSION_SECRET=$(openssl rand -hex 32)` inside it.
-2. Local dev: `docker compose up --build` (builds the Dockerfile locally). Released: `docker compose pull && docker compose up -d` (pulls the latest `ghcr.io/<owner>/bidparser:latest`).
+2. Local dev: run the backend and frontend dev servers directly. Released deployment later uses `docker compose pull && docker compose up -d` (pulls the latest `ghcr.io/<owner>/bidparser:latest`).
 3. Open `http://localhost:3447` (or whichever public URL NPM exposes) → land on `/login`.
 4. Log in as `admin` / `changeme` → forced to `/change-password`. Set a new password ≥ 8 chars → land on `/dashboard`.
 5. Vendor select: only "Nutanix" available. Choose it.
@@ -453,27 +567,27 @@ Frontend (`npm run test` with Vitest; `npm run build` for the prod bundle):
 17. Test failure UX: upload a corrupted PDF → red error banner appears inline in the dropzone area, no new row in Recent Uploads, dropzone resets on next interaction.
 18. Test session expiry: wait 12 hours (or force-expire the cookie) → next API call returns 401 → redirected to /login.
 19. Repeat step 8 with `samples/inputs/XQ-4108785.pdf` + Hardware Only (PDF) → confirm 11-row output, total `USD 22,491.87`, match toast.
-20. Run `docker compose exec bidparser pytest -q /app/tests` — all tests pass inside the container. (Locally outside Docker: `cd backend && pytest -q`.)
-21. CI smoke: every push to `main` triggers `.github/workflows/build.yml`, which builds the multi-arch image, runs `pytest`, and publishes to `ghcr.io/<owner>/bidparser:latest` + `:sha-<7>`.
+20. Run `cd backend && pytest -q` locally; after production packaging exists, also run tests inside the container.
+21. CI smoke is deferred until the release workflow is added explicitly; the first implementation pass must not publish images or trigger GHCR builds.
 
 ## Critical Files
 
 - [backend/app/main.py](backend/app/main.py) — FastAPI app + startup hook (bootstrap admin, retention task) + StaticFiles SPA mount.
-- [backend/app/auth/sessions.py](backend/app/auth/sessions.py) — signed cookie implementation (hard 12h expiry, Secure flag derived from `X-Forwarded-Proto`).
+- [backend/app/auth/sessions.py](backend/app/auth/sessions.py) — signed cookie implementation (hard 12h expiry, `Secure` only for HTTPS/proxied HTTPS).
 - [backend/app/auth/rate_limit.py](backend/app/auth/rate_limit.py) — per-IP and per-username leaky-bucket limiter.
 - [backend/app/models.py](backend/app/models.py) — User + ParseJob.
 - [backend/app/api/routes_parse.py](backend/app/api/routes_parse.py) — `/parse`, `/history`, `/history/{id}/...`.
 - [backend/app/api/routes_users.py](backend/app/api/routes_users.py) — admin user CRUD.
 - [backend/app/api/routes_me.py](backend/app/api/routes_me.py) — per-user settings.
 - [backend/app/output/template_writer.py](backend/app/output/template_writer.py) — implements [output_mapping.md](output_mapping.md).
-- [backend/app/parsers/](backend/app/parsers/) — already designed; see CLAUDE.md.
+- [backend/app/parsers/](backend/app/parsers/) — already designed; see `AGENTS.md`.
 - [frontend/src/App.tsx](frontend/src/App.tsx) — router + auth shell.
 - [frontend/src/pages/DashboardPage.tsx](frontend/src/pages/DashboardPage.tsx) — V4 implementation.
 - [frontend/src/pages/SettingsPage.tsx](frontend/src/pages/SettingsPage.tsx) — admin user CRUD.
-- [frontend/src/design/tokens.ts](frontend/src/design/tokens.ts) — visual tokens from the wireframe.
+- [frontend/src/styles.css](frontend/src/styles.css) and [frontend/tailwind.config.ts](frontend/tailwind.config.ts) — visual tokens from the wireframe.
 - [Dockerfile](Dockerfile) — multi-stage build (Node FE build → Python runtime with FE bundled).
 - [docker-compose.yml](docker-compose.yml) — single-service consumer-facing compose (image from ghcr.io).
-- [.github/workflows/build.yml](.github/workflows/build.yml) — multi-arch build & push to ghcr.io.
+- [.github/workflows/build.yml](.github/workflows/build.yml) — deferred multi-arch build & push to ghcr.io.
 
 ## Extensibility — Adding the Next Supplier Format
 
@@ -482,11 +596,11 @@ To add e.g. a new Dell or Lenovo format (or a new Nutanix file type), the develo
 1. **One new parser module**: `backend/app/parsers/<slug>/parser.py` implementing `BaseParser` (declares `slug`, `display_name`, `vendor`, `accepted_mime`, `crm_template`, `parse()`, optional `detect()`).
 2. **One registry entry**: append the class to `PARSER_REGISTRY` in `backend/app/parsers/registry.py`. This is the only registration point.
 3. **One fixture + golden JSON**: drop the sample file under `backend/tests/fixtures/`, hand-validate the expected output, commit it as `backend/tests/expected/<sample>.json`. Add a parametrised test case in a new `test_<slug>.py`.
-4. **Optionally a new spec markdown** (`<vendor>_<format>.md`) at the repo root mirroring the existing five Nutanix specs. CLAUDE.md gets a line linking to it.
+4. **Optionally a new spec markdown** (`docs/<vendor>_<format>.md`) mirroring the existing five Nutanix specs. `AGENTS.md` gets a line linking to it.
 5. **If the format maps to a new output template**, add an entry to `CRM_TEMPLATE_BY_VENDOR` (or define a new key) and implement the corresponding `template_writer` for that template. For any Nutanix file type the existing Foreign Uplift writer is reused — no template work needed.
 
 The developer **does not touch**: API routes, frontend components (the dashboard dropdowns auto-populate from `GET /api/parsers`), Docker config, validation logic, auth, history, or any other parser. The Pluggable design is deliberate so the parser surface area is the entire change for a new format.
 
 ## Design Reference
 
-The Claude Design handoff bundle is at `/tmp/design_unpack/bidparser/`. Implement directly against `bidparser/project/variants.jsx` lines 149–470 (the `V4_SidePanel` component). Read the chat transcript at `bidparser/chats/chat1.md` for the rationale behind each refinement (RESET button styling, emerald CRM-template callout, slate-50 table chrome, Inter typography). The other variants (`V1`–`V3`, `V5`, `V6`) and the design canvas chrome (`design-canvas.jsx`) are not part of MVP — V6's progress-panel pattern is the only thing we reuse, embedded inline in the dropzone area.
+The Claude Design handoff bundle is committed at `docs/design/`. Read `docs/design/README.md` first, then implement directly against `docs/design/project/variants.jsx` lines 149–470 (the `V4_SidePanel` component) and `docs/design/project/Wireframes.html` as the primary exported prototype. The other variants (`V1`–`V3`, `V5`, `V6`) and the design canvas chrome (`design-canvas.jsx`) are not part of MVP — V6's progress-panel pattern is the only thing we reuse, embedded inline in the dropzone area.

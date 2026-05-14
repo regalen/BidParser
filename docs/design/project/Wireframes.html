@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>BidParser — Upload Page Wireframes</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+
+<!-- Fonts: handwritten for the wireframe scribble feel, Inter for ProductLens-style micro labels -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Patrick+Hand&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --ink: #2a2a2a;
+    --ink-soft: #4a4a4a;
+    --ink-mute: #8a8a8a;
+    --ink-faint: #c8c8c8;
+    --paper: #fdfcf8;
+    --paper-tint: #f4f1ea;
+    --accent: #0077d4;        /* ProductLens primary, used sparingly */
+    --accent-soft: #e6f1fb;
+    --hand: 'Inter', system-ui, sans-serif;
+    --scribble: 'Inter', system-ui, sans-serif;
+    --ui: 'Inter', system-ui, sans-serif;
+  }
+  body { margin: 0; font-family: var(--ui); color: var(--ink); }
+
+  /* ---------- Wireframe primitives ---------- */
+  .wf {
+    width: 100%;
+    height: 100%;
+    background: var(--paper);
+    color: var(--ink);
+    overflow: hidden;
+    position: relative;
+    font-family: var(--ui);
+  }
+  .wf-stage {
+    /* gentle paper grain via two stacked very-faint gradients */
+    background:
+      radial-gradient(rgba(0,0,0,0.025) 1px, transparent 1px) 0 0 / 24px 24px,
+      var(--paper);
+  }
+  .stroke { border: 1.5px solid var(--ink); }
+  .stroke-soft { border: 1.5px solid var(--ink-soft); }
+  .stroke-mute { border: 1.5px solid var(--ink-mute); }
+  .stroke-faint { border: 1.5px solid var(--ink-faint); }
+  .stroke-dash { border: 2px dashed var(--ink); }
+  .stroke-dash-mute { border: 2px dashed var(--ink-mute); }
+
+  /* tiny ProductLens-style label */
+  .lbl {
+    font-family: var(--ui);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .lbl-faint { color: var(--ink-mute); }
+
+  .hand   { font-family: var(--hand); font-weight: 500; }
+  .scrib  { font-family: var(--scribble); font-weight: 700; letter-spacing: -0.02em; }
+
+  /* App chrome --------- */
+  .wf-header {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+    border-bottom: 1.5px solid var(--ink);
+    background: var(--paper);
+  }
+  .wf-logo {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .wf-logo-tile {
+    width: 28px; height: 28px;
+    border: 1.5px solid var(--ink);
+    border-radius: 6px;
+    display: grid; place-items: center;
+    font-family: var(--ui); font-size: 14px; font-weight: 700;
+    background: var(--paper-tint);
+  }
+  .wf-wordmark {
+    font-family: var(--ui); font-weight: 700; font-size: 16px;
+    letter-spacing: -0.01em;
+  }
+  .wf-account {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 10px 5px 5px;
+    border: 1.5px solid var(--ink);
+    border-radius: 999px;
+  }
+  .wf-avatar {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 1.5px solid var(--ink);
+    background: var(--paper-tint);
+    display: grid; place-items: center;
+    font-family: var(--ui); font-size: 10px; font-weight: 600;
+    line-height: 1;
+  }
+
+  /* The dropzone "box" */
+  .dropzone {
+    border: 2px dashed var(--ink);
+    border-radius: 16px;
+    background: var(--paper);
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center;
+    padding: 24px;
+    box-sizing: border-box;
+  }
+  .dropzone.compact { padding: 18px; }
+  .dropzone .cloud {
+    width: 64px; height: 44px; margin-bottom: 8px;
+    position: relative;
+  }
+  .dropzone .cloud svg { width: 100%; height: 100%; }
+  .dropzone .arrow svg { width: 28px; height: 28px; }
+  .dropzone .title {
+    font-family: var(--ui);
+    font-weight: 600;
+    font-size: 18px;
+    line-height: 1.3;
+    color: var(--ink);
+    margin-top: 4px;
+    letter-spacing: -0.01em;
+  }
+  .dropzone .sub {
+    font-family: var(--ui);
+    font-size: 11px;
+    color: var(--ink-mute);
+    margin-top: 8px;
+    letter-spacing: 0.02em;
+  }
+
+  /* Sketchy "select" */
+  .sel {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1.5px solid var(--ink);
+    border-radius: 8px;
+    background: var(--paper);
+    font-family: var(--ui);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1;
+    min-height: 38px;
+    cursor: pointer;
+  }
+  .sel.placeholder { color: var(--ink-mute); }
+  .sel .caret { font-family: var(--ui); font-size: 10px; color: var(--ink-mute); }
+
+  /* Pills / chips */
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px;
+    border: 1.5px solid var(--ink);
+    border-radius: 999px;
+    background: var(--paper);
+    font-family: var(--ui);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .chip.active { background: var(--ink); color: var(--paper); }
+  .chip.accent { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .chip.ghost  { color: var(--ink-mute); border-style: dashed; }
+  .chip.sm { font-size: 11px; padding: 4px 10px; }
+
+  /* Primary CTA */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 6px;
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: 1.5px solid var(--ink);
+    background: var(--paper);
+    font-family: var(--ui);
+    font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    cursor: pointer;
+  }
+  .btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+  .btn.ghost { border-style: dashed; color: var(--ink-mute); }
+  .btn[disabled] { opacity: 0.4; cursor: not-allowed; }
+
+  /* Sketch annotation arrow text */
+  .anno {
+    font-family: var(--ui);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.35;
+    pointer-events: none;
+  }
+  .anno-line {
+    position: absolute;
+    pointer-events: none;
+  }
+  .anno-line svg { width: 100%; height: 100%; overflow: visible; }
+
+  /* Progress bar (for upload-in-progress state) */
+  .bar {
+    height: 8px; border-radius: 999px; background: var(--paper-tint);
+    border: 1.5px solid var(--ink);
+    overflow: hidden;
+    position: relative;
+  }
+  .bar > i {
+    position: absolute; inset: 0 auto 0 0;
+    background: var(--accent);
+    display: block;
+  }
+
+  /* File row */
+  .file-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    border: 1.5px solid var(--ink-soft);
+    border-radius: 8px;
+    background: var(--paper);
+    font-size: 12px;
+  }
+  .file-row .ext {
+    font-family: var(--ui);
+    font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
+    padding: 3px 6px;
+    border: 1.5px solid var(--ink);
+    border-radius: 4px;
+  }
+
+  /* helper */
+  .row { display: flex; }
+  .col { display: flex; flex-direction: column; }
+  .center { align-items: center; justify-content: center; }
+  .between { justify-content: space-between; }
+  .grow { flex: 1 1 auto; min-width: 0; }
+  .gap-2 { gap: 8px; } .gap-3 { gap: 12px; } .gap-4 { gap: 16px; } .gap-6 { gap: 24px; } .gap-8 { gap: 32px; }
+  .p-6 { padding: 24px; } .p-8 { padding: 32px; }
+  .mt-2 { margin-top: 8px; } .mt-4 { margin-top: 16px; } .mt-6 { margin-top: 24px; } .mt-8 { margin-top: 32px; }
+
+  /* Tweaks panel mount target */
+  body { background: #f0eee9; }
+</style>
+</head>
+<body style="background-color: rgb(255, 255, 255)">
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="scenes.jsx"></script>
+<script type="text/babel" src="variants.jsx"></script>
+<script type="text/babel" src="app.jsx"></script>
+
+</body>
+</html>
