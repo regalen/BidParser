@@ -1,9 +1,10 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Loader2, LogIn } from 'lucide-react';
 
 import { ApiError } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
-import { AppHeader } from '../components/AppHeader';
+import { Footer } from '../components/Footer';
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -32,28 +33,61 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-paper-tint">
-      <AppHeader bare />
-      <main className="grid min-h-[calc(100vh-56px)] place-items-center px-4 py-12">
-        <form className="w-full max-w-[420px] rounded-xl border-[1.5px] border-ink bg-paper p-7 shadow-panel" onSubmit={submit}>
-          <div className="label">Sign in</div>
-          <h1 className="mt-3 text-[28px] font-semibold leading-tight tracking-normal text-ink">BidParser</h1>
-          <p className="mt-2 text-sm leading-6 text-ink-soft">Use your internal account to parse supplier quotes into CRM-ready workbooks.</p>
+    <div className="flex min-h-screen flex-col bg-slate-50">
+      <div className="flex flex-1 items-center justify-center p-4">
+        <form
+          onSubmit={submit}
+          className="w-full max-w-md space-y-6 rounded-xl border border-slate-200 bg-white p-8 shadow-xl"
+        >
+          <div className="space-y-2 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-accent">
+              <LogIn className="h-6 w-6 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900">Welcome Back</h1>
+            <p className="text-sm text-slate-500">Sign in to BidParser</p>
+          </div>
 
-          <label className="mt-7 flex flex-col gap-2">
-            <span className="label">Username</span>
-            <input className="field" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" />
-          </label>
-          <label className="mt-4 flex flex-col gap-2">
-            <span className="label">Password</span>
-            <input className="field" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" />
-          </label>
-          {error && <div className="mt-4 rounded-lg border-[1.5px] border-red-300 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{error}</div>}
-          <button type="submit" className="button button-primary mt-6 w-full" disabled={!username || !password || busy}>
-            Sign in
-          </button>
+          <div className="space-y-4">
+            <label className="block space-y-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Username</span>
+              <input
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                autoComplete="username"
+                required
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+              />
+            </label>
+            <label className="block space-y-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Password</span>
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="current-password"
+                required
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+              />
+            </label>
+            {error && <p className="text-xs font-bold text-red-500">{error}</p>}
+            <button
+              type="submit"
+              disabled={!username || !password || busy}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-accent font-bold uppercase tracking-wider text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {busy ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Signing in…
+                </>
+              ) : (
+                'Sign in'
+              )}
+            </button>
+          </div>
         </form>
-      </main>
+      </div>
+      <Footer />
     </div>
   );
 }

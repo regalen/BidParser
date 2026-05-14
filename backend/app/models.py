@@ -21,6 +21,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     username: Mapped[str] = mapped_column(String(128), unique=True, index=True, nullable=False)
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[Literal["admin", "user"]] = mapped_column(String(16), nullable=False, default="user")
     must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

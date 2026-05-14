@@ -4,6 +4,7 @@ import { api, ApiError } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { AppHeader } from '../components/AppHeader';
 import { Dropzone, type UploadState } from '../components/Dropzone';
+import { Footer } from '../components/Footer';
 import { ParseSettingsCard } from '../components/ParseSettingsCard';
 import { RecentUploadsTable } from '../components/RecentUploadsTable';
 import { ResetButton } from '../components/ResetButton';
@@ -134,13 +135,13 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="flex min-h-screen flex-col bg-slate-50">
       <AppHeader />
-      <main className="mx-auto flex min-h-[calc(100vh-56px)] max-w-[1280px] flex-col px-5 py-7 md:px-12 md:py-8">
+      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-6 py-8 lg:px-8">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-[26px] font-semibold leading-none tracking-normal text-ink">New quote</h1>
-            <div className="label label-faint mt-2">Upload a vendor quote / bid to parse</div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">New quote</h1>
+            <p className="mt-1 text-sm text-slate-500">Upload a vendor quote and we'll convert it to a CRM-ready workbook.</p>
           </div>
           <ResetButton onClick={resetForm} />
         </div>
@@ -166,7 +167,7 @@ export function DashboardPage() {
           <section className="flex min-w-0 flex-1 flex-col">
             <Dropzone file={file} state={uploadState} error={dropError} onFile={handleFile} onClear={() => setFile(null)} />
             <div className="mt-2 flex justify-between">
-              <span className="label label-faint">Drag multiple files to batch parse</span>
+              <span className="label-faint">Drag multiple files to batch parse</span>
             </div>
             <RecentUploadsTable
               rows={history}
@@ -179,6 +180,7 @@ export function DashboardPage() {
           </section>
         </div>
       </main>
+      <Footer />
       <ToastStack toasts={toasts} dismiss={(id) => setToasts((items) => items.filter((item) => item.id !== id))} />
     </div>
   );

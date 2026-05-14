@@ -23,7 +23,13 @@ def list_users(admin: User = Depends(require_admin), db: Session = Depends(get_d
 def create_user(payload: UserCreate, admin: User = Depends(require_admin), db: Session = Depends(get_db)) -> User:
     username = payload.username.strip()
     _ensure_username_available(db, username)
-    user = User(username=username, role=payload.role, password_hash=hash_password("changeme"), must_change_password=True)
+    user = User(
+        username=username,
+        name=payload.name.strip(),
+        role=payload.role,
+        password_hash=hash_password("changeme"),
+        must_change_password=True,
+    )
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -38,6 +44,8 @@ def update_user(user_id: int, payload: UserUpdate, admin: User = Depends(require
     if payload.username is not None and payload.username.strip().lower() != user.username.lower():
         _ensure_username_available(db, payload.username.strip())
         user.username = payload.username.strip()
+    if payload.name is not None:
+        user.name = payload.name.strip()
     if payload.role is not None and payload.role != user.role:
         if user.role == "admin" and payload.role != "admin" and _admin_count(db) <= 1:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Cannot remove the last admin.")

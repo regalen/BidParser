@@ -12,6 +12,7 @@ class UserPublic(BaseModel):
 
     id: int
     username: str
+    name: str | None = None
     role: Literal["admin", "user"]
     must_change_password: bool
     fx_rate: Decimal | None = None
@@ -40,11 +41,13 @@ class SettingsUpdate(BaseModel):
 
 class UserCreate(BaseModel):
     username: str = Field(min_length=1, max_length=128)
+    name: str = Field(min_length=1, max_length=255)
     role: Literal["admin", "user"] = "user"
 
 
 class UserUpdate(BaseModel):
     username: str | None = Field(default=None, min_length=1, max_length=128)
+    name: str | None = Field(default=None, min_length=1, max_length=255)
     role: Literal["admin", "user"] | None = None
     reset_password: bool = False
 

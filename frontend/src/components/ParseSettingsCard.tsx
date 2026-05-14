@@ -1,4 +1,4 @@
-import { RotateCcw } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 import type { ParserInfo } from '../types';
 import { CrmTemplateCallout } from './CrmTemplateCallout';
@@ -36,30 +36,36 @@ export function ParseSettingsCard({
   const selectedParser = parsers.find((parser) => parser.slug === parserSlug);
   const vendors = Array.from(new Set(parsers.map((parser) => parser.vendor)));
   const filtered = parsers.filter((parser) => parser.vendor === vendor);
+  const showVendorSettings = Boolean(vendor && parserSlug);
 
   return (
-    <aside className="flex w-full flex-col gap-4 rounded-xl border-[1.5px] border-ink bg-paper p-6 md:w-80 md:shrink-0">
+    <aside className="card flex w-full flex-col gap-4 p-6 md:w-80 md:shrink-0">
       <span className="label">Parse settings</span>
 
       <VendorSelect vendors={vendors} value={vendor} onChange={onVendor} />
       <FileTypeSelect parsers={filtered} value={parserSlug} disabled={!vendor} onChange={onParser} />
 
-      <NutanixSettingsBlock fxRate={fxRate} margin={margin} onFxRate={onFxRate} onMargin={onMargin} />
+      {showVendorSettings && (
+        <>
+          <NutanixSettingsBlock fxRate={fxRate} margin={margin} onFxRate={onFxRate} onMargin={onMargin} />
+          <CrmTemplateCallout template={selectedParser?.crm_template ?? 'Foreign Uplift'} />
+        </>
+      )}
 
-      <CrmTemplateCallout template={selectedParser?.crm_template ?? 'Foreign Uplift'} />
-
-      <div className="mt-2 border-t-[1.5px] border-ink-faint" />
+      <div className="mt-2 border-t border-slate-200" />
       <button type="button" className="button button-primary" disabled={!canSubmit || parsing} onClick={onSubmit}>
         {parsing ? (
           <>
-            <RotateCcw size={13} className="animate-spin" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
             Parsing
           </>
         ) : (
           'Upload & parse'
         )}
       </button>
-      <span className="text-center text-[11px] leading-5 text-ink-mute">Output will automatically download once completed.</span>
+      <span className="text-center text-[11px] leading-5 text-slate-500">
+        Output will automatically download once completed.
+      </span>
     </aside>
   );
 }

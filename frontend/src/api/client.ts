@@ -97,14 +97,14 @@ export const api = {
     return request<User[]>('/users');
   },
 
-  createUser(payload: { username: string; role: 'admin' | 'user' }): Promise<User> {
+  createUser(payload: { username: string; name: string; role: 'admin' | 'user' }): Promise<User> {
     return request<User>('/users', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   },
 
-  updateUser(id: number, payload: { username?: string; role?: 'admin' | 'user'; reset_password?: boolean }): Promise<User> {
+  updateUser(id: number, payload: { username?: string; name?: string; role?: 'admin' | 'user'; reset_password?: boolean }): Promise<User> {
     return request<User>(`/users/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),

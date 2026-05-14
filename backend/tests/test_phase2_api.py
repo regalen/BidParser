@@ -79,7 +79,7 @@ def test_admin_user_crud_and_last_admin_guards() -> None:
     reset_app()
     with TestClient(app) as client:
         unlock_admin(client)
-        response = client.post("/api/users", json={"username": "salesperson1", "role": "user"}, headers=HEADERS)
+        response = client.post("/api/users", json={"username": "salesperson1", "name": "Sales Person", "role": "user"}, headers=HEADERS)
         assert response.status_code == 200, response.text
         user_id = response.json()["id"]
         assert response.json()["must_change_password"] is True
@@ -146,7 +146,7 @@ def test_history_is_user_scoped() -> None:
     reset_app()
     with TestClient(app) as client:
         unlock_admin(client)
-        response = client.post("/api/users", json={"username": "salesperson1", "role": "user"}, headers=HEADERS)
+        response = client.post("/api/users", json={"username": "salesperson1", "name": "Sales Person", "role": "user"}, headers=HEADERS)
         client.post("/api/auth/logout", headers=HEADERS)
         response = client.post("/api/auth/login", json={"username": "salesperson1", "password": "changeme"}, headers=HEADERS)
         assert response.status_code == 200

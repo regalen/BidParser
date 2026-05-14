@@ -11,8 +11,8 @@ export function App() {
 
   if (loading) {
     return (
-      <div className="grid min-h-screen place-items-center bg-paper text-ink">
-        <span className="label label-faint">Loading BidParser</span>
+      <div className="grid min-h-screen place-items-center bg-slate-50 text-slate-500">
+        <span className="label">Loading BidParser</span>
       </div>
     );
   }

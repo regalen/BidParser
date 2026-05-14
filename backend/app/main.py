@@ -72,6 +72,7 @@ def bootstrap_admin() -> None:
             return
         admin = User(
             username=settings.bootstrap_admin_username,
+            name="Administrator",
             password_hash=hash_password(settings.bootstrap_admin_password),
             role="admin",
             must_change_password=True,

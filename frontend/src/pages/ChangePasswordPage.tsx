@@ -1,9 +1,10 @@
 import { FormEvent, useMemo, useState } from 'react';
-import { useBlocker, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { KeyRound, Loader2 } from 'lucide-react';
 
 import { ApiError } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
-import { AppHeader } from '../components/AppHeader';
+import { Footer } from '../components/Footer';
 
 export function ChangePasswordPage() {
   const { changePassword } = useAuth();
@@ -13,13 +14,18 @@ export function ChangePasswordPage() {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
 
-  useBlocker(() => !done);
-
-  const valid = useMemo(() => {
-    return newPassword.length >= 8 && /[A-Z]/.test(newPassword) && /\d/.test(newPassword) && /[^A-Za-z0-9]/.test(newPassword) && newPassword === confirm;
+  const checks = useMemo(() => {
+    return {
+      length: newPassword.length >= 8,
+      upper: /[A-Z]/.test(newPassword),
+      digit: /\d/.test(newPassword),
+      symbol: /[^A-Za-z0-9]/.test(newPassword),
+      match: newPassword.length > 0 && newPassword === confirm,
+    };
   }, [newPassword, confirm]);
+
+  const valid = checks.length && checks.upper && checks.digit && checks.symbol && checks.match;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -27,7 +33,6 @@ export function ChangePasswordPage() {
     setError('');
     try {
       await changePassword(oldPassword, newPassword);
-      setDone(true);
       navigate('/dashboard', { replace: true });
     } catch (caught) {
       if (caught instanceof ApiError && Array.isArray(caught.detail)) {
@@ -41,32 +46,98 @@ export function ChangePasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-paper-tint">
-      <AppHeader bare />
-      <main className="grid min-h-[calc(100vh-56px)] place-items-center px-4 py-12">
-        <form className="w-full max-w-[460px] rounded-xl border-[1.5px] border-ink bg-paper p-7 shadow-panel" onSubmit={submit}>
-          <div className="label">Password required</div>
-          <h1 className="mt-3 text-2xl font-semibold text-ink">Choose a new password</h1>
-          <p className="mt-2 text-sm leading-6 text-ink-soft">New and reset accounts need a compliant password before using the parser.</p>
-          <label className="mt-7 flex flex-col gap-2">
-            <span className="label">Old password</span>
-            <input className="field" type="password" value={oldPassword} onChange={(event) => setOldPassword(event.target.value)} />
-          </label>
-          <label className="mt-4 flex flex-col gap-2">
-            <span className="label">New password</span>
-            <input className="field" type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
-            <span className="text-xs text-ink-mute">At least 8 characters, with an uppercase letter, a digit, and a symbol.</span>
-          </label>
-          <label className="mt-4 flex flex-col gap-2">
-            <span className="label">Confirm password</span>
-            <input className="field" type="password" value={confirm} onChange={(event) => setConfirm(event.target.value)} />
-          </label>
-          {error && <div className="mt-4 rounded-lg border-[1.5px] border-red-300 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{error}</div>}
-          <button type="submit" className="button button-primary mt-6 w-full" disabled={!oldPassword || !valid || busy}>
-            Change password
-          </button>
+    <div className="flex min-h-screen flex-col bg-slate-50">
+      <div className="flex flex-1 items-center justify-center p-4">
+        <form
+          onSubmit={submit}
+          className="w-full max-w-md space-y-6 rounded-xl border border-slate-200 bg-white p-8 shadow-xl"
+        >
+          <div className="space-y-2 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-accent">
+              <KeyRound className="h-6 w-6 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900">Set a new password</h1>
+            <p className="text-sm text-slate-500">First-time sign-in requires a new password</p>
+          </div>
+
+          <div className="space-y-4">
+            <label className="block space-y-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Old password</span>
+              <input
+                type="password"
+                value={oldPassword}
+                onChange={(event) => setOldPassword(event.target.value)}
+                autoComplete="current-password"
+                required
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+              />
+            </label>
+            <label className="block space-y-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">New password</span>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                autoComplete="new-password"
+                required
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+              />
+              <ul className="space-y-1 pt-1 text-[11px] font-medium text-slate-500">
+                <Rule met={checks.length}>At least 8 characters</Rule>
+                <Rule met={checks.upper}>One uppercase letter</Rule>
+                <Rule met={checks.digit}>One digit</Rule>
+                <Rule met={checks.symbol}>One symbol</Rule>
+              </ul>
+            </label>
+            <label className="block space-y-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Confirm password</span>
+              <input
+                type="password"
+                value={confirm}
+                onChange={(event) => setConfirm(event.target.value)}
+                autoComplete="new-password"
+                required
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+              />
+              {confirm.length > 0 && !checks.match && (
+                <span className="text-[11px] font-medium text-red-500">Passwords don't match</span>
+              )}
+            </label>
+            {error && <p className="text-xs font-bold text-red-500">{error}</p>}
+            <button
+              type="submit"
+              disabled={!oldPassword || !valid || busy}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-accent font-bold uppercase tracking-wider text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {busy ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                'Change password'
+              )}
+            </button>
+          </div>
         </form>
-      </main>
+      </div>
+      <Footer />
     </div>
+  );
+}
+
+function Rule({ met, children }: { met: boolean; children: React.ReactNode }) {
+  return (
+    <li className={'flex items-center gap-2 transition-colors ' + (met ? 'text-emerald-600' : 'text-slate-500')}>
+      <span
+        className={
+          'inline-flex h-3 w-3 items-center justify-center rounded-full text-[8px] font-bold leading-none ' +
+          (met ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400')
+        }
+      >
+        {met ? '✓' : '•'}
+      </span>
+      {children}
+    </li>
   );
 }

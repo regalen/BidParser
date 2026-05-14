@@ -1,9 +1,10 @@
-import { Edit2, KeyRound, Plus, Trash2 } from 'lucide-react';
+import { AlertCircle, Edit2, KeyRound, Plus, Shield, Trash2, User as UserIcon, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { api, ApiError } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { AppHeader } from '../components/AppHeader';
+import { Footer } from '../components/Footer';
 import { UserModal } from '../components/UserModal';
 import type { Role, User } from '../types';
 
@@ -21,7 +22,7 @@ export function SettingsPage() {
     void loadUsers();
   }, []);
 
-  async function saveUser(payload: { username: string; role: Role }) {
+  async function saveUser(payload: { username: string; name: string; role: Role }) {
     setError('');
     try {
       if (modalUser) {
@@ -32,7 +33,9 @@ export function SettingsPage() {
       setModalUser(undefined);
       await loadUsers();
     } catch (caught) {
-      setError(caught instanceof ApiError && typeof caught.detail === 'string' ? caught.detail : 'Could not save user.');
+      setError(
+        caught instanceof ApiError && typeof caught.detail === 'string' ? caught.detail : 'Could not save user.',
+      );
     }
   }
 
@@ -47,56 +50,143 @@ export function SettingsPage() {
       await api.deleteUser(target.id);
       await loadUsers();
     } catch (caught) {
-      setError(caught instanceof ApiError && typeof caught.detail === 'string' ? caught.detail : 'Could not delete user.');
+      setError(
+        caught instanceof ApiError && typeof caught.detail === 'string' ? caught.detail : 'Could not delete user.',
+      );
     }
   }
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="flex min-h-screen flex-col bg-slate-50">
       <AppHeader />
-      <main className="mx-auto max-w-[1080px] px-5 py-8 md:px-12">
-        <div className="flex items-end justify-between">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8 lg:px-8">
+        <div className="flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-[26px] font-semibold leading-none text-ink">Settings</h1>
-            <div className="label label-faint mt-2">Admin user management</div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">User Management</h1>
+            <p className="mt-1 text-sm text-slate-500">Add, edit, and manage access to BidParser.</p>
           </div>
           <button type="button" className="button button-primary" onClick={() => setModalUser(null)}>
-            <Plus size={14} />
-            Add user
+            <Plus className="h-3.5 w-3.5" />
+            Create user
           </button>
         </div>
-        {error && <div className="mt-5 rounded-lg border-[1.5px] border-red-300 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{error}</div>}
 
-        <section className="mt-7 overflow-hidden rounded-xl border-[1.5px] border-ink bg-paper">
-          <div className="grid grid-cols-[1.4fr_0.7fr_0.9fr_0.9fr_150px] gap-3 border-b border-ink-faint bg-slate-50 px-[18px] py-3">
-            <span className="label label-faint">Username</span>
-            <span className="label label-faint">Role</span>
-            <span className="label label-faint">Password</span>
-            <span className="label label-faint">Created</span>
-            <span className="label label-faint text-right">Actions</span>
+        {error && (
+          <div className="mt-6 flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-xs font-bold text-red-600">
+            <AlertCircle className="h-4 w-4" />
+            {error}
+            <button
+              type="button"
+              className="ml-auto flex h-6 w-6 items-center justify-center rounded-full text-red-400 hover:bg-red-100"
+              onClick={() => setError('')}
+            >
+              <X className="h-3 w-3" />
+            </button>
           </div>
-          {users.map((row, index) => (
-            <div key={row.id} className={['grid grid-cols-[1.4fr_0.7fr_0.9fr_0.9fr_150px] items-center gap-3 px-[18px] py-3 text-sm', index < users.length - 1 ? 'border-b border-ink-faint' : ''].join(' ')}>
-              <span className="font-semibold text-ink">{row.username}</span>
-              <span className="text-ink-soft">{row.role}</span>
-              <span className={row.must_change_password ? 'font-semibold text-amber-700' : 'text-ink-soft'}>{row.must_change_password ? 'Change required' : 'Active'}</span>
-              <span className="text-ink-soft">{row.created_at ? new Date(row.created_at).toLocaleDateString() : '-'}</span>
-              <div className="flex justify-end gap-1">
-                <button type="button" className="icon-button" title="Edit user" onClick={() => setModalUser(row)}>
-                  <Edit2 size={14} />
-                </button>
-                <button type="button" className="icon-button" title="Reset password" onClick={() => resetPassword(row)}>
-                  <KeyRound size={14} />
-                </button>
-                <button type="button" className="icon-button text-red-600 disabled:opacity-35" title="Delete user" disabled={row.id === user?.id} onClick={() => removeUser(row)}>
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </div>
+        )}
+
+        <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {users.map((row) => (
+            <UserCard
+              key={row.id}
+              row={row}
+              canDelete={row.id !== user?.id}
+              onEdit={() => setModalUser(row)}
+              onResetPassword={() => resetPassword(row)}
+              onDelete={() => removeUser(row)}
+            />
           ))}
-        </section>
+        </div>
       </main>
-      {modalUser !== undefined && <UserModal user={modalUser} onClose={() => setModalUser(undefined)} onSave={saveUser} />}
+      <Footer />
+      {modalUser !== undefined && (
+        <UserModal user={modalUser} onClose={() => setModalUser(undefined)} onSave={saveUser} />
+      )}
+    </div>
+  );
+}
+
+function UserCard({
+  row,
+  canDelete,
+  onEdit,
+  onResetPassword,
+  onDelete,
+}: {
+  row: User;
+  canDelete: boolean;
+  onEdit: () => void;
+  onResetPassword: () => void;
+  onDelete: () => void;
+}) {
+  const isAdmin = row.role === 'admin';
+  const RoleIcon = isAdmin ? Shield : UserIcon;
+
+  return (
+    <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-accent/50">
+      <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <button
+          type="button"
+          className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-accent"
+          title="Edit user"
+          onClick={onEdit}
+        >
+          <Edit2 className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-amber-600"
+          title="Reset password"
+          onClick={onResetPassword}
+        >
+          <KeyRound className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400"
+          title="Delete user"
+          disabled={!canDelete}
+          onClick={onDelete}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div
+          className={
+            'flex h-12 w-12 items-center justify-center rounded-full border ' +
+            (isAdmin ? 'border-red-100 bg-red-50' : 'border-slate-100 bg-slate-50')
+          }
+        >
+          <RoleIcon className={'h-5 w-5 ' + (isAdmin ? 'text-red-500' : 'text-slate-400')} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate font-bold text-slate-900">{row.name || row.username}</h3>
+          <div className="mt-0.5 flex items-center gap-2">
+            <span className="truncate text-xs text-slate-500">@{row.username}</span>
+            <span
+              className={
+                'inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white ' +
+                (isAdmin ? 'bg-red-500' : 'bg-slate-500')
+              }
+            >
+              {row.role}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4 text-[11px] font-medium text-slate-500">
+        <span>
+          {row.must_change_password ? (
+            <span className="font-bold text-amber-600">Password change required</span>
+          ) : (
+            <span>Account active</span>
+          )}
+        </span>
+        <span className="text-slate-400">{row.created_at ? new Date(row.created_at).toLocaleDateString() : '—'}</span>
+      </div>
     </div>
   );
 }

@@ -3,6 +3,7 @@ export type Role = 'admin' | 'user';
 export interface User {
   id: number;
   username: string;
+  name: string | null;
   role: Role;
   must_change_password: boolean;
   fx_rate: string | null;

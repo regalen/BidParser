@@ -1,13 +1,16 @@
+import { FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { AccountChip } from './AccountChip';
 
 export function AppHeader({ bare = false }: { bare?: boolean }) {
   return (
-    <header className="flex h-14 items-center justify-between border-b-[1.5px] border-ink bg-paper px-7">
-      <Link to="/dashboard" className="flex items-center gap-2.5 text-ink no-underline">
-        <span className="grid h-7 w-7 place-items-center rounded-md border-[1.5px] border-ink bg-paper-tint text-sm font-bold">B</span>
-        <span className="text-base font-bold tracking-normal">BidParser</span>
+    <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-8 shadow-sm">
+      <Link to="/dashboard" className="flex items-center gap-3 transition-opacity hover:opacity-80">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent shadow-lg shadow-accent/20">
+          <FileText className="h-5 w-5 text-white" />
+        </div>
+        <h1 className="text-lg font-semibold tracking-tight text-slate-900">BidParser</h1>
       </Link>
       {!bare && <AccountChip />}
     </header>
