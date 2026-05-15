@@ -7,8 +7,8 @@ from pathlib import Path
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{Path(tempfile.mkdtemp()) / 'test.sqlite'}")
 os.environ.setdefault("UPLOAD_DIR", str(Path(tempfile.mkdtemp()) / "files"))
 os.environ.setdefault("SESSION_SECRET", "test-secret")
-os.environ.setdefault("BOOTSTRAP_ADMIN_USERNAME", "admin")
-os.environ.setdefault("BOOTSTRAP_ADMIN_PASSWORD", "changeme")
+os.environ.setdefault("ADMIN_USERNAME", "admin")
+os.environ.setdefault("ADMIN_PASSWORD", "changeme")
 
 from fastapi.testclient import TestClient
 

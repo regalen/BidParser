@@ -25,7 +25,7 @@ Implementation notes:
 
 - Parser slugs, package names, and spec docs are vendor-prefixed for future supplier expansion. Use `nutanix_software_only_pdf`, `nutanix_software_only_xlsx`, `nutanix_renewal_pdf`, `nutanix_hardware_only_pdf`, and `nutanix_hardware_only_xlsx`; do not reintroduce vendorless parser slugs.
 - The frontend is locally runnable with Vite and proxies `/api` to the backend at `http://127.0.0.1:8000` by default. If port 8000 is occupied, run Vite with `VITE_API_PROXY_TARGET=http://127.0.0.1:<port>` to point at an alternate backend.
-- In Docker, `DATABASE_URL` and `UPLOAD_DIR` are set explicitly to `/data/db.sqlite` and `/data/files` (the `/data` volume). The `_root()` fallback in `config.py` is only used in local development.
+- In Docker, the image defaults place `DATABASE_URL` and `UPLOAD_DIR` under `/data` (`/data/db.sqlite` and `/data/files`). Do not set these explicitly in `docker-compose.yml` unless changing the internal container layout. `docker-compose.yml` mounts `/data` from either the default `bidparser-data` Docker volume or a user-supplied `DATA_DIR` bind mount.
 - `main.py` lifespan starts a daily `_retention_loop()` background task that calls `cleanup_old_parse_jobs()` to delete expired ParseJob rows and their files after `RETENTION_DAYS`.
 - `ChangePasswordPage` relies on the `App.tsx` route guard (every other route redirects to `/change-password` when `must_change_password=True`) to keep the user on the page until they pick a new password — no `useBlocker` is used (it requires a data router and breaks under the declarative `BrowserRouter`).
 - The vendor-specific settings block (Nutanix `EXCHANGE RATE` + `MARGIN` inputs and the emerald `CRM IMPORT TEMPLATE` callout) renders in the dashboard only when **both** a vendor and a file type are selected. Until then, only the two cascading selects appear above the Upload & parse button.
@@ -47,7 +47,7 @@ Current implementation checkpoint:
   - `cd backend && .venv/bin/python -m pytest -q`
   - `cd frontend && npm run build`
 - Last known result: backend `18 passed`; frontend production build succeeded.
-- All MVP phases are complete. GitHub Actions CI/CD publishing is deferred until explicitly requested.
+- All MVP phases are complete. GitHub Actions CI/CD publishing is enabled: pushes to `main` and `v*` SemVer tags build and publish Docker images to GHCR.
 
 Sample → format mapping:
 
@@ -359,7 +359,7 @@ Locked-in product decisions. Anything outside these is deferred — flag scope d
 - **Single-file upload** per parse. The "DRAG MULTIPLE FILES TO BATCH PARSE" hint is a future-state affordance.
 - **Auto-download flow**, no review screen. User clicks *Upload & parse* → dropzone morphs into a progress panel → the `_parsed.xlsx` downloads automatically. Validation runs server-side; mismatches surface as a toast, never as an approval gate.
 - **Per-user remembered FX rate & margin** — last values used by each user are persisted on their account and pre-fill on next login.
-- **Env-var admin bootstrap** — `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD` seed the first admin on a fresh DB (defaults `admin` / `changeme`, created with `must_change_password=True`). Env vars are ignored once any user row exists.
+- **Env-var admin bootstrap** — `ADMIN_USERNAME` / `ADMIN_PASSWORD` seed the first admin on a fresh DB (defaults `admin` / `changeme`, created with `must_change_password=True`). Env vars are ignored once any user row exists.
 - **Stack**: Python/FastAPI backend + React/Vite/TypeScript frontend, Tailwind + Inter, packaged as a single Docker image.
 
 Out of scope for MVP: multi-file batch upload, CSV vendor formats, vendors other than Nutanix, review/approve gate, multi-tenancy/org boundaries, email notifications, SSO, audit log beyond ParseJob history.
@@ -411,11 +411,21 @@ All five Nutanix parsers declare `crm_template = "Foreign Uplift"`. When a futur
 Agent-relevant deployment facts:
 
 - **Single container**, multi-stage Dockerfile: `node:20-alpine` builds the SPA → `python:3.12-slim` runtime copies `frontend/dist/` into `/app/static/`. `main.py` mounts that as the SPA with an `index.html` fallback so client-side routes resolve on hard reload. Entrypoint runs `alembic upgrade head` then uvicorn — schema migrations apply automatically on container start.
-- **Binds to `127.0.0.1:3447`**, intended to sit behind nginx-proxy-manager (or equivalent) for TLS termination. The reverse proxy must set `client_max_body_size` to at least `MAX_UPLOAD_MB` (default 10) — NPM's default is 1 MB and silently rejects larger uploads.
+- **Publishes `3447:3447`**, intended to sit behind nginx-proxy-manager (or equivalent) for TLS termination. Do not bind the published port to `127.0.0.1` by default; point the proxy at the Docker host IP and port 3447, or at the Docker network alias if NPM shares the app's Docker network. The reverse proxy must set `client_max_body_size` to at least `MAX_UPLOAD_MB` (default 10) — NPM's default is 1 MB and silently rejects larger uploads.
 - **`Secure` cookie flag** is set only when `X-Forwarded-Proto=https` reaches the app after `--proxy-headers` processing, so local HTTP dev still works and production behind HTTPS still gets `Secure=True`.
-- **Persistent state** lives entirely under `/data` (`db.sqlite` + `files/originals/` + `files/outputs/`). `DATA_DIR` in the operator's `.env` swaps the named volume for a bind mount without a compose edit.
-- **Key env-var defaults**: `MAX_UPLOAD_MB=10`, `RATE_LIMIT_AUTH_PER_MIN=5`, `RETENTION_DAYS=90`, `SESSION_LIFETIME_HOURS=12`. `SESSION_SECRET` is the only one without a default and must be set (`openssl rand -hex 32`). Full table lives in `docs/DEPLOYMENT.md`.
-- GitHub Actions CI/CD (`.github/workflows/build.yml`) is scaffolded but **not triggered** — multi-arch publish to `ghcr.io` is deferred until explicitly requested.
+- **Persistent state** lives entirely under `/data` (`db.sqlite` + `files/originals/` + `files/outputs/`). `${DATA_DIR:-bidparser-data}:/data` defaults to a Docker named volume that Docker creates automatically; `DATA_DIR` in the operator's `.env` swaps it for a bind mount without a compose edit.
+- **Key env-var defaults**: `ADMIN_USERNAME=admin`, `ADMIN_PASSWORD=changeme`, `MAX_UPLOAD_MB=10`, `RATE_LIMIT_AUTH_PER_MIN=5`, `RETENTION_DAYS=90`, `SESSION_LIFETIME_HOURS=12`. `SESSION_SECRET` is the only one without a default and must be set (`openssl rand -hex 32`). `PORT=3447` is baked into the image and does not need to be repeated in compose. Full table lives in `docs/DEPLOYMENT.md`.
+- GitHub Actions CI/CD (`.github/workflows/build.yml`) is enabled — pushes to `main` publish multi-arch Docker images to `ghcr.io` with `latest` and `sha-<short-sha>` tags; pushes of `v*` SemVer tags also publish the SemVer image tag.
+
+## Release versioning
+
+Releases follow **Semantic Versioning 2.0.0**:
+
+- Use tags in the form `vMAJOR.MINOR.PATCH` (for example `v0.1.0` or `v1.0.0`).
+- Increment `MAJOR` for incompatible API/config/deployment changes, `MINOR` for backwards-compatible functionality, and `PATCH` for backwards-compatible fixes.
+- Use `0.y.z` while the app is still in home-network/internal testing and the deployment/API contract may change.
+- Pre-release identifiers are allowed when useful (`v1.0.0-rc.1`, `v0.2.0-alpha.1`) and must sort according to SemVer 2.0.0 rules.
+- Every GitHub Release should point at a matching pushed SemVer tag; pushing that tag triggers the Docker image build for the same version.
 
 ## Extensibility — adding a parser format
 

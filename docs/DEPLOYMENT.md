@@ -12,7 +12,7 @@ curl -O https://raw.githubusercontent.com/regalen/bidparser/main/docker-compose.
 echo "SESSION_SECRET=$(openssl rand -hex 32)" > .env
 
 # 3. (Optional) Override defaults
-# echo "BOOTSTRAP_ADMIN_PASSWORD=something-stronger" >> .env
+# echo "ADMIN_PASSWORD=something-stronger" >> .env
 # echo "DATA_DIR=/opt/bidparser/data" >> .env
 
 # 4. Pull and run
@@ -20,7 +20,7 @@ docker compose pull
 docker compose up -d
 ```
 
-The app is now listening on `127.0.0.1:3447`. On first start it creates the database, runs migrations, and bootstraps an admin user (`admin` / `changeme` by default). The admin is forced to change their password on first login.
+The app is now listening on port `3447` on the Docker host. On first start it creates the database, runs migrations, and bootstraps an admin user (`admin` / `changeme` by default). The admin is forced to change their password on first login.
 
 ## Updating
 
@@ -38,8 +38,8 @@ All configuration is via environment variables. Set them in a `.env` file next t
 | Variable | Default | Description |
 |---|---|---|
 | `SESSION_SECRET` | _(required)_ | HMAC-SHA256 signing key for session cookies. Generate with `openssl rand -hex 32`. |
-| `BOOTSTRAP_ADMIN_USERNAME` | `admin` | Username for the initial admin user (only used on first run). |
-| `BOOTSTRAP_ADMIN_PASSWORD` | `changeme` | Password for the initial admin user (only used on first run). |
+| `ADMIN_USERNAME` | `admin` | Username for the initial admin user (only used on first run). |
+| `ADMIN_PASSWORD` | `changeme` | Password for the initial admin user (only used on first run). |
 | `SESSION_LIFETIME_HOURS` | `12` | Hard session expiry from login. No sliding refresh. |
 | `RETENTION_DAYS` | `90` | Uploaded files and parse history older than this are deleted daily. |
 | `RATE_LIMIT_AUTH_PER_MIN` | `5` | Max login/change-password attempts per minute per IP and per username. |
@@ -60,7 +60,7 @@ All persistent state lives under `/data` inside the container:
     └── outputs/<uuid>.xlsx           # Generated *_parsed.xlsx files
 ```
 
-By default `docker-compose.yml` uses a Docker named volume (`bidparser-data`). To use a bind mount instead, set `DATA_DIR` in your `.env`:
+By default `docker-compose.yml` uses a Docker named volume (`bidparser-data`), which Docker creates automatically if it does not exist. To use a bind mount instead, set `DATA_DIR` in your `.env`:
 
 ```sh
 echo "DATA_DIR=/opt/bidparser/data" >> .env
@@ -68,11 +68,11 @@ echo "DATA_DIR=/opt/bidparser/data" >> .env
 
 ## Reverse Proxy (nginx-proxy-manager)
 
-The container binds only to `127.0.0.1:3447` — it is not directly reachable from the network. Place it behind a reverse proxy (nginx-proxy-manager or similar) for TLS termination.
+The compose file publishes container port `3447` to host port `3447`. Place it behind a reverse proxy (nginx-proxy-manager or similar) for TLS termination.
 
 ### NPM configuration
 
-1. **Proxy host**: point to `http://127.0.0.1:3447` (or the Docker network alias if NPM runs on a shared Docker network).
+1. **Proxy host**: point to `http://<docker-host-ip>:3447`, or to the Docker network alias if NPM runs on a shared Docker network.
 2. **`client_max_body_size 10m`**: NPM defaults to 1 MB, which silently rejects the 10 MB uploads the app allows. Set this in the **Advanced** tab of the proxy host.
 3. **Force SSL + HSTS**: recommended; both are NPM-side toggles.
 4. **`X-Forwarded-*` headers**: passed through by default in NPM — no custom config needed. The app reads `X-Forwarded-Proto` to decide whether to set `Secure` on session cookies.
@@ -109,9 +109,9 @@ New users are created with the password `changeme` and are forced to change it o
 
 ## CI/CD (GitHub Actions)
 
-A workflow is scaffolded at `.github/workflows/build.yml` that builds multi-arch (`linux/amd64`, `linux/arm64`) images and pushes to ghcr.io. It triggers on:
+The workflow at `.github/workflows/build.yml` builds multi-arch (`linux/amd64`, `linux/arm64`) images and pushes to ghcr.io. It triggers on:
 
 - Push to `main` — tags `latest` + `sha-<short-sha>`
-- Push of a `v*` tag — tags the semver version + `latest`
+- Push of a `v*` SemVer tag — tags the SemVer version + `latest`
 
-This workflow is **deferred** — it will begin publishing images once the repository is pushed to GitHub with Actions enabled. No manual setup is required beyond the default `GITHUB_TOKEN` permissions for packages.
+No manual setup is required beyond the default `GITHUB_TOKEN` permissions for packages. Release tags must follow Semantic Versioning 2.0.0, for example `v0.1.0`, `v1.0.0`, or `v1.2.3`.

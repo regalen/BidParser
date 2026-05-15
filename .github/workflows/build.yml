@@ -1,4 +1,3 @@
-# Deferred — do not enable until explicitly requested.
 # This workflow builds a multi-arch Docker image and pushes it to ghcr.io.
 #
 # Triggers:
