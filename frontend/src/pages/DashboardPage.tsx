@@ -18,9 +18,11 @@ export function DashboardPage() {
   const [vendor, setVendor] = useState('');
   const [parserSlug, setParserSlug] = useState('');
   const [fxRate, setFxRate] = useState(user?.fx_rate ?? '');
+  const [fxRatePegged, setFxRatePegged] = useState(user?.fx_rate_pegged ?? false);
   const [margin, setMargin] = useState(user?.margin ?? '');
   const [file, setFile] = useState<File | null>(null);
   const [uploadState, setUploadState] = useState<UploadState>('idle');
+  const [savingDefaults, setSavingDefaults] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -50,12 +52,17 @@ export function DashboardPage() {
   useEffect(() => {
     api.parsers().then((items) => {
       setParsers(items);
-      if (items.length === 1) {
-        setVendor(items[0].vendor);
-        setParserSlug(items[0].slug);
+      const vendors = Array.from(new Set(items.map((item) => item.vendor)));
+      const preferredVendor = user?.default_vendor && vendors.includes(user.default_vendor) ? user.default_vendor : vendors.length === 1 ? vendors[0] : '';
+      if (preferredVendor) {
+        setVendor(preferredVendor);
+        const preferredParsers = items.filter((item) => item.vendor === preferredVendor);
+        if (preferredParsers.length === 1) {
+          setParserSlug(preferredParsers[0].slug);
+        }
       }
     });
-  }, []);
+  }, [user?.default_vendor]);
 
   useEffect(() => {
     void loadHistory();
@@ -72,8 +79,18 @@ export function DashboardPage() {
 
   useEffect(() => {
     setFxRate(user?.fx_rate ?? '');
+    setFxRatePegged(user?.fx_rate_pegged ?? false);
     setMargin(user?.margin ?? '');
-  }, [user?.fx_rate, user?.margin]);
+  }, [user?.fx_rate, user?.fx_rate_pegged, user?.margin]);
+
+  const defaultsDirty = useMemo(() => {
+    return (
+      vendor !== (user?.default_vendor ?? '') ||
+      margin !== (user?.margin ?? '') ||
+      fxRatePegged !== (user?.fx_rate_pegged ?? false) ||
+      (!fxRatePegged && fxRate !== (user?.fx_rate ?? ''))
+    );
+  }, [vendor, margin, fxRate, fxRatePegged, user?.default_vendor, user?.margin, user?.fx_rate, user?.fx_rate_pegged]);
 
   const canSubmit = useMemo(() => {
     return Boolean(vendor && parserSlug && fxRate && margin && file && uploadState === 'idle');
@@ -134,6 +151,29 @@ export function DashboardPage() {
     }
   }
 
+  async function saveDefaults() {
+    setSavingDefaults(true);
+    try {
+      const payload: { default_vendor?: string; fx_rate_pegged: boolean; fx_rate?: string; margin?: string } = {
+        fx_rate_pegged: fxRatePegged,
+      };
+      if (vendor) payload.default_vendor = vendor;
+      if (!fxRatePegged && fxRate) payload.fx_rate = fxRate;
+      if (margin) payload.margin = margin;
+      await api.updateSettings(payload);
+      await refresh();
+      pushToast({
+        tone: 'success',
+        title: 'Defaults saved',
+        detail: fxRatePegged ? 'Your default FX rate will follow the latest Bloomberg refresh.' : 'Your saved defaults will be pre-filled next time.',
+      });
+    } catch (caught) {
+      pushToast({ tone: 'error', title: 'Could not save defaults', detail: errorMessage(caught) });
+    } finally {
+      setSavingDefaults(false);
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
       <AppHeader />
@@ -144,8 +184,11 @@ export function DashboardPage() {
             vendor={vendor}
             parserSlug={parserSlug}
             fxRate={fxRate}
+            fxRatePegged={fxRatePegged}
             margin={margin}
+            defaultsDirty={defaultsDirty}
             canSubmit={canSubmit}
+            savingDefaults={savingDefaults}
             parsing={uploadState === 'parsing'}
             onVendor={(value) => {
               setVendor(value);
@@ -153,7 +196,9 @@ export function DashboardPage() {
             }}
             onParser={setParserSlug}
             onFxRate={setFxRate}
+            onFxRatePegged={setFxRatePegged}
             onMargin={setMargin}
+            onSaveDefaults={saveDefaults}
             onSubmit={submit}
           />
           <section className="flex min-w-0 flex-1 flex-col">

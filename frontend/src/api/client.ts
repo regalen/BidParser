@@ -78,7 +78,7 @@ export const api = {
     return request<User>('/me');
   },
 
-  updateSettings(payload: { fx_rate?: string; margin?: string }): Promise<User> {
+  updateSettings(payload: { default_vendor?: string; fx_rate_pegged?: boolean; fx_rate?: string; margin?: string }): Promise<User> {
     return request<User>('/me/settings', {
       method: 'PATCH',
       body: JSON.stringify(payload),

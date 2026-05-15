@@ -6,7 +6,10 @@ export interface User {
   name: string | null;
   role: Role;
   must_change_password: boolean;
+  default_vendor: string | null;
+  fx_rate_pegged: boolean;
   fx_rate: string | null;
+  fx_rate_updated_at: string | null;
   margin: string | null;
   created_at?: string | null;
 }

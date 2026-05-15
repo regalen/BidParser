@@ -15,6 +15,7 @@ from app.auth.passwords import hash_password
 from app.config import get_settings
 from app.db import SessionLocal, engine
 from app.models import Base, User
+from app.services.fx_rates import fetch_bloomberg_aud_usd_rate, update_user_default_fx_rates
 from app.services.retention import cleanup_old_parse_jobs
 from app.storage import ensure_storage_dirs
 
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 _RETENTION_INTERVAL = 24 * 60 * 60  # once per day
+_FX_RATE_INTERVAL = 24 * 60 * 60  # once per day
 
 
 async def _retention_loop() -> None:
@@ -36,14 +38,28 @@ async def _retention_loop() -> None:
             logger.exception("Retention cleanup failed")
 
 
+async def _fx_rate_loop() -> None:
+    while True:
+        try:
+            rate = await asyncio.to_thread(fetch_bloomberg_aud_usd_rate)
+            with SessionLocal() as db:
+                updated = update_user_default_fx_rates(db, rate)
+            logger.info("Updated %d user default FX rates to AUD:USD %s", updated, rate)
+        except Exception:
+            logger.exception("Daily Bloomberg AUD:USD refresh failed")
+        await asyncio.sleep(_FX_RATE_INTERVAL)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     ensure_storage_dirs()
     Base.metadata.create_all(bind=engine)
     bootstrap_admin()
-    task = asyncio.create_task(_retention_loop())
+    retention_task = asyncio.create_task(_retention_loop())
+    fx_rate_task = asyncio.create_task(_fx_rate_loop())
     yield
-    task.cancel()
+    retention_task.cancel()
+    fx_rate_task.cancel()
 
 
 app = FastAPI(title="BidParser API", lifespan=lifespan)

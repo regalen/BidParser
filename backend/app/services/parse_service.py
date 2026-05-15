@@ -87,6 +87,7 @@ async def parse_upload(
         quoted_total=result.validation.quoted_total,
         totals_match=result.validation.matches,
     )
+    user.default_vendor = vendor
     user.fx_rate = job.fx_rate
     user.margin = job.margin
     db.add(job)
