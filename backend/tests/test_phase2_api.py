@@ -142,6 +142,51 @@ def test_parse_roundtrip_history_downloads_and_settings() -> None:
         assert output.content.startswith(b"PK")
 
 
+def test_history_filename_search() -> None:
+    reset_app()
+    with TestClient(app) as client:
+        unlock_admin(client)
+
+        with (SAMPLES / "XQ-4076249.pdf").open("rb") as handle:
+            first = client.post(
+                "/api/parse",
+                data={"vendor": "Nutanix", "parser_slug": "nutanix_software_only_pdf", "fx_rate": "0.7354", "margin": "5.25"},
+                files={"file": ("XQ-4076249.pdf", handle, "application/pdf")},
+                headers=HEADERS,
+            )
+        assert first.status_code == 200, first.text
+
+        with (SAMPLES / "XQ-4128926.pdf").open("rb") as handle:
+            second = client.post(
+                "/api/parse",
+                data={"vendor": "Nutanix", "parser_slug": "nutanix_renewal_pdf", "fx_rate": "0.7354", "margin": "5.25"},
+                files={"file": ("XQ-4128926.pdf", handle, "application/pdf")},
+                headers=HEADERS,
+            )
+        assert second.status_code == 200, second.text
+
+        all_rows = client.get("/api/history").json()
+        assert all_rows["total"] == 2
+
+        matched = client.get("/api/history?q=4076").json()
+        assert matched["total"] == 1
+        assert matched["rows"][0]["source_filename"] == "XQ-4076249.pdf"
+
+        case_insensitive = client.get("/api/history?q=xq-4128").json()
+        assert case_insensitive["total"] == 1
+        assert case_insensitive["rows"][0]["source_filename"] == "XQ-4128926.pdf"
+
+        broad = client.get("/api/history?q=XQ").json()
+        assert broad["total"] == 2
+
+        empty = client.get("/api/history?q=does-not-exist").json()
+        assert empty["total"] == 0
+        assert empty["rows"] == []
+
+        blank = client.get("/api/history?q=%20%20").json()
+        assert blank["total"] == 2
+
+
 def test_history_is_user_scoped() -> None:
     reset_app()
     with TestClient(app) as client:

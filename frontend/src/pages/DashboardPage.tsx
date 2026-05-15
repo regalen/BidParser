@@ -7,7 +7,6 @@ import { Dropzone, type UploadState } from '../components/Dropzone';
 import { Footer } from '../components/Footer';
 import { ParseSettingsCard } from '../components/ParseSettingsCard';
 import { RecentUploadsTable } from '../components/RecentUploadsTable';
-import { ResetButton } from '../components/ResetButton';
 import { ToastStack, type ToastMessage } from '../components/Toast';
 import type { ApiErrorDetail, HistoryRow, ParserInfo } from '../types';
 
@@ -27,13 +26,15 @@ export function DashboardPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(5);
+  const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const loadHistory = useCallback(async () => {
-    const response = await api.history(pageSize, page * pageSize);
+    const response = await api.history(pageSize, page * pageSize, debouncedQuery);
     setHistory(response.rows);
     setTotal(response.total);
-  }, [page, pageSize]);
+  }, [page, pageSize, debouncedQuery]);
 
   const handlePageSize = useCallback(
     (nextPageSize: number) => {
@@ -59,6 +60,15 @@ export function DashboardPage() {
   useEffect(() => {
     void loadHistory();
   }, [loadHistory]);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedQuery(query), 250);
+    return () => window.clearTimeout(handle);
+  }, [query]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedQuery]);
 
   useEffect(() => {
     setFxRate(user?.fx_rate ?? '');
@@ -88,16 +98,6 @@ export function DashboardPage() {
     }
     setDropError(null);
     setFile(next);
-  }
-
-  function resetForm() {
-    setVendor('');
-    setParserSlug('');
-    setFile(null);
-    setDropError(null);
-    setUploadState('idle');
-    setFxRate(user?.fx_rate ?? '');
-    setMargin(user?.margin ?? '');
   }
 
   async function submit() {
@@ -138,15 +138,7 @@ export function DashboardPage() {
     <div className="flex min-h-screen flex-col bg-slate-50">
       <AppHeader />
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-6 py-8 lg:px-8">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">New quote</h1>
-            <p className="mt-1 text-sm text-slate-500">Upload a vendor quote and we'll convert it to a CRM-ready workbook.</p>
-          </div>
-          <ResetButton onClick={resetForm} />
-        </div>
-
-        <div className="mt-8 flex flex-1 flex-col gap-6 md:flex-row md:items-stretch">
+        <div className="flex flex-1 flex-col gap-6 md:flex-row md:items-stretch">
           <ParseSettingsCard
             parsers={parsers}
             vendor={vendor}
@@ -176,6 +168,8 @@ export function DashboardPage() {
               pageSize={pageSize}
               onPage={setPage}
               onPageSize={handlePageSize}
+              query={query}
+              onQuery={setQuery}
             />
           </section>
         </div>

@@ -19,7 +19,6 @@ All five MVP phases are complete and the codebase has been audited against the p
 - `docs/nutanix_hardware_only_pdf.md` — human-written extraction spec for the "Hardware Only (PDF)" format (Nutanix multi-quote PDF; we only parse Quote D, the reseller-facing breakdown).
 - `docs/nutanix_hardware_only_xlsx.md` — human-written extraction spec for the "Hardware Only (XLSX)" format (Nutanix multi-quote workbook; we only parse Quote D, the reseller-facing breakdown — same sub-quote as the PDF version).
 - `docs/output_mapping.md` — defines how parsed `LineItem` fields are written into the `ANZ-GENERIC_ForeignUplift.xlsx` template, the output filename convention, and the locked output rules (e.g. MSRP column H stays empty; `serial_number` lands in Comments not Serial Number; term written only when `>= 1`). Read this before generating any `*_parsed.xlsx` file.
-- `docs/PLAN.md` — the full MVP implementation plan. Read this before writing any code — it covers repo layout, parser interface, API surface, auth, Docker setup, GitHub Actions, and testing strategy.
 - `docs/design/` — Claude Design handoff bundle for the V4 side-panel UI. Read `docs/design/README.md` before implementing frontend work.
 
 Implementation notes:
@@ -43,10 +42,11 @@ Current implementation checkpoint:
 - Phase 5 is complete.
 - Post-phase audit completed: retention task wired, golden fixture naming fixed, negative assertion tests for Quote D isolation added, frontend components extracted into separate files per plan.
 - Post-MVP UI iteration (2026-05-15): frontend retheme to ProductLens design language (slate palette, shared `Footer`, new login/change-password chrome with live rule checklist, sticky white header, settings-as-card-grid), conditional rendering of the vendor-specific settings block, dropped `useBlocker`, and added `User.name` (model column + alembic migration `0002_user_name` + schemas + admin CRUD + UI surfaces).
+- Follow-up UI iteration (2026-05-15): added a debounced filename search box centered in the Recent Uploads header (case-insensitive substring filter backed by `q` query param on `/api/history`); removed the `New quote` heading/subtitle, the page-level Reset button + `ResetButton` component, and the GitHub / Report-an-Issue links from `Footer.tsx`.
 - Verification commands:
   - `cd backend && .venv/bin/python -m pytest -q`
   - `cd frontend && npm run build`
-- Last known result: backend `17 passed`; frontend production build succeeded.
+- Last known result: backend `18 passed`; frontend production build succeeded.
 - All MVP phases are complete. GitHub Actions CI/CD publishing is deferred until explicitly requested.
 
 Sample → format mapping:
@@ -350,6 +350,84 @@ Expected output for `XQ-4108785.xlsx` Quote D (already validated by hand — gol
 | Platform Integration    | 0    | 4003.51    | 0.00       | 1        |
 
 Computed total = quoted total = `$22,491.87` (the zero-priced rows contribute `$0` and don't disturb the sum).
+
+## MVP scope & guardrails
+
+Locked-in product decisions. Anything outside these is deferred — flag scope drift to the user before building.
+
+- **Single vendor**: Nutanix only. The architecture is registry-driven so Dell/Lenovo drop in later, but no other vendor ships in MVP.
+- **Single-file upload** per parse. The "DRAG MULTIPLE FILES TO BATCH PARSE" hint is a future-state affordance.
+- **Auto-download flow**, no review screen. User clicks *Upload & parse* → dropzone morphs into a progress panel → the `_parsed.xlsx` downloads automatically. Validation runs server-side; mismatches surface as a toast, never as an approval gate.
+- **Per-user remembered FX rate & margin** — last values used by each user are persisted on their account and pre-fill on next login.
+- **Env-var admin bootstrap** — `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD` seed the first admin on a fresh DB (defaults `admin` / `changeme`, created with `must_change_password=True`). Env vars are ignored once any user row exists.
+- **Stack**: Python/FastAPI backend + React/Vite/TypeScript frontend, Tailwind + Inter, packaged as a single Docker image.
+
+Out of scope for MVP: multi-file batch upload, CSV vendor formats, vendors other than Nutanix, review/approve gate, multi-tenancy/org boundaries, email notifications, SSO, audit log beyond ParseJob history.
+
+## Authentication & authorisation
+
+- **Passwords**: bcrypt cost factor 12. Password rules enforced on `/auth/change-password` only — bootstrap and admin reset both write the literal `changeme` and rely on `must_change_password` to force compliance on next login. Rules: ≥ 8 chars, at least one uppercase, one digit, one symbol.
+- **Sessions**: signed httponly cookies (HMAC-SHA256 via `SESSION_SECRET`). Cookie carries `{user_id, issued_at}` with a **hard 12-hour expiry from login** — no sliding refresh. The `Secure` flag is set only when the request resolves to HTTPS after `--proxy-headers` processing (so local HTTP dev still works; production behind NPM gets `Secure=True` via `X-Forwarded-Proto`).
+- **CSRF**: every non-GET endpoint requires `X-Requested-With: BidParser` set by `frontend/src/api/client.ts`. Combined with SameSite=Lax, this is sufficient for an internal app.
+- **Rate limiting on `/auth/*`**: 5 attempts per minute, two independent buckets — per remote IP across `/auth/login` + `/auth/change-password`, AND per submitted username on `/auth/login` (applied pre-auth so attackers can't enumerate one username from many IPs). Either bucket tripping returns `429` with `Retry-After` and a generic body. In-memory leaky bucket; does not survive restart.
+- **`must_change_password` gate**: when the current user has the flag set, the backend returns `403 password_change_required` for every endpoint except `/auth/*` and `/me`. The frontend redirects to `/change-password` and `App.tsx` route guards keep the user there.
+- **Last-admin guard**: `PATCH /api/users/{id}` and `DELETE /api/users/{id}` return `409 Conflict` if the operation would leave zero admins, or if it targets the calling admin themselves.
+- **Password recovery**: no self-service. Admin `PATCH /api/users/{id}` with `{reset_password: true}` writes `changeme` and sets `must_change_password=True`.
+
+## API surface (all under `/api`)
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| `POST` | `/auth/login` | none | Body `{username, password}`. Rate-limited. Returns the user object and sets the session cookie. |
+| `POST` | `/auth/logout` | user | Clears the current session cookie only. Other devices stay logged in until their own 12h expires. |
+| `POST` | `/auth/change-password` | user | Body `{old_password, new_password}`. Enforces password rules. Clears `must_change_password`. |
+| `GET`  | `/me` | user | Returns the current user shape. |
+| `PATCH` | `/me/settings` | user | Body `{fx_rate?, margin?}`. Updates per-user remembered defaults. |
+| `GET` | `/parsers` | user | Returns the registry — each entry includes `slug`, `display_name`, `vendor`, `accepted_mime`, `crm_template`. Drives the vendor → file-type cascade. |
+| `POST` | `/parse` | user | Multipart: `file`, `vendor`, `parser_slug`, `fx_rate`, `margin`. Max 10 MB enforced both sides. See response headers below. |
+| `GET` | `/history` | user | `?limit=&offset=&q=` — user-scoped. `q` is a case-insensitive substring filter on `source_filename`. `when` is a server-computed relative time string ("just now", "5m ago", "Yesterday", "3 days ago", then absolute date). |
+| `GET` | `/history/{id}/source` | user | Streams the stored original. 404 if foreign user or expired. |
+| `GET` | `/history/{id}/output` | user | Streams the parsed `*_parsed.xlsx`. Same gating. |
+| `GET` | `/users` | admin | Admin-only user CRUD. `POST` requires `{username, name, role}`; password is set to `changeme` + `must_change_password=True`. `PATCH` accepts `{username?, name?, role?, reset_password?}`. |
+
+**`/parse` response headers** on success: `X-Validation: match | mismatch`, `X-Computed-Total`, `X-Quoted-Total`. The frontend reads these and shows a green or amber toast — mismatches never block the download.
+
+**`/parse` failure mode**: when the parser raises (PDF unreadable, header anchor missing, TOTAL missing, invalid file type, etc.), the backend returns `422` with `{detail: {stage, hint, message}}`. The uploaded source is **discarded** — no `ParseJob` row is recorded and no original is retained on disk. The frontend renders the error inline in the dropzone, preserving the form so the user can pick a different file.
+
+## CRM template mapping
+
+`backend/app/output/template_writer.py` exposes:
+
+```python
+CRM_TEMPLATE_BY_VENDOR = {"Nutanix": "Foreign Uplift"}
+```
+
+All five Nutanix parsers declare `crm_template = "Foreign Uplift"`. When a future vendor is added, extend this dict and implement the corresponding template writer — that's the only mapping change needed.
+
+## Operational config & deployment
+
+`docs/DEPLOYMENT.md` is the operator-facing runbook (env-var table, NPM proxy config, `/data` volume layout, first-login walkthrough). When changing the deployment story, update that file and reflect any agent-relevant changes here.
+
+Agent-relevant deployment facts:
+
+- **Single container**, multi-stage Dockerfile: `node:20-alpine` builds the SPA → `python:3.12-slim` runtime copies `frontend/dist/` into `/app/static/`. `main.py` mounts that as the SPA with an `index.html` fallback so client-side routes resolve on hard reload. Entrypoint runs `alembic upgrade head` then uvicorn — schema migrations apply automatically on container start.
+- **Binds to `127.0.0.1:3447`**, intended to sit behind nginx-proxy-manager (or equivalent) for TLS termination. The reverse proxy must set `client_max_body_size` to at least `MAX_UPLOAD_MB` (default 10) — NPM's default is 1 MB and silently rejects larger uploads.
+- **`Secure` cookie flag** is set only when `X-Forwarded-Proto=https` reaches the app after `--proxy-headers` processing, so local HTTP dev still works and production behind HTTPS still gets `Secure=True`.
+- **Persistent state** lives entirely under `/data` (`db.sqlite` + `files/originals/` + `files/outputs/`). `DATA_DIR` in the operator's `.env` swaps the named volume for a bind mount without a compose edit.
+- **Key env-var defaults**: `MAX_UPLOAD_MB=10`, `RATE_LIMIT_AUTH_PER_MIN=5`, `RETENTION_DAYS=90`, `SESSION_LIFETIME_HOURS=12`. `SESSION_SECRET` is the only one without a default and must be set (`openssl rand -hex 32`). Full table lives in `docs/DEPLOYMENT.md`.
+- GitHub Actions CI/CD (`.github/workflows/build.yml`) is scaffolded but **not triggered** — multi-arch publish to `ghcr.io` is deferred until explicitly requested.
+
+## Extensibility — adding a parser format
+
+To add a new format (new Nutanix file type, or a Dell/Lenovo quote):
+
+1. **One parser module**: `backend/app/parsers/<slug>/parser.py` implementing `BaseParser` — declare `slug`, `display_name`, `vendor`, `accepted_mime`, `crm_template`, `parse()`, optional `detect()`.
+2. **One registry entry**: append the class to `PARSER_REGISTRY` in `backend/app/parsers/registry.py`. This is the only registration point.
+3. **One fixture + golden output**: drop the sample under `backend/tests/fixtures/` (or symlink from `samples/inputs/`), hand-validate, commit the expected `*_parsed.xlsx` golden under `samples/outputs/`, and add a parametrised test case.
+4. **Optionally a new spec markdown** (`docs/<vendor>_<format>.md`) mirroring the existing five Nutanix specs, plus a one-line link from this file.
+5. **If the format needs a new CRM template**, extend `CRM_TEMPLATE_BY_VENDOR` and implement the new template writer. Every Nutanix file type reuses the existing Foreign Uplift writer — no template work needed for those.
+
+The developer **does not touch**: API routes, frontend components (dropdowns auto-populate from `/api/parsers`), Docker config, validation logic, auth, history, or any other parser. The parser surface area is the entire change for a new format — preserve that property.
 
 ## Working with the user
 

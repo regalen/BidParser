@@ -89,8 +89,10 @@ export const api = {
     return request<ParserInfo[]>('/parsers');
   },
 
-  history(limit: number, offset: number): Promise<HistoryResponse> {
-    return request<HistoryResponse>(`/history?limit=${limit}&offset=${offset}`);
+  history(limit: number, offset: number, q?: string): Promise<HistoryResponse> {
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    if (q && q.trim()) params.set('q', q.trim());
+    return request<HistoryResponse>(`/history?${params.toString()}`);
   },
 
   users(): Promise<User[]> {

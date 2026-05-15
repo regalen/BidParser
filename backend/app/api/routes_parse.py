@@ -57,13 +57,23 @@ async def parse_file(
 
 
 @router.get("/history", response_model=HistoryResponse)
-def history(limit: int = 10, offset: int = 0, user: User = Depends(require_active_user), db: Session = Depends(get_db)) -> HistoryResponse:
+def history(
+    limit: int = 10,
+    offset: int = 0,
+    q: str | None = None,
+    user: User = Depends(require_active_user),
+    db: Session = Depends(get_db),
+) -> HistoryResponse:
     limit = min(max(limit, 1), 100)
     offset = max(offset, 0)
-    total = db.scalar(select(func.count()).select_from(ParseJob).where(ParseJob.user_id == user.id)) or 0
+    filters = [ParseJob.user_id == user.id]
+    needle = q.strip() if q else ""
+    if needle:
+        filters.append(func.lower(ParseJob.source_filename).contains(needle.lower()))
+    total = db.scalar(select(func.count()).select_from(ParseJob).where(*filters)) or 0
     jobs = db.scalars(
         select(ParseJob)
-        .where(ParseJob.user_id == user.id)
+        .where(*filters)
         .order_by(ParseJob.created_at.desc(), ParseJob.id.desc())
         .limit(limit)
         .offset(offset)
