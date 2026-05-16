@@ -126,16 +126,14 @@ def test_parse_roundtrip_history_downloads_and_settings() -> None:
         assert me.json()["default_vendor"] == "Nutanix"
         assert me.json()["fx_rate"] == "0.7354"
         assert me.json()["margin"] == "5.25"
+        assert "fx_rate_pegged" not in me.json()
+        assert "fx_rate_updated_at" not in me.json()
 
-        settings = client.patch("/api/me/settings", json={"default_vendor": "Nutanix", "margin": "7.50"}, headers=HEADERS)
+        settings = client.patch("/api/me/settings", json={"default_vendor": "Nutanix", "fx_rate": "0.7400", "margin": "7.50"}, headers=HEADERS)
         assert settings.status_code == 200, settings.text
         assert settings.json()["default_vendor"] == "Nutanix"
-        assert settings.json()["fx_rate_pegged"] is False
+        assert settings.json()["fx_rate"] == "0.7400"
         assert settings.json()["margin"] == "7.50"
-
-        pegged_settings = client.patch("/api/me/settings", json={"fx_rate_pegged": True}, headers=HEADERS)
-        assert pegged_settings.status_code == 200
-        assert pegged_settings.json()["fx_rate_pegged"] is True
 
         bad_settings = client.patch("/api/me/settings", json={"default_vendor": "Unknown"}, headers=HEADERS)
         assert bad_settings.status_code == 400

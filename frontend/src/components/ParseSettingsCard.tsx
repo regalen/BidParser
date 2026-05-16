@@ -11,7 +11,6 @@ export function ParseSettingsCard({
   vendor,
   parserSlug,
   fxRate,
-  fxRatePegged,
   margin,
   defaultsDirty,
   canSubmit,
@@ -20,7 +19,6 @@ export function ParseSettingsCard({
   onVendor,
   onParser,
   onFxRate,
-  onFxRatePegged,
   onMargin,
   onSaveDefaults,
   onSubmit,
@@ -29,7 +27,6 @@ export function ParseSettingsCard({
   vendor: string;
   parserSlug: string;
   fxRate: string;
-  fxRatePegged: boolean;
   margin: string;
   defaultsDirty: boolean;
   canSubmit: boolean;
@@ -38,7 +35,6 @@ export function ParseSettingsCard({
   onVendor: (value: string) => void;
   onParser: (value: string) => void;
   onFxRate: (value: string) => void;
-  onFxRatePegged: (value: boolean) => void;
   onMargin: (value: string) => void;
   onSaveDefaults: () => void;
   onSubmit: () => void;
@@ -55,13 +51,10 @@ export function ParseSettingsCard({
       <VendorSelect vendors={vendors} value={vendor} onChange={onVendor} />
       <FileTypeSelect parsers={filtered} value={parserSlug} disabled={!vendor} onChange={onParser} />
 
-      <FxPegControl pegged={fxRatePegged} onChange={onFxRatePegged} />
-
       {showVendorSettings && (
         <>
           <NutanixSettingsBlock
             fxRate={fxRate}
-            fxRateDisabled={fxRatePegged}
             margin={margin}
             onFxRate={onFxRate}
             onMargin={onMargin}
@@ -95,22 +88,5 @@ export function ParseSettingsCard({
         Output will automatically download once completed.
       </span>
     </aside>
-  );
-}
-
-function FxPegControl({ pegged, onChange }: { pegged: boolean; onChange: (value: boolean) => void }) {
-  return (
-    <label className="flex items-start gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-3">
-      <input
-        type="checkbox"
-        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-accent focus:ring-accent"
-        checked={pegged}
-        onChange={(event) => onChange(event.target.checked)}
-      />
-      <span className="min-w-0">
-        <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-700">Peg FX rate to Bloomberg</span>
-        <span className="mt-1 block text-[11px] leading-4 text-slate-500">Use the latest daily Bloomberg refresh for your default rate.</span>
-      </span>
-    </label>
   );
 }

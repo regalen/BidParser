@@ -16,9 +16,7 @@ class UserPublic(BaseModel):
     role: Literal["admin", "user"]
     must_change_password: bool
     default_vendor: str | None = None
-    fx_rate_pegged: bool = False
     fx_rate: Decimal | None = None
-    fx_rate_updated_at: datetime | None = None
     margin: Decimal | None = None
     created_at: datetime | None = None
 
@@ -39,7 +37,6 @@ class ChangePasswordRequest(BaseModel):
 
 class SettingsUpdate(BaseModel):
     default_vendor: str | None = Field(default=None, min_length=1, max_length=64)
-    fx_rate_pegged: bool | None = None
     fx_rate: Decimal | None = Field(default=None, ge=0)
     margin: Decimal | None = Field(default=None, ge=0)
 

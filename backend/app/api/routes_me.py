@@ -26,8 +26,6 @@ def update_settings(payload: SettingsUpdate, user: User = Depends(require_active
         if default_vendor not in known_vendors:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown vendor.")
         user.default_vendor = default_vendor
-    if payload.fx_rate_pegged is not None:
-        user.fx_rate_pegged = payload.fx_rate_pegged
     if payload.fx_rate is not None:
         user.fx_rate = payload.fx_rate
     if payload.margin is not None:

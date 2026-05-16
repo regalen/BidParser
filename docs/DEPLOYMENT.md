@@ -42,8 +42,6 @@ All configuration is via environment variables. Set them in a `.env` file next t
 | `ADMIN_PASSWORD` | `changeme` | Password for the initial admin user (only used on first run). |
 | `SESSION_LIFETIME_HOURS` | `12` | Hard session expiry from login. No sliding refresh. |
 | `RETENTION_DAYS` | `90` | Uploaded files and parse history older than this are deleted daily. |
-| `FX_RATE_SOURCE_URL` | `https://www.bloomberg.com/quote/AUDUSD:CUR` | Source URL for the daily AUD:USD default-rate refresh. The default parser expects Bloomberg quote-page content. Users must enable the peg option before their default rate follows this refresh. |
-| `FX_RATE_TIMEOUT_SECONDS` | `10` | Timeout for the daily FX-rate request. If the request or parse fails, existing defaults are left unchanged and the failure is logged. |
 | `RATE_LIMIT_AUTH_PER_MIN` | `5` | Max login/change-password attempts per minute per IP and per username. |
 | `MAX_UPLOAD_MB` | `10` | Maximum upload file size. |
 | `DATA_DIR` | _(named volume)_ | Set to a host path (e.g. `/opt/bidparser/data`) to use a bind mount instead of a Docker named volume. |

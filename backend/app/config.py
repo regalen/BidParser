@@ -20,8 +20,6 @@ class Settings:
     retention_days: int = int(os.getenv("RETENTION_DAYS", "90"))
     rate_limit_auth_per_min: int = int(os.getenv("RATE_LIMIT_AUTH_PER_MIN", "5"))
     max_upload_mb: int = int(os.getenv("MAX_UPLOAD_MB", "10"))
-    fx_rate_source_url: str = os.getenv("FX_RATE_SOURCE_URL", "https://www.bloomberg.com/quote/AUDUSD:CUR")
-    fx_rate_timeout_seconds: float = float(os.getenv("FX_RATE_TIMEOUT_SECONDS", "10"))
 
     @property
     def max_upload_bytes(self) -> int:

@@ -358,7 +358,7 @@ Locked-in product decisions. Anything outside these is deferred — flag scope d
 - **Single vendor**: Nutanix only. The architecture is registry-driven so Dell/Lenovo drop in later, but no other vendor ships in MVP.
 - **Single-file upload** per parse. The "DRAG MULTIPLE FILES TO BATCH PARSE" hint is a future-state affordance.
 - **Auto-download flow**, no review screen. User clicks *Upload & parse* → dropzone morphs into a progress panel → the `_parsed.xlsx` downloads automatically. Validation runs server-side; mismatches surface as a toast, never as an approval gate.
-- **Per-user remembered FX rate & margin** — last values used by each user are persisted on their account and pre-fill on next login.
+- **Per-user remembered vendor, FX rate & margin** — last values used by each user are persisted on their account and pre-fill on next login.
 - **Env-var admin bootstrap** — `ADMIN_USERNAME` / `ADMIN_PASSWORD` seed the first admin on a fresh DB (defaults `admin` / `changeme`, created with `must_change_password=True`). Env vars are ignored once any user row exists.
 - **Stack**: Python/FastAPI backend + React/Vite/TypeScript frontend, Tailwind + Inter, packaged as a single Docker image.
 
@@ -382,7 +382,7 @@ Out of scope for MVP: multi-file batch upload, CSV vendor formats, vendors other
 | `POST` | `/auth/logout` | user | Clears the current session cookie only. Other devices stay logged in until their own 12h expires. |
 | `POST` | `/auth/change-password` | user | Body `{old_password, new_password}`. Enforces password rules. Clears `must_change_password`. |
 | `GET`  | `/me` | user | Returns the current user shape. |
-| `PATCH` | `/me/settings` | user | Body `{fx_rate?, margin?}`. Updates per-user remembered defaults. |
+| `PATCH` | `/me/settings` | user | Body `{default_vendor?, fx_rate?, margin?}`. Updates per-user remembered defaults. |
 | `GET` | `/parsers` | user | Returns the registry — each entry includes `slug`, `display_name`, `vendor`, `accepted_mime`, `crm_template`. Drives the vendor → file-type cascade. |
 | `POST` | `/parse` | user | Multipart: `file`, `vendor`, `parser_slug`, `fx_rate`, `margin`. Max 10 MB enforced both sides. See response headers below. |
 | `GET` | `/history` | user | `?limit=&offset=&q=` — user-scoped. `q` is a case-insensitive substring filter on `source_filename`. `when` is a server-computed relative time string ("just now", "5m ago", "Yesterday", "3 days ago", then absolute date). |

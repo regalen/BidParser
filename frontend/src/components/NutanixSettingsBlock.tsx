@@ -1,12 +1,10 @@
 export function NutanixSettingsBlock({
   fxRate,
-  fxRateDisabled,
   margin,
   onFxRate,
   onMargin,
 }: {
   fxRate: string;
-  fxRateDisabled: boolean;
   margin: string;
   onFxRate: (value: string) => void;
   onMargin: (value: string) => void;
@@ -28,7 +26,6 @@ export function NutanixSettingsBlock({
           inputMode="decimal"
           value={fxRate}
           placeholder="0.7354"
-          disabled={fxRateDisabled}
           onChange={(event) => onFxRate(event.target.value)}
         />
       </label>
