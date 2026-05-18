@@ -1,10 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\..\src\BidParser.Domain\BidParser.Domain.csproj" />
+    <ProjectReference Include="..\..\src\BidParser.Output\BidParser.Output.csproj" />
     <ProjectReference Include="..\..\src\BidParser.Parsing\BidParser.Parsing.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="ClosedXML" />
     <PackageReference Include="coverlet.collector" PrivateAssets="all" />
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />

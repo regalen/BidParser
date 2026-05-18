@@ -10,6 +10,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BidParser.Infrastructure", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BidParser.Parsing", "src\BidParser.Parsing\BidParser.Parsing.csproj", "{4DB852E4-C5AF-4FA6-BB52-862F49C5AE46}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BidParser.Output", "src\BidParser.Output\BidParser.Output.csproj", "{9328F047-480E-408A-8B7F-61585005687C}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BidParser.Api.Tests", "tests\BidParser.Api.Tests\BidParser.Api.Tests.csproj", "{33801EE3-A7D3-464A-98D5-9A5CBA049F48}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BidParser.Parsing.Tests", "tests\BidParser.Parsing.Tests\BidParser.Parsing.Tests.csproj", "{3CF9673A-1107-427E-8A2E-D6D3E34780B1}"
@@ -36,6 +38,10 @@ Global
 		{4DB852E4-C5AF-4FA6-BB52-862F49C5AE46}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4DB852E4-C5AF-4FA6-BB52-862F49C5AE46}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4DB852E4-C5AF-4FA6-BB52-862F49C5AE46}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9328F047-480E-408A-8B7F-61585005687C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9328F047-480E-408A-8B7F-61585005687C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9328F047-480E-408A-8B7F-61585005687C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9328F047-480E-408A-8B7F-61585005687C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{33801EE3-A7D3-464A-98D5-9A5CBA049F48}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{33801EE3-A7D3-464A-98D5-9A5CBA049F48}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{33801EE3-A7D3-464A-98D5-9A5CBA049F48}.Release|Any CPU.ActiveCfg = Release|Any CPU
