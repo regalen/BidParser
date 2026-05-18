@@ -14,6 +14,7 @@ COPY BidParser.sln Directory.Build.props Directory.Packages.props ./
 COPY src/BidParser.Api/BidParser.Api.csproj src/BidParser.Api/
 COPY src/BidParser.Domain/BidParser.Domain.csproj src/BidParser.Domain/
 COPY src/BidParser.Infrastructure/BidParser.Infrastructure.csproj src/BidParser.Infrastructure/
+COPY src/BidParser.Output/BidParser.Output.csproj src/BidParser.Output/
 COPY src/BidParser.Parsing/BidParser.Parsing.csproj src/BidParser.Parsing/
 RUN dotnet restore src/BidParser.Api/BidParser.Api.csproj
 
