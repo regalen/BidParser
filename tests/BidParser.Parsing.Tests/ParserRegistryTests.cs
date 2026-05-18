@@ -15,6 +15,7 @@ public sealed class ParserRegistryTests
             .Equal(
                 "nutanix_software_only_pdf",
                 "nutanix_software_only_xlsx",
-                "nutanix_renewal_pdf");
+                "nutanix_renewal_pdf",
+                "nutanix_hardware_only_pdf");
     }
 }
