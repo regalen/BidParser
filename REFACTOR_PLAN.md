@@ -269,7 +269,8 @@ GitHub Actions — restructure the existing single-job `build.yml` into **two ga
 - Phase 5 complete: domain parser contracts/models, cleaning helpers, PDF word collection/table helpers with pdfplumber-compatible coordinates, XLSX worksheet/header helpers, empty explicit parser registry, parsing test project, and checked-in pdfplumber snapshot characterisation gate added. Verification: `dotnet restore`, `dotnet build --configuration Release --no-restore`, and `dotnet test --configuration Release --no-build` passed. Local Docker build intentionally not run.
 - Phase 6 complete: `NutanixSoftwareOnlyPdfParser` ported, registered in the explicit parser registry, and line-item/total equivalence test added for `samples/inputs/XQ-4076249.pdf`. Verification: `dotnet restore BidParser.sln`, `dotnet build BidParser.sln --configuration Release --no-restore`, and `dotnet test BidParser.sln --configuration Release --no-build` passed. Local Docker build intentionally not run.
 - Phase 7 complete: `NutanixSoftwareOnlyXlsxParser` ported, registered after the PDF parser in the explicit registry, and line-item/total equivalence test added for `samples/inputs/XQ-4076249.xlsx`. Verification: `dotnet build BidParser.sln --configuration Release --no-restore` and `dotnet test tests/BidParser.Parsing.Tests/BidParser.Parsing.Tests.csproj --configuration Release --no-build --verbosity normal` passed. Local Docker build intentionally not run.
-- Current checkpoint: working branch is `dotnet-refactor`, pushed separately from `main`. No PR is open. Next implementation phase is Phase 8 (`NutanixRenewalPdfParser`).
+- Phase 8 complete: `NutanixRenewalPdfParser` ported, registered after the software parsers in the explicit registry, and line-item/serial/date/total equivalence test added for `samples/inputs/XQ-4128926.pdf`. Verification: `dotnet build BidParser.sln --configuration Release --no-restore`, focused renewal parser test, and full solution `dotnet test BidParser.sln --configuration Release --no-build --verbosity normal` passed. Local Docker build intentionally not run.
+- Current checkpoint: working branch is `dotnet-refactor`, pushed separately from `main`. No PR is open. Next implementation phase is Phase 9 (`NutanixHardwareOnlyPdfParser`).
 
 **Why phased.** The whole port in one session would exhaust an agent's context budget mid-flight, leaving a half-finished branch nobody can safely resume. Each phase below is sized for **one git branch, one PR, one focused session, one merge to main**. The next session starts from a known-green `main`, not from a WIP working tree.
 
@@ -511,7 +512,7 @@ Each phase implements one parser, registers it in `ParserRegistry.Parsers`, and 
 | 5 | Complete | port/05-parsing-infra | **L** | 18 | Domain contracts, cleaning/PDF/XLSX helpers, and characterisation gate added |
 | 6 | Complete | port/06-software-pdf | S | 3 | Software-only PDF parser registered and tested |
 | 7 | Complete | port/07-software-xlsx | S | 3 | Software-only XLSX parser registered and tested |
-| 8 | Pending | port/08-renewal-pdf | S | 3 | |
+| 8 | Complete | port/08-renewal-pdf | S | 3 | Renewal PDF parser registered and tested |
 | 9 | Pending | port/09-hardware-pdf | S | 3 | Quote C negative-assertion |
 | 10 | Pending | port/10-hardware-xlsx | S | 3 | Quote C negative-assertion |
 | 11 | Pending | port/11-template-writer | M | 5 | Phase 6-10 workbook tests run here |

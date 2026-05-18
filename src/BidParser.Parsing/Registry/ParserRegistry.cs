@@ -1,4 +1,5 @@
 using BidParser.Domain.Abstractions;
+using BidParser.Parsing.Nutanix.RenewalPdf;
 using BidParser.Parsing.Nutanix.SoftwareOnlyPdf;
 using BidParser.Parsing.Nutanix.SoftwareOnlyXlsx;
 
@@ -9,6 +10,7 @@ public sealed class ParserRegistry : IParserRegistry
     public IReadOnlyList<IParser> Parsers { get; } =
     [
         new NutanixSoftwareOnlyPdfParser(),
-        new NutanixSoftwareOnlyXlsxParser()
+        new NutanixSoftwareOnlyXlsxParser(),
+        new NutanixRenewalPdfParser()
     ];
 }
