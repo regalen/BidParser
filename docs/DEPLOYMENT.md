@@ -1,6 +1,6 @@
 # Deployment Guide
 
-BidParser ships as a single Docker container that serves the FastAPI API and the React SPA from the same origin. No nginx or separate static-file server is required inside the image.
+BidParser ships as a single Docker container that serves the ASP.NET Core API and the React SPA from the same origin. No nginx or separate static-file server is required inside the image.
 
 ## Quick Start
 
@@ -29,7 +29,7 @@ docker compose pull
 docker compose up -d
 ```
 
-Alembic migrations run automatically on container start, so schema upgrades are applied without manual steps.
+Schema migrations run automatically inside `MigratorHostedService` at startup, so upgrades are applied without manual steps.
 
 ## Environment Variables
 
@@ -37,16 +37,16 @@ All configuration is via environment variables. Set them in a `.env` file next t
 
 | Variable | Default | Description |
 |---|---|---|
-| `SESSION_SECRET` | _(required)_ | HMAC-SHA256 signing key for session cookies. Generate with `openssl rand -hex 32`. |
-| `ADMIN_USERNAME` | `admin` | Username for the initial admin user (only used on first run). |
+| `SESSION_SECRET` | _(required)_ | Data Protection app-name discriminator. **Not** a cryptographic signing key — the actual signing material is the keyring in `/data/dp-keys`. Generate with `openssl rand -hex 32`. Changing this value scopes new cookies away from old ones (effectively logs everyone out), but the keyring is what must be deleted for a hard reset. |
+| `ADMIN_USERNAME` | `admin` | Username for the initial admin user (only used on first run when no users exist). |
 | `ADMIN_PASSWORD` | `changeme` | Password for the initial admin user (only used on first run). |
 | `SESSION_LIFETIME_HOURS` | `12` | Hard session expiry from login. No sliding refresh. |
 | `RETENTION_DAYS` | `90` | Uploaded files and parse history older than this are deleted daily. |
 | `RATE_LIMIT_AUTH_PER_MIN` | `5` | Max login/change-password attempts per minute per IP and per username. |
 | `MAX_UPLOAD_MB` | `10` | Maximum upload file size. |
+| `DATABASE_URL` | `sqlite:///data/db.sqlite` | SQLite connection URL. Relative paths resolve inside the container. |
 | `DATA_DIR` | _(named volume)_ | Set to a host path (e.g. `/opt/bidparser/data`) to use a bind mount instead of a Docker named volume. |
 | `FORWARDED_ALLOW_IPS` | `*` | IPs trusted for `X-Forwarded-*` headers. Tighten to your reverse proxy's IP/CIDR in production. |
-| `BASE_URL` | `http://localhost:3447` | Public URL of the app. Used for constructing absolute URLs behind a reverse proxy. |
 
 ## Data Volume
 
@@ -54,17 +54,35 @@ All persistent state lives under `/data` inside the container:
 
 ```
 /data
-├── db.sqlite                         # SQLite database (Alembic-managed)
+├── db.sqlite                         # SQLite database (EF Core managed)
+├── dp-keys/                          # ASP.NET Core Data Protection keyring
 └── files/
     ├── originals/<uuid>.<ext>        # Uploaded source files
     └── outputs/<uuid>.xlsx           # Generated *_parsed.xlsx files
 ```
+
+**`/data/dp-keys` must persist across container restarts.** This directory holds the Data Protection keyring — the cryptographic material used to protect session cookies. If it is deleted or not mounted, the keyring regenerates on next start and all existing sessions become invalid (everyone is logged out).
 
 By default `docker-compose.yml` uses a Docker named volume (`bidparser-data`), which Docker creates automatically if it does not exist. To use a bind mount instead, set `DATA_DIR` in your `.env`:
 
 ```sh
 echo "DATA_DIR=/opt/bidparser/data" >> .env
 ```
+
+### Hard session reset
+
+To invalidate all active sessions (e.g. after a security incident):
+
+```sh
+docker compose down
+# If using named volume:
+docker volume rm bidparser-data
+# If using bind mount, delete dp-keys from your DATA_DIR:
+# rm -rf /opt/bidparser/data/dp-keys
+docker compose up -d
+```
+
+The keyring regenerates on next start. All users will need to log in again.
 
 ## Reverse Proxy (nginx-proxy-manager)
 
@@ -80,13 +98,11 @@ The compose file publishes container port `3447` to host port `3447`. Place it b
 
 ### Security notes
 
-- Session cookies are issued with `Secure=True` only when the request arrives over HTTPS (detected via `X-Forwarded-Proto` after proxy-header processing). Local HTTP development keeps `Secure=False` so the browser accepts the cookie.
+- Session cookies are issued with `Secure=True` only when the request arrives over HTTPS (detected via `X-Forwarded-Proto` after `ForwardedHeadersMiddleware` processing). Local HTTP development keeps `Secure=False` so the browser accepts the cookie.
 - Rate limiting reads the real client IP from the `X-Forwarded-For` chain, not the proxy IP.
 - Consider tightening `FORWARDED_ALLOW_IPS` to your proxy's IP/CIDR rather than leaving it as `*`.
 
 ## Building the Image Locally
-
-If you want to build the image yourself instead of pulling from ghcr.io:
 
 ```sh
 # From the repository root
@@ -97,6 +113,20 @@ docker build -t bidparser:local .
 ```
 
 Then update `docker-compose.yml` to use `image: bidparser:local` instead of the ghcr.io reference.
+
+## Local Development
+
+Run backend and frontend separately without Docker:
+
+```sh
+# Backend (ASP.NET Core, defaults to http://localhost:5000)
+dotnet run --project src/BidParser.Api
+
+# Frontend (Vite dev server, proxies /api to http://127.0.0.1:5000)
+cd frontend && npm run dev
+```
+
+The Vite proxy target can be overridden: `VITE_API_PROXY_TARGET=http://127.0.0.1:5000 npm run dev`.
 
 ## First Login Walkthrough
 

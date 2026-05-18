@@ -1,15 +1,14 @@
-# Python
-__pycache__/
-*.py[cod]
-*.egg-info/
-.venv/
-.pytest_cache/
-
 # Node / Vite
 node_modules/
 frontend/dist/
 *.tsbuildinfo
 .npm/
+
+# .NET
+**/bin/
+**/obj/
+.dotnet/
+.nuget/
 
 # Local env / data
 .env

@@ -1,0 +1,147 @@
+using BidParser.Domain.Abstractions;
+using BidParser.Domain.Models;
+using BidParser.Infrastructure.Entities;
+using BidParser.Infrastructure.Persistence;
+using BidParser.Infrastructure.Storage;
+using BidParser.Output;
+
+namespace BidParser.Infrastructure.Services;
+
+public sealed class ParseService
+{
+    private static readonly Dictionary<string, string> ExtensionToMime = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [".pdf"] = "application/pdf",
+        [".xlsx"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    };
+
+    private readonly IParserRegistry _registry;
+    private readonly FileStorage _storage;
+    private readonly AppDbContext _db;
+
+    public ParseService(IParserRegistry registry, FileStorage storage, AppDbContext db)
+    {
+        _registry = registry;
+        _storage = storage;
+        _db = db;
+    }
+
+    public async Task<ParseServiceResult> ParseAsync(
+        User user,
+        Stream fileStream,
+        string uploadFilename,
+        string vendor,
+        string parserSlug,
+        decimal fxRate,
+        decimal margin,
+        long maxUploadBytes,
+        CancellationToken ct = default)
+    {
+        var parser = ResolveParser(parserSlug, vendor);
+        ValidateExtension(uploadFilename, parser.AcceptedMime);
+
+        var displayFilename = Path.GetFileName(uploadFilename);
+        var sourcePath = _storage.NewOriginalPath(displayFilename);
+        var outputPath = _storage.NewOutputPath();
+
+        try
+        {
+            await _storage.SaveUploadAsync(fileStream, sourcePath, maxUploadBytes, ct);
+
+            var result = parser.Parse(sourcePath);
+
+            ForeignUpliftWriter.WriteForeignUplift(
+                result.LineItems,
+                outputPath,
+                margin,
+                fxRate,
+                vendor.ToUpperInvariant(),
+                result.Metadata.Currency);
+
+            var fxRateRounded = Math.Round(fxRate, 4, MidpointRounding.AwayFromZero);
+            var marginRounded = Math.Round(margin, 2, MidpointRounding.AwayFromZero);
+
+            var job = new ParseJob
+            {
+                UserId = user.Id,
+                Vendor = vendor,
+                ParserSlug = parser.Slug,
+                SourceFilename = displayFilename,
+                SourcePath = sourcePath,
+                OutputPath = outputPath,
+                FxRate = fxRateRounded,
+                Margin = marginRounded,
+                ComputedTotal = result.Validation.ComputedTotal,
+                QuotedTotal = result.Validation.QuotedTotal,
+                TotalsMatch = result.Validation.Matches
+            };
+
+            user.DefaultVendor = vendor;
+            user.FxRate = fxRateRounded;
+            user.Margin = marginRounded;
+            _db.Update(user);
+            _db.Add(job);
+            await _db.SaveChangesAsync(ct);
+
+            return new ParseServiceResult(
+                job,
+                OutputNaming.OutputFilename(displayFilename),
+                outputPath,
+                result.Validation);
+        }
+        catch
+        {
+            _storage.TryDelete(sourcePath);
+            _storage.TryDelete(outputPath);
+            throw;
+        }
+    }
+
+    private IParser ResolveParser(string parserSlug, string vendor)
+    {
+        var parser = _registry.Parsers.FirstOrDefault(p => p.Slug == parserSlug);
+        if (parser is null)
+        {
+            throw new ParseValidationException(400, "Unknown parser.");
+        }
+
+        if (parser.Vendor != vendor)
+        {
+            throw new ParseValidationException(400, "Parser does not match vendor.");
+        }
+
+        return parser;
+    }
+
+    private static void ValidateExtension(string filename, string parserAcceptedMime)
+    {
+        var ext = Path.GetExtension(filename).ToLowerInvariant();
+        if (!ExtensionToMime.TryGetValue(ext, out var extensionMime))
+        {
+            throw new ParseValidationException(415, "Only PDF and XLSX files are supported.");
+        }
+
+        if (extensionMime != parserAcceptedMime)
+        {
+            throw new ParseValidationException(400, "File extension does not match selected parser.");
+        }
+    }
+}
+
+public sealed record ParseServiceResult(
+    ParseJob Job,
+    string OutputFilename,
+    string OutputPath,
+    ValidationResult Validation);
+
+public sealed class ParseValidationException : Exception
+{
+    public ParseValidationException(int statusCode, string detail) : base(detail)
+    {
+        StatusCode = statusCode;
+        Detail = detail;
+    }
+
+    public int StatusCode { get; }
+    public string Detail { get; }
+}
