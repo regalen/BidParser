@@ -67,25 +67,25 @@ Single contract that every parser returns and the frontend consumes:
 
 ```
 ParseResult
-├── metadata        QuoteMetadata (quote_number, supplier, currency, quoted_total, source_filename, parser_slug)
-├── line_items      list[LineItem]
-└── validation     ValidationResult (computed_total, quoted_total, matches, difference, warnings)
+├── Metadata        QuoteMetadata (QuoteNumber, Supplier, Currency, QuotedTotal, SourceFilename, ParserSlug)
+├── LineItems       IReadOnlyList<LineItem>
+└── Validation      ValidationResult (ComputedTotal, QuotedTotal, Matches, Difference, Warnings)
 
-LineItem — superset of fields across formats. Only `vpn`, `cost`, `qty` are
-required; the rest are Optional and populated per format:
-  Required: vpn, cost, qty
-  Software Only (PDF + XLSX):  description, term, msrp
-  Renewal:                     msrp, serial_number, start_date, end_date
-  Hardware Only (PDF + XLSX):  description, term, msrp    # term is per-row nullable
-  Common debug:                raw (dict[str, str] of original column text)
+LineItem — superset of fields across formats. Only VPN, Cost, Qty are
+required; the rest are nullable and populated per format:
+  Required: VPN, Cost, Qty
+  Software Only (PDF + XLSX):  Description, Term, Msrp
+  Renewal:                     Msrp, SerialNumber, StartDate, EndDate
+  Hardware Only (PDF + XLSX):  Description, Term, Msrp    // Term is per-row nullable
+  Common debug:                Raw (Dictionary<string, string> of original column text)
 
 Across formats: List Price / List Unit Price / MSRP / Term Adjusted List Unit Price
-→ `msrp`; Sale Price / Net Unit Price / Cost Price → `cost`. Software Only PDF and
+→ Msrp; Sale Price / Net Unit Price / Cost Price → Cost. Software Only PDF and
 XLSX produce the same shape; Hardware Only PDF and XLSX likewise produce the same
-shape (both extract from Quote D and yield 11 rows totalling `$22,491.87`).
+shape (both extract from Quote D and yield 11 rows totalling $22,491.87).
 ```
 
-Dates are stored internally as `DateOnly` (ISO `YYYY-MM-DD` in JSON); display formatting (`DD/MM/YYYY` per the Renewal spec) is a frontend concern, not a model concern.
+Dates are stored internally as `DateOnly` (serialised as ISO `YYYY-MM-DD` in JSON); display formatting (`DD/MM/YYYY` per the Renewal spec) is a frontend concern, not a model concern.
 
 ### Canonical naming (display headers and field names)
 
@@ -109,7 +109,7 @@ Key extension point: `src/BidParser.Parsing/Registry/ParserRegistry.cs` holds an
 
 Format detection is a **soft hint, not a routing decision**: `BaseParser.detect()` returns a 0.0–1.0 confidence and the UI pre-fills the dropdown when confidence > 0.7, but the user always confirms before parsing runs. Silent mis-routing is worse than one extra click.
 
-Validation logic is identical across formats: `computed_total = Σ(cost × qty)` compared to `quoted_total` with `Decimal("0.01")` tolerance. The UI gates the (stub) Approve button on a match unless the user explicitly overrides.
+Validation logic is identical across formats: `computed_total = Σ(cost × qty)` compared to `quoted_total` with `0.01` tolerance. The UI gates the (stub) Approve button on a match unless the user explicitly overrides.
 
 ## Common PDF parsing approach
 
@@ -136,8 +136,6 @@ XLSX formats use **ClosedXML** (`new XLWorkbook(path)` — cached formula values
 - Currency strings use `$` and thousands separators (e.g. `$2,275.00`), not `USD ` — `DecimalCleaner.Parse` strips `$`, `,`, `USD`, and whitespace.
 
 Shared helpers live in `src/BidParser.Parsing/Xlsx/`: `WorkbookReader`, `HeaderMap`.
-
-Shared helpers can live in `backend/app/parsers/xlsx_utils.py`: sheet selection, header-row search, header-label-to-column mapping, currency parsing.
 
 ## Software Only (PDF) — extraction algorithm
 
@@ -225,7 +223,7 @@ Row classification:
 Per-field handling:
 - **Part Number** (`vpn`): trim `Product Code` cell.
 - **Serial Number** (`serial_number`): the source `Serial Number` cell wraps across two lines (e.g. `24SW000351227,\nLIC-02472987`). Flatten by joining the fragments with **no separator** (the comma is at the end of the first line), then trim leading/trailing whitespace and collapse internal whitespace. The resulting value (e.g. `24SW000351227,LIC-02472987`) is stored as a single string. **We do not split it into separate serial/license fields** — the supplier's punctuation is preserved verbatim and downstream consumers handle the combined string.
-- **Start Date / End Date** (`start_date`, `end_date`): source is `MM/DD/YYYY`; parse with `datetime.strptime("%m/%d/%Y")` and store as a `date`. The frontend formats as `DD/MM/YYYY` for display.
+- **Start Date / End Date** (`start_date`, `end_date`): source is `MM/DD/YYYY`; parse with `DateOnly.ParseExact("MM/dd/yyyy")` and store as a `DateOnly`. The frontend formats as `DD/MM/YYYY` for display.
 - **List Price** (`msrp`): strip `USD` and commas from the source `Term Adjusted List Unit Price` column → `Decimal`.
 - **Sale Price** (`cost`): strip `USD` and commas from the source `Net Unit Price` column → `Decimal`.
 - **Quantity** (`qty`): source `Qty` column → `int`.
@@ -354,7 +352,7 @@ Locked-in product decisions. Anything outside these is deferred — flag scope d
 - **Auto-download flow**, no review screen. User clicks *Upload & parse* → dropzone morphs into a progress panel → the `_parsed.xlsx` downloads automatically. Validation runs server-side; mismatches surface as a toast, never as an approval gate.
 - **Per-user remembered vendor, FX rate & margin** — last values used by each user are persisted on their account and pre-fill on next login.
 - **Env-var admin bootstrap** — `ADMIN_USERNAME` / `ADMIN_PASSWORD` seed the first admin on a fresh DB (defaults `admin` / `changeme`, created with `must_change_password=True`). Env vars are ignored once any user row exists.
-- **Stack**: Python/FastAPI backend + React/Vite/TypeScript frontend, Tailwind + Inter, packaged as a single Docker image.
+- **Stack**: ASP.NET Core 10 backend + React/Vite/TypeScript frontend, packaged as a single Docker image.
 
 Out of scope for MVP: multi-file batch upload, CSV vendor formats, vendors other than Nutanix, review/approve gate, multi-tenancy/org boundaries, email notifications, SSO, audit log beyond ParseJob history.
 
