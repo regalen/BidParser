@@ -17,7 +17,6 @@ services:
       - RATE_LIMIT_AUTH_PER_MIN=${RATE_LIMIT_AUTH_PER_MIN:-5}
       - MAX_UPLOAD_MB=${MAX_UPLOAD_MB:-10}
       - FORWARDED_ALLOW_IPS=${FORWARDED_ALLOW_IPS:-*}
-      - BASE_URL=${BASE_URL:-http://localhost:3447}
     restart: unless-stopped
 
 volumes:

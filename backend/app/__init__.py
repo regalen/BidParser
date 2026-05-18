@@ -1,1 +1,0 @@
-"""BidParser backend package."""

@@ -4,14 +4,18 @@ This file is the canonical project reference for AI coding agents working in thi
 
 ## Project Status
 
-All five MVP phases are complete and the codebase has been audited against the plan. The current artefacts are:
+The backend has been re-platformed from Python/FastAPI to ASP.NET Core 10. The current artefacts are:
 
-- `backend/` — parser package plus FastAPI app surface. Contains the parser contract, registry, shared PDF/XLSX helpers, five Nutanix parsers, the Foreign Uplift template writer, SQLite/SQLAlchemy models, Alembic initial migration, storage, parse orchestration, daily retention background task, auth/session/rate-limit dependencies, `/auth/*`, `/me`, admin `/users`, `/parsers`, `/parse`, and history/download endpoints. SPA static file serving is wired for production (serves the built frontend from `/app/static/` when the directory exists). Pytest covers parser extraction, Quote D isolation (negative assertion against Quote C pricing), cell-by-cell workbook output equivalence, auth, user admin, parse API roundtrip, history/downloads, and rate limiting.
+- `src/BidParser.Api/` — ASP.NET Core 10 Minimal API app. Endpoints for `/auth/*`, `/me`, admin `/users`, `/parsers`, `/parse`, `/history`, and health check. Auth via custom `SessionCookieAuthHandler` + Data Protection cookies. CSRF filter, rate limiter, decimal JSON converters, error normalisation. Hosts the React SPA from `wwwroot/` in production.
+- `src/BidParser.Domain/` — `LineItem`, `QuoteMetadata`, `ValidationResult`, `ParseResult`, `ParseError`, `IParser`, `IParserRegistry`.
+- `src/BidParser.Infrastructure/` — `AppDbContext` (EF Core + SQLite), `User`/`ParseJob` entities, EF migration, SQLite WAL interceptor, `FileStorage`, `ParseService`, `RetentionService`.
+- `src/BidParser.Parsing/` — Cleaning helpers, PDF word collection via PdfPig (`PdfWordCollector`, `PdfPigWordSplitter`, `PdfTableHelpers`), XLSX helpers via ClosedXML (`WorkbookReader`, `HeaderMap`), five Nutanix parsers, explicit `ParserRegistry`.
+- `src/BidParser.Output/` — `ForeignUpliftWriter` (ClosedXML), `OutputNaming`.
+- `tests/BidParser.Parsing.Tests/` — xUnit tests: cleaning helpers, all five parsers against golden inputs, template writer cell-by-cell equivalence against `samples/outputs/`.
+- `tests/BidParser.Api.Tests/` — xUnit + `WebApplicationFactory` integration tests: migration/bootstrap, auth flow, users admin, parse roundtrip + error matrix, history list/filter/pagination/downloads, retention cleanup.
 - `frontend/` — React/Vite/TypeScript app. Visual design language matches ProductLens (slate-50 page background, white cards with `border-slate-200` + `shadow-sm`, `#0077d4` accent, Inter typography, uppercase tracked labels). Shared utility classes live in `src/styles.css` (`.label`, `.field`, `.button`, `.button-primary`, `.button-danger`, `.icon-button`, `.card`, `.toast`). Contains the API client, auth context, route shell, login + forced password change screens (each rendered on the ProductLens slate-50 background with a centered card, accent-blue icon tile, and the shared `Footer`; the change-password screen has a live rule checklist for length/uppercase/digit/symbol/match), sticky white `AppHeader` with an `AccountChip` (display name + `@username` + ghost-red logout) and admin Settings link, V4 side-panel dashboard, Nutanix parser selection from `/api/parsers`, FX/margin inputs from `/api/me`, single-file dropzone/progress state, auto-download on parse, validation toasts, dynamic recent-uploads pagination with download actions, auth-expiry redirects, and admin user settings as a card grid. Components are extracted into individual files per the plan's repo layout, with a shared `Footer` used across all routes.
-
 - `samples/inputs/` — real supplier quote files. Three PDFs (`XQ-4076249.pdf`, `XQ-4108785.pdf`, `XQ-4128926.pdf`) and two XLSXs (`XQ-4076249.xlsx`, `XQ-4108785.xlsx`). All five are supplier-issued inputs the parser must handle. `XQ-4108785.pdf` and `XQ-4108785.xlsx` are the *same engagement* delivered in two envelopes; both parsers extract from **Quote D** (reseller-facing breakdown) within those files and produce matching totals (`USD 22,491.87`).
 - `samples/outputs/` — golden `XQ-*_parsed.xlsx` fixtures, one per quote number (not per input file — PDF and XLSX variants of the same quote share one golden file since they produce identical output). Used by the template-writer regression tests; regenerated whenever an output rule changes. Naming follows the spec: `<basename>_parsed.xlsx` (e.g. `XQ-4076249_parsed.xlsx`).
-- `backend/tests/fixtures/` — symlinks to the five sample inputs in `samples/inputs/`.
 - `samples/template/ANZ-GENERIC_ForeignUplift.xlsx` — the standardised internal template that parsed line items are written into. Field mapping is locked in `docs/output_mapping.md`; do not interpret cell positions from this file directly.
 - `docs/nutanix_software_only_pdf.md` — human-written extraction spec for the "Software Only (PDF)" format (Nutanix subscription quotes).
 - `docs/nutanix_software_only_xlsx.md` — human-written extraction spec for the "Software Only (XLSX)" format (same data as Software Only PDF, delivered as a workbook).
@@ -24,30 +28,20 @@ All five MVP phases are complete and the codebase has been audited against the p
 Implementation notes:
 
 - Parser slugs, package names, and spec docs are vendor-prefixed for future supplier expansion. Use `nutanix_software_only_pdf`, `nutanix_software_only_xlsx`, `nutanix_renewal_pdf`, `nutanix_hardware_only_pdf`, and `nutanix_hardware_only_xlsx`; do not reintroduce vendorless parser slugs.
-- The frontend is locally runnable with Vite and proxies `/api` to the backend at `http://127.0.0.1:8000` by default. If port 8000 is occupied, run Vite with `VITE_API_PROXY_TARGET=http://127.0.0.1:<port>` to point at an alternate backend.
+- The frontend is locally runnable with Vite and proxies `/api` to the backend at `http://127.0.0.1:5000` by default. If port 5000 is occupied, run Vite with `VITE_API_PROXY_TARGET=http://127.0.0.1:<port>` to point at an alternate backend.
 - In Docker, the image defaults place `DATABASE_URL` and `UPLOAD_DIR` under `/data` (`/data/db.sqlite` and `/data/files`). Do not set these explicitly in `docker-compose.yml` unless changing the internal container layout. `docker-compose.yml` mounts `/data` from either the default `bidparser-data` Docker volume or a user-supplied `DATA_DIR` bind mount.
-- `main.py` lifespan starts a daily `_retention_loop()` background task that calls `cleanup_old_parse_jobs()` to delete expired ParseJob rows and their files after `RETENTION_DAYS`.
-- `ChangePasswordPage` relies on the `App.tsx` route guard (every other route redirects to `/change-password` when `must_change_password=True`) to keep the user on the page until they pick a new password — no `useBlocker` is used (it requires a data router and breaks under the declarative `BrowserRouter`).
+- `RetentionBackgroundService` (sleep-first, 24 h cadence) calls `RetentionService.CleanupOldParseJobsAsync` to delete expired ParseJob rows and their files after `RETENTION_DAYS`.
+- `ChangePasswordPage` relies on the `App.tsx` route guard (every other route redirects to `/change-password` when `must_change_password=true`) to keep the user on the page until they pick a new password — no `useBlocker` is used (it requires a data router and breaks under the declarative `BrowserRouter`).
 - The vendor-specific settings block (Nutanix `EXCHANGE RATE` + `MARGIN` inputs and the emerald `CRM IMPORT TEMPLATE` callout) renders in the dashboard only when **both** a vendor and a file type are selected. Until then, only the two cascading selects appear above the Upload & parse button.
-- `User.name` is a nullable display name surfaced in the UI (`AccountChip` headline, `SettingsPage` user cards) and on future reporting. Admin-issued creates require it; the bootstrap admin starts with `name="Administrator"`. Existing rows were backfilled to `name = username` by the `0002_user_name` migration.
+- `User.Name` is a nullable display name surfaced in the UI (`AccountChip` headline, `SettingsPage` user cards) and on future reporting. Admin-issued creates require it; the bootstrap admin starts with `Name="Administrator"`.
 - Golden fixture files in `samples/outputs/` are named `<basename>_parsed.xlsx` (one per quote number, not per input file). PDF and XLSX parsers for the same quote both compare against the same golden file.
 - Hardware parser tests include a negative assertion checking that NX-1175S-G10-6517P-CM has Quote D's cost (USD 20,017.57), not Quote C's (USD 5,903.72).
 
 Current implementation checkpoint:
 
-- Phase 1 is complete.
-- Phase 2 is complete.
-- Phase 3 is complete.
-- Phase 4 is complete.
-- Phase 5 is complete.
-- Post-phase audit completed: retention task wired, golden fixture naming fixed, negative assertion tests for Quote D isolation added, frontend components extracted into separate files per plan.
-- Post-MVP UI iteration (2026-05-15): frontend retheme to ProductLens design language (slate palette, shared `Footer`, new login/change-password chrome with live rule checklist, sticky white header, settings-as-card-grid), conditional rendering of the vendor-specific settings block, dropped `useBlocker`, and added `User.name` (model column + alembic migration `0002_user_name` + schemas + admin CRUD + UI surfaces).
-- Follow-up UI iteration (2026-05-15): added a debounced filename search box centered in the Recent Uploads header (case-insensitive substring filter backed by `q` query param on `/api/history`); removed the `New quote` heading/subtitle, the page-level Reset button + `ResetButton` component, and the GitHub / Report-an-Issue links from `Footer.tsx`.
-- Verification commands:
-  - `cd backend && .venv/bin/python -m pytest -q`
-  - `cd frontend && npm run build`
-- Last known result: backend `18 passed`; frontend production build succeeded.
-- All MVP phases are complete. GitHub Actions CI/CD publishing is enabled: pushes to `main` and `v*` SemVer tags build and publish Docker images to GHCR.
+- Re-platform from Python/FastAPI to ASP.NET Core 10 complete (Phases 1–14). All 54 tests pass (`dotnet test BidParser.sln`): 25 parsing tests + 29 API integration tests.
+- Frontend unchanged — React 19 + Vite + TypeScript, proxying `/api` to `http://127.0.0.1:5000` in dev.
+- GitHub Actions CI/CD publishing is enabled: pushes to `main` and `v*` SemVer tags build and publish Docker images to GHCR.
 
 Sample → format mapping:
 
@@ -61,9 +55,9 @@ Sample → format mapping:
 
 ## What is being built
 
-An internal web app for sales operations. Users upload a supplier quote (PDF or XLSX in various supplier-specific layouts), the app extracts and validates the line items, and the user reviews them before a (future) export step writes the standardised XLSX. Stack: Python/FastAPI backend + React/Vite/TypeScript frontend, deployed as Docker via `docker-compose` on an internal server.
+An internal web app for sales operations. Users upload a supplier quote (PDF or XLSX in various supplier-specific layouts), the app extracts and validates the line items, and the user reviews them before a (future) export step writes the standardised XLSX. Stack: ASP.NET Core 10 backend + React/Vite/TypeScript frontend, deployed as Docker via `docker-compose` on an internal server.
 
-Work is **iterative, one format at a time**. Formats spec'd so far: "Software Only (PDF)", "Software Only (XLSX)", "Renewal (PDF)", "Hardware Only (PDF)", and "Hardware Only (XLSX)". The architecture is built around a pluggable `BaseParser` registry so adding the next format means dropping in one parser module, one set of fixtures, and one registry entry — nothing else.
+Work is **iterative, one format at a time**. Formats spec'd so far: "Software Only (PDF)", "Software Only (XLSX)", "Renewal (PDF)", "Hardware Only (PDF)", and "Hardware Only (XLSX)". The architecture is built around a pluggable `IParser` registry so adding the next format means dropping in one parser class, one set of fixtures, and one registry entry — nothing else.
 
 **Anchor-based extraction is mandatory.** Every parser must locate sections, headers, totals, and column positions by searching for anchor strings in the source document. Never hard-code row numbers, column letters, or fixed offsets. The same workbook can contain multiple quote sections where row positions shift across samples (more line items above push everything down) and column letters differ between sections (Quote C uses column H for `Product Code`; Quote D in the same file uses column E). Hard-coded positions will break across real-world quotes.
 
@@ -91,11 +85,11 @@ XLSX produce the same shape; Hardware Only PDF and XLSX likewise produce the sam
 shape (both extract from Quote D and yield 11 rows totalling `$22,491.87`).
 ```
 
-Dates are stored internally as ISO `YYYY-MM-DD` (Python `date`); display formatting (`DD/MM/YYYY` per the Renewal spec) is a frontend concern, not a model concern.
+Dates are stored internally as `DateOnly` (ISO `YYYY-MM-DD` in JSON); display formatting (`DD/MM/YYYY` per the Renewal spec) is a frontend concern, not a model concern.
 
 ### Canonical naming (display headers and field names)
 
-User-locked vocabulary. Display headers (Title Case, used in the UI table and any chat-rendered tables) and internal field names (snake_case, used by the Pydantic model, JSON API, and tests) are decoupled but one-to-one:
+User-locked vocabulary. Display headers (Title Case, used in the UI table and any chat-rendered tables) and internal field names (snake_case, used by the domain model, JSON API, and tests) are decoupled but one-to-one:
 
 | Concept | Display header | Field name |
 |---|---|---|
@@ -111,7 +105,7 @@ User-locked vocabulary. Display headers (Title Case, used in the UI table and an
 
 Parsers still detect *source* labels in the document (`"Net Unit Price"`, `"List Unit Price"`, `"Sale Price"`, `"MSRP"`, etc.) when locating columns — those are extraction-time anchors, not internal field names. The source label is captured in `raw[source_label]` for debugging; the cleaned value is written to the canonical field. **Old names (`part_number`, `cost_price`, `term_months`, `quantity`) must not appear in new code or docs.**
 
-Key extension point: `backend/app/parsers/registry.py` holds an explicit `PARSER_REGISTRY: list[type[BaseParser]]`. Auto-discovery is deliberately avoided — registration order is visible. Each parser lives in its own subpackage (`backend/app/parsers/<slug>/`).
+Key extension point: `src/BidParser.Parsing/Registry/ParserRegistry.cs` holds an explicit `IReadOnlyList<IParser>`. Auto-discovery is deliberately avoided — registration order is visible. Each parser lives in its own subfolder (`src/BidParser.Parsing/Nutanix/<Slug>/`).
 
 Format detection is a **soft hint, not a routing decision**: `BaseParser.detect()` returns a 0.0–1.0 confidence and the UI pre-fills the dropdown when confidence > 0.7, but the user always confirms before parsing runs. Silent mis-routing is worse than one extra click.
 
@@ -119,29 +113,29 @@ Validation logic is identical across formats: `computed_total = Σ(cost × qty)`
 
 ## Common PDF parsing approach
 
-All PDF formats use `pdfplumber` (pure-Python, word-level bounding boxes, no Poppler needed in the container). The shared technique:
+All PDF formats use **UglyToad.PdfPig** (MIT, word-level bounding boxes) via `PdfWordCollector`. PdfPig uses a bottom-left coordinate origin; Y is flipped in `PdfWord` construction so all downstream code uses top-left origin (same as pdfplumber). `PdfPigWordSplitter` re-splits tokens PdfPig merges using per-letter `GlyphRectangle` bounds. The shared technique:
 
-- Open the PDF and collect words from all pages with their page index preserved.
+- Open the PDF and collect `PdfWord` records from all pages with their page index preserved.
 - Find the header row by locating its first-cell anchor word(s) (e.g. `"Product"` + `"Code"` for Software Only, `"No"` for Renewal).
 - Derive column x-ranges from the header word x0s — each column's range is `[its x0, next header's x0)`; rightmost extends to page width.
 - Collect body words below the header y across pages until a `"TOTAL:"` token.
 - Cluster words into rows by `top` (tolerance ~3pt). Bucket each row's words into columns by `x0`; join intra-bucket words with single spaces.
 - Locate the quoted total by scanning after the last body row for `TOTAL:` + `USD` + amount, tolerating page-break wrap.
 
-Do **not** rely on `pdfplumber.extract_tables()` — these PDFs have no ruling lines.
-
-Shared helpers live in `backend/app/parsers/pdf_utils.py`: word collection, header anchor detection, column-range derivation, row clustering, currency/number parsing.
+Shared helpers live in `src/BidParser.Parsing/Pdf/`: `PdfWordCollector`, `PdfWord`, `PdfPigWordSplitter`, `PdfTableHelpers` (column ranges, row clustering, total scanning).
 
 ## Common XLSX parsing approach
 
-XLSX formats use `openpyxl` with `data_only=True` so formula cells return their cached values (not the formula strings). The shared technique:
+XLSX formats use **ClosedXML** (`new XLWorkbook(path)` — cached formula values by default). Use `cell.GetFormattedString()` everywhere to match Python/openpyxl's stringy cell values; do not use the typed `XLCellValue` which returns numbers/blanks. The shared technique:
 
 - Open the workbook, pick the relevant sheet (usually the only one, or the one named like the quote number).
 - Locate the **header row** by scanning the sheet for a cell whose value matches a known anchor label (e.g. `Product Code`). Do not assume a fixed row number — quote metadata above the table varies.
-- Capture the header row's column letters and map each known label (`Product Code`, `Product Description`, …) to its column.
+- Capture the header row's column numbers and map each known label (`Product Code`, `Product Description`, …) to its column.
 - Iterate data rows below the header. Stop at the first wholly-empty row, or at a recognisable footer (e.g. a cell containing `TOTAL $...`).
 - Locate the quote total by scanning for a cell whose value starts with `TOTAL ` followed by a currency string, or by finding a row labelled `TOTAL` and reading the adjacent value cell.
-- Currency strings use `$` and thousands separators (e.g. `$2,275.00`), not `USD ` — the cleaner strips `$`, `,`, and whitespace before parsing as `Decimal`.
+- Currency strings use `$` and thousands separators (e.g. `$2,275.00`), not `USD ` — `DecimalCleaner.Parse` strips `$`, `,`, `USD`, and whitespace.
+
+Shared helpers live in `src/BidParser.Parsing/Xlsx/`: `WorkbookReader`, `HeaderMap`.
 
 Shared helpers can live in `backend/app/parsers/xlsx_utils.py`: sheet selection, header-row search, header-label-to-column mapping, currency parsing.
 
@@ -367,7 +361,7 @@ Out of scope for MVP: multi-file batch upload, CSV vendor formats, vendors other
 ## Authentication & authorisation
 
 - **Passwords**: bcrypt cost factor 12. Password rules enforced on `/auth/change-password` only — bootstrap and admin reset both write the literal `changeme` and rely on `must_change_password` to force compliance on next login. Rules: ≥ 8 chars, at least one uppercase, one digit, one symbol.
-- **Sessions**: signed httponly cookies (HMAC-SHA256 via `SESSION_SECRET`). Cookie carries `{user_id, issued_at}` with a **hard 12-hour expiry from login** — no sliding refresh. The `Secure` flag is set only when the request resolves to HTTPS after `--proxy-headers` processing (so local HTTP dev still works; production behind NPM gets `Secure=True` via `X-Forwarded-Proto`).
+- **Sessions**: ASP.NET Core Data Protection cookies (`bidparser_session`), HttpOnly, SameSite=Lax, hard 12-hour expiry from login — no sliding refresh. The `Secure` flag is set only when the request resolves to HTTPS after `ForwardedHeadersMiddleware` processing (so local HTTP dev still works; production behind NPM gets `Secure=True` via `X-Forwarded-Proto`). `SESSION_SECRET` is the app-name discriminator, not the signing key — see Operational config for details.
 - **CSRF**: every non-GET endpoint requires `X-Requested-With: BidParser` set by `frontend/src/api/client.ts`. Combined with SameSite=Lax, this is sufficient for an internal app.
 - **Rate limiting on `/auth/*`**: 5 attempts per minute, two independent buckets — per remote IP across `/auth/login` + `/auth/change-password`, AND per submitted username on `/auth/login` (applied pre-auth so attackers can't enumerate one username from many IPs). Either bucket tripping returns `429` with `Retry-After` and a generic body. In-memory leaky bucket; does not survive restart.
 - **`must_change_password` gate**: when the current user has the flag set, the backend returns `403 password_change_required` for every endpoint except `/auth/*` and `/me`. The frontend redirects to `/change-password` and `App.tsx` route guards keep the user there.
@@ -396,13 +390,7 @@ Out of scope for MVP: multi-file batch upload, CSV vendor formats, vendors other
 
 ## CRM template mapping
 
-`backend/app/output/template_writer.py` exposes:
-
-```python
-CRM_TEMPLATE_BY_VENDOR = {"Nutanix": "Foreign Uplift"}
-```
-
-All five Nutanix parsers declare `crm_template = "Foreign Uplift"`. When a future vendor is added, extend this dict and implement the corresponding template writer — that's the only mapping change needed.
+All five Nutanix parsers declare `CrmTemplate = "Foreign Uplift"` on their `IParser` implementation. `ForeignUpliftWriter.WriteForeignUplift` in `src/BidParser.Output/ForeignUpliftWriter.cs` produces the output workbook. When a future vendor is added, implement a new `IParser` with the appropriate `CrmTemplate` value and a corresponding writer — no other mapping change needed.
 
 ## Operational config & deployment
 
@@ -410,11 +398,13 @@ All five Nutanix parsers declare `crm_template = "Foreign Uplift"`. When a futur
 
 Agent-relevant deployment facts:
 
-- **Single container**, multi-stage Dockerfile: `node:20-alpine` builds the SPA → `python:3.12-slim` runtime copies `frontend/dist/` into `/app/static/`. `main.py` mounts that as the SPA with an `index.html` fallback so client-side routes resolve on hard reload. Entrypoint runs `alembic upgrade head` then uvicorn — schema migrations apply automatically on container start.
-- **Publishes `3447:3447`**, intended to sit behind nginx-proxy-manager (or equivalent) for TLS termination. Do not bind the published port to `127.0.0.1` by default; point the proxy at the Docker host IP and port 3447, or at the Docker network alias if NPM shares the app's Docker network. The reverse proxy must set `client_max_body_size` to at least `MAX_UPLOAD_MB` (default 10) — NPM's default is 1 MB and silently rejects larger uploads.
-- **`Secure` cookie flag** is set only when `X-Forwarded-Proto=https` reaches the app after `--proxy-headers` processing, so local HTTP dev still works and production behind HTTPS still gets `Secure=True`.
-- **Persistent state** lives entirely under `/data` (`db.sqlite` + `files/originals/` + `files/outputs/`). `${DATA_DIR:-bidparser-data}:/data` defaults to a Docker named volume that Docker creates automatically; `DATA_DIR` in the operator's `.env` swaps it for a bind mount without a compose edit.
-- **Key env-var defaults**: `ADMIN_USERNAME=admin`, `ADMIN_PASSWORD=changeme`, `MAX_UPLOAD_MB=10`, `RATE_LIMIT_AUTH_PER_MIN=5`, `RETENTION_DAYS=90`, `SESSION_LIFETIME_HOURS=12`. `SESSION_SECRET` is the only one without a default and must be set (`openssl rand -hex 32`). `PORT=3447` is baked into the image and does not need to be repeated in compose. Full table lives in `docs/DEPLOYMENT.md`.
+- **Single container**, multi-stage Dockerfile: `node:20-alpine` builds the SPA → `mcr.microsoft.com/dotnet/sdk:10.0` builds and publishes the API → `mcr.microsoft.com/dotnet/aspnet:10.0` runtime serves on `:3447`. The SPA is copied into `wwwroot/`; `UseStaticFiles` + `MapFallbackToFile("index.html")` handles SPA routing.
+- **Schema migrations** run inside `MigratorHostedService` at startup (`Database.MigrateAsync()`). No entrypoint script needed. `BootstrapAdminHostedService` seeds the admin row when zero users exist.
+- **Publishes `3447:3447`**, intended to sit behind nginx-proxy-manager (or equivalent) for TLS termination. The reverse proxy must set `client_max_body_size` to at least `MAX_UPLOAD_MB` (default 10) — NPM's default is 1 MB and silently rejects larger uploads.
+- **`Secure` cookie flag** is set only when `X-Forwarded-Proto=https` reaches the app after `ForwardedHeadersMiddleware` processing, so local HTTP dev still works and production behind HTTPS still gets `Secure=True`.
+- **Persistent state** lives entirely under `/data` (`db.sqlite` + `dp-keys/` + `files/originals/` + `files/outputs/`). **`/data/dp-keys` must persist** — it holds the Data Protection keyring; losing it logs everyone out. `${DATA_DIR:-bidparser-data}:/data` defaults to a Docker named volume; `DATA_DIR` in the operator's `.env` swaps it for a bind mount.
+- **`SESSION_SECRET`** is the Data Protection app-name discriminator, **not** a cryptographic key. The keyring in `/data/dp-keys` is the actual signing material. Rotating `SESSION_SECRET` scopes new cookies away from old ones (effectively logs everyone out). Deleting `/data/dp-keys` invalidates the keyring.
+- **Key env-var defaults**: `ADMIN_USERNAME=admin`, `ADMIN_PASSWORD=changeme`, `MAX_UPLOAD_MB=10`, `RATE_LIMIT_AUTH_PER_MIN=5`, `RETENTION_DAYS=90`, `SESSION_LIFETIME_HOURS=12`. `SESSION_SECRET` has a dev default (`dev-only-change-me`) and must be overridden in production. Full table lives in `docs/DEPLOYMENT.md`.
 - GitHub Actions CI/CD (`.github/workflows/build.yml`) is enabled — pushes to `main` publish multi-arch Docker images to `ghcr.io` with `latest` and `sha-<short-sha>` tags; pushes of `v*` SemVer tags also publish the SemVer image tag.
 
 ## Release versioning
@@ -431,11 +421,11 @@ Releases follow **Semantic Versioning 2.0.0**:
 
 To add a new format (new Nutanix file type, or a Dell/Lenovo quote):
 
-1. **One parser module**: `backend/app/parsers/<slug>/parser.py` implementing `BaseParser` — declare `slug`, `display_name`, `vendor`, `accepted_mime`, `crm_template`, `parse()`, optional `detect()`.
-2. **One registry entry**: append the class to `PARSER_REGISTRY` in `backend/app/parsers/registry.py`. This is the only registration point.
-3. **One fixture + golden output**: drop the sample under `backend/tests/fixtures/` (or symlink from `samples/inputs/`), hand-validate, commit the expected `*_parsed.xlsx` golden under `samples/outputs/`, and add a parametrised test case.
+1. **One parser class**: `src/BidParser.Parsing/<Vendor>/<Slug>/Vendor<Slug>Parser.cs` implementing `IParser` — declare `Slug`, `DisplayName`, `Vendor`, `AcceptedMime`, `CrmTemplate`, `Parse(string path)`. Optional `Detect(string path)` defaults to `0.0`.
+2. **One registry entry**: append an instance to the `Parsers` list in `src/BidParser.Parsing/Registry/ParserRegistry.cs`. This is the only registration point; no assembly scanning.
+3. **One fixture + golden output**: drop the sample under `samples/inputs/`, hand-validate, commit the expected `*_parsed.xlsx` golden under `samples/outputs/`, and add a test case to `tests/BidParser.Parsing.Tests/`.
 4. **Optionally a new spec markdown** (`docs/<vendor>_<format>.md`) mirroring the existing five Nutanix specs, plus a one-line link from this file.
-5. **If the format needs a new CRM template**, extend `CRM_TEMPLATE_BY_VENDOR` and implement the new template writer. Every Nutanix file type reuses the existing Foreign Uplift writer — no template work needed for those.
+5. **If the format needs a new CRM template**, implement a new writer in `src/BidParser.Output/` and wire it in `ParseService`. Every Nutanix file type reuses `ForeignUpliftWriter` — no template work needed for those.
 
 The developer **does not touch**: API routes, frontend components (dropdowns auto-populate from `/api/parsers`), Docker config, validation logic, auth, history, or any other parser. The parser surface area is the entire change for a new format — preserve that property.
 
@@ -447,9 +437,9 @@ The developer **does not touch**: API routes, frontend components (dropdowns aut
 
 ## Commands
 
-- `cd backend && .venv/bin/python -m pytest -q` — backend parser/template/API suite.
-- `cd backend && .venv/bin/uvicorn app.main:app --reload` — local backend API dev server.
-- `cd frontend && npm run dev` — Vite frontend dev server, proxying `/api` to `http://127.0.0.1:8000`.
+- `dotnet test BidParser.sln` — full test suite (54 tests: parsing + API integration).
+- `dotnet run --project src/BidParser.Api` — local backend dev server (`http://localhost:5000`).
+- `cd frontend && npm run dev` — Vite frontend dev server, proxying `/api` to `http://127.0.0.1:5000`.
 - `cd frontend && npm run build` — TypeScript + production frontend build.
 - `docker compose up -d` — run the production container (after `cp .env.example .env` and setting `SESSION_SECRET`).
 - `docker compose build` — local image build from the repo root `Dockerfile`.

@@ -1,1 +1,0 @@
-"""Hardware Only PDF parser."""
