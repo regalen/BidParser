@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace BidParser.Api.Serialization;
 
-public sealed class JsonStringDecimalConverter : JsonConverter<decimal>
+public class JsonStringDecimalConverter : JsonConverter<decimal>
 {
     private readonly int _scale;
 

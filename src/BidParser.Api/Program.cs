@@ -60,8 +60,10 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddSingleton<IParserRegistry, ParserRegistry>();
 builder.Services.AddSingleton(new FileStorage(appOptions.UploadDir));
 builder.Services.AddScoped<ParseService>();
+builder.Services.AddScoped<RetentionService>();
 builder.Services.AddHostedService<MigratorHostedService>();
 builder.Services.AddHostedService<BootstrapAdminHostedService>();
+builder.Services.AddHostedService<RetentionBackgroundService>();
 
 var app = builder.Build();
 
@@ -82,7 +84,7 @@ app.MapMeEndpoints();
 app.MapParsersEndpoints();
 app.MapUsersEndpoints();
 app.MapParseEndpoints();
-app.MapPhase3ProtectedPlaceholders();
+app.MapHistoryEndpoints();
 
 app.MapFallbackToFile("index.html");
 
