@@ -17,6 +17,8 @@ services:
       - RATE_LIMIT_AUTH_PER_MIN=${RATE_LIMIT_AUTH_PER_MIN:-5}
       - MAX_UPLOAD_MB=${MAX_UPLOAD_MB:-10}
       - FORWARDED_ALLOW_IPS=${FORWARDED_ALLOW_IPS:-*}
+      - DATABASE_URL=sqlite:////data/db.sqlite
+      - UPLOAD_DIR=/data/files
     restart: unless-stopped
 
 volumes:
