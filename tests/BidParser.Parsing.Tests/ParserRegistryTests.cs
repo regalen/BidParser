@@ -12,6 +12,8 @@ public sealed class ParserRegistryTests
         new ParserRegistry().Parsers
             .Select(parser => parser.Slug)
             .Should()
-            .Equal("nutanix_software_only_pdf");
+            .Equal(
+                "nutanix_software_only_pdf",
+                "nutanix_software_only_xlsx");
     }
 }
