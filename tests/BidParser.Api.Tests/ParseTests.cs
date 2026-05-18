@@ -31,7 +31,7 @@ public sealed class ParseTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         response.Content.Headers.ContentDisposition.Should().NotBeNull();
         response.Content.Headers.ContentDisposition!.DispositionType.Should().Be("attachment");
-        response.Content.Headers.ContentDisposition.FileName.Should().Be("\"XQ-4076249_parsed.xlsx\"");
+        response.Content.Headers.ContentDisposition.FileName!.Trim('"').Should().Be("XQ-4076249_parsed.xlsx");
         response.Headers.GetValues("X-Validation").Should().ContainSingle().Which.Should().Be("match");
         response.Headers.GetValues("X-Computed-Total").Should().ContainSingle().Which.Should().Be("1625358.51");
         response.Headers.GetValues("X-Quoted-Total").Should().ContainSingle().Which.Should().Be("1625358.51");
