@@ -11,6 +11,12 @@ frontend/dist/
 *.tsbuildinfo
 .npm/
 
+# .NET
+**/bin/
+**/obj/
+.dotnet/
+.nuget/
+
 # Local env / data
 .env
 *.local

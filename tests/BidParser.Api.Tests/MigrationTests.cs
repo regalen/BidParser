@@ -1,0 +1,75 @@
+using BidParser.Infrastructure.Entities;
+using BidParser.Infrastructure.Persistence;
+using FluentAssertions;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
+
+namespace BidParser.Api.Tests;
+
+public sealed class MigrationTests
+{
+    [Fact]
+    public async Task FreshDatabaseMigratesAndBootstrapsAdmin()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"bidparser-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        var dbPath = Path.Combine(tempDir, "db.sqlite");
+
+        try
+        {
+            using var environment = new ScopedEnvironment(new Dictionary<string, string>
+            {
+                ["DATABASE_URL"] = $"sqlite:///{dbPath}",
+                ["UPLOAD_DIR"] = Path.Combine(tempDir, "files"),
+                ["ADMIN_USERNAME"] = "phase2-admin",
+                ["ADMIN_PASSWORD"] = "change-me-123!"
+            });
+            using var factory = CreateFactory();
+            using var client = factory.CreateClient();
+
+            var health = await client.GetAsync("/api/healthz");
+            health.IsSuccessStatusCode.Should().BeTrue();
+
+            using var scope = factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var admin = await db.Users.SingleAsync();
+
+            admin.Username.Should().Be("phase2-admin");
+            admin.Name.Should().Be("Administrator");
+            admin.Role.Should().Be(UserRole.Admin);
+            admin.MustChangePassword.Should().BeTrue();
+            BCrypt.Net.BCrypt.Verify("change-me-123!", admin.PasswordHash).Should().BeTrue();
+
+            var migrationIds = await db.Database.GetAppliedMigrationsAsync();
+            migrationIds.Should().ContainSingle().Which.Should().Be("00000000000001_InitialCreate");
+
+            var userTableSql = await ReadScalarAsync(dbPath, "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users';");
+            userTableSql.Should().Contain("TEXT COLLATE NOCASE");
+
+            var journalMode = await ReadScalarAsync(dbPath, "PRAGMA journal_mode;");
+            journalMode.Should().Be("wal");
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    private static WebApplicationFactory<Program> CreateFactory()
+    {
+        return new WebApplicationFactory<Program>();
+    }
+
+    private static async Task<string> ReadScalarAsync(string dbPath, string commandText)
+    {
+        await using var connection = new SqliteConnection($"Data Source={dbPath}");
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = commandText;
+        var value = await command.ExecuteScalarAsync();
+        return value?.ToString() ?? string.Empty;
+    }
+}

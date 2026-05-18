@@ -1,5 +1,7 @@
 services:
   bidparser:
+    build:
+      context: .
     image: ghcr.io/regalen/bidparser:latest
     container_name: bidparser
     ports:

@@ -1,4 +1,4 @@
-# Stage 1 — build frontend
+# Stage 1: build frontend
 FROM node:20-alpine AS frontend-build
 WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json ./
@@ -6,45 +6,34 @@ RUN npm ci
 COPY frontend/ .
 RUN npm run build
 
-# Stage 2 — Python runtime with built frontend
-FROM python:3.12-slim AS runtime
+# Stage 2: publish .NET API
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS dotnet-build
+WORKDIR /src
 
-# System deps for pdfplumber (pdfminer.six uses no native libs) and general health
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
+COPY BidParser.sln Directory.Build.props Directory.Packages.props ./
+COPY src/BidParser.Api/BidParser.Api.csproj src/BidParser.Api/
+COPY src/BidParser.Domain/BidParser.Domain.csproj src/BidParser.Domain/
+COPY src/BidParser.Infrastructure/BidParser.Infrastructure.csproj src/BidParser.Infrastructure/
+COPY src/BidParser.Parsing/BidParser.Parsing.csproj src/BidParser.Parsing/
+RUN dotnet restore src/BidParser.Api/BidParser.Api.csproj
 
+COPY src/ src/
+RUN dotnet publish src/BidParser.Api/BidParser.Api.csproj \
+    --configuration Release \
+    --no-restore \
+    --output /app/publish
+
+# Stage 3: runtime with built frontend
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
-# Install Python dependencies
-COPY backend/pyproject.toml .
-RUN pip install --no-cache-dir .
+COPY --from=dotnet-build /app/publish ./
+COPY --from=frontend-build /build/dist ./wwwroot
 
-# Copy backend application code
-COPY backend/app ./app
-COPY backend/alembic.ini .
-COPY backend/alembic ./alembic
-
-# Copy built frontend into /app/static/
-COPY --from=frontend-build /build/dist ./static
-
-# Data volume mount point
 VOLUME /data
 
 ENV PORT=3447
-EXPOSE ${PORT}
+ENV ASPNETCORE_URLS=http://0.0.0.0:3447
+EXPOSE 3447
 
-# Entrypoint: run migrations then start uvicorn
-COPY <<'EOF' /app/entrypoint.sh
-#!/bin/sh
-set -e
-cd /app
-python -m alembic upgrade head
-exec python -m uvicorn app.main:app \
-    --host 0.0.0.0 \
-    --port "${PORT:-3447}" \
-    --proxy-headers \
-    --forwarded-allow-ips "${FORWARDED_ALLOW_IPS:-*}"
-EOF
-RUN chmod +x /app/entrypoint.sh
-
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["dotnet", "BidParser.Api.dll"]

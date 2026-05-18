@@ -1,8 +1,15 @@
 .git
 .gitignore
+.github
 .vscode
 .idea
 .DS_Store
+
+# .NET
+**/bin
+**/obj
+.dotnet
+.nuget
 
 # Python
 backend/.venv
@@ -12,7 +19,7 @@ __pycache__
 *.egg-info
 
 # Node
-frontend/node_modules
+**/node_modules
 frontend/dist
 *.tsbuildinfo
 

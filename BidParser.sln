@@ -1,0 +1,51 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BidParser.Api", "src\BidParser.Api\BidParser.Api.csproj", "{25EF56C3-A2F8-4A18-9414-132C9B494B59}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BidParser.Domain", "src\BidParser.Domain\BidParser.Domain.csproj", "{AE977EB7-A428-40D1-86A4-986D8268DA70}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BidParser.Infrastructure", "src\BidParser.Infrastructure\BidParser.Infrastructure.csproj", "{59FDB182-269B-4FD1-971C-11C96AB4B6C7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BidParser.Parsing", "src\BidParser.Parsing\BidParser.Parsing.csproj", "{4DB852E4-C5AF-4FA6-BB52-862F49C5AE46}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BidParser.Api.Tests", "tests\BidParser.Api.Tests\BidParser.Api.Tests.csproj", "{33801EE3-A7D3-464A-98D5-9A5CBA049F48}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BidParser.Parsing.Tests", "tests\BidParser.Parsing.Tests\BidParser.Parsing.Tests.csproj", "{3CF9673A-1107-427E-8A2E-D6D3E34780B1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{25EF56C3-A2F8-4A18-9414-132C9B494B59}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{25EF56C3-A2F8-4A18-9414-132C9B494B59}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{25EF56C3-A2F8-4A18-9414-132C9B494B59}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{25EF56C3-A2F8-4A18-9414-132C9B494B59}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AE977EB7-A428-40D1-86A4-986D8268DA70}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE977EB7-A428-40D1-86A4-986D8268DA70}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE977EB7-A428-40D1-86A4-986D8268DA70}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE977EB7-A428-40D1-86A4-986D8268DA70}.Release|Any CPU.Build.0 = Release|Any CPU
+		{59FDB182-269B-4FD1-971C-11C96AB4B6C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{59FDB182-269B-4FD1-971C-11C96AB4B6C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{59FDB182-269B-4FD1-971C-11C96AB4B6C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{59FDB182-269B-4FD1-971C-11C96AB4B6C7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4DB852E4-C5AF-4FA6-BB52-862F49C5AE46}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4DB852E4-C5AF-4FA6-BB52-862F49C5AE46}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4DB852E4-C5AF-4FA6-BB52-862F49C5AE46}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4DB852E4-C5AF-4FA6-BB52-862F49C5AE46}.Release|Any CPU.Build.0 = Release|Any CPU
+		{33801EE3-A7D3-464A-98D5-9A5CBA049F48}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33801EE3-A7D3-464A-98D5-9A5CBA049F48}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33801EE3-A7D3-464A-98D5-9A5CBA049F48}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33801EE3-A7D3-464A-98D5-9A5CBA049F48}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3CF9673A-1107-427E-8A2E-D6D3E34780B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3CF9673A-1107-427E-8A2E-D6D3E34780B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3CF9673A-1107-427E-8A2E-D6D3E34780B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3CF9673A-1107-427E-8A2E-D6D3E34780B1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
