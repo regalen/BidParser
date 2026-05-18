@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\BidParser.Domain\BidParser.Domain.csproj" />
+    <ProjectReference Include="..\BidParser.Output\BidParser.Output.csproj" />
   </ItemGroup>
 
   <ItemGroup>

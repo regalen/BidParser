@@ -2,7 +2,11 @@ using BidParser.Api.Auth;
 using BidParser.Api.Endpoints;
 using BidParser.Api.Hosting;
 using BidParser.Api.Options;
+using BidParser.Domain.Abstractions;
 using BidParser.Infrastructure.Persistence;
+using BidParser.Infrastructure.Services;
+using BidParser.Infrastructure.Storage;
+using BidParser.Parsing.Registry;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
@@ -15,6 +19,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 var appOptions = AppOptions.FromConfiguration(builder.Configuration);
 appOptions.EnsureDirectories();
+
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.MaxRequestBodySize = appOptions.MaxUploadBytes;
+});
 
 builder.Services.AddSingleton(appOptions);
 builder.Services.Configure<JsonOptions>(options =>
@@ -48,6 +57,9 @@ builder.Services.AddAuthorization(options =>
         policy.RequireAssertion(context => !context.User.HasClaim("must_change_password", "true"));
     });
 });
+builder.Services.AddSingleton<IParserRegistry, ParserRegistry>();
+builder.Services.AddSingleton(new FileStorage(appOptions.UploadDir));
+builder.Services.AddScoped<ParseService>();
 builder.Services.AddHostedService<MigratorHostedService>();
 builder.Services.AddHostedService<BootstrapAdminHostedService>();
 
@@ -69,6 +81,7 @@ app.MapAuthEndpoints();
 app.MapMeEndpoints();
 app.MapParsersEndpoints();
 app.MapUsersEndpoints();
+app.MapParseEndpoints();
 app.MapPhase3ProtectedPlaceholders();
 
 app.MapFallbackToFile("index.html");

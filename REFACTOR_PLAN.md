@@ -273,7 +273,8 @@ GitHub Actions — restructure the existing single-job `build.yml` into **two ga
 - Phase 9 complete: `NutanixHardwareOnlyPdfParser` ported, registered after the renewal parser in the explicit registry, and Quote D line-item/total equivalence plus Quote C negative-assertion tests added for `samples/inputs/XQ-4108785.pdf`. Verification: `dotnet build BidParser.sln --configuration Release --no-restore`, focused hardware PDF parser test, parsing test project, and full solution `dotnet test BidParser.sln --configuration Release --no-build --verbosity normal` passed. Local Docker build intentionally not run.
 - Phase 10 complete: `NutanixHardwareOnlyXlsxParser` ported, registered after the hardware PDF parser in the explicit registry, and Quote D line-item/total equivalence plus non-Quote-D exclusion tests added for `samples/inputs/XQ-4108785.xlsx`. Verification: `dotnet build BidParser.sln --configuration Release --no-restore`, focused hardware XLSX parser test, parsing test project, and full solution `dotnet test BidParser.sln --configuration Release --no-build --verbosity normal` passed. Local Docker build intentionally not run.
 - Phase 11 complete: `BidParser.Output` project added with `ForeignUpliftWriter` and `OutputNaming`, producing clean `Foreign Uplift` workbooks that match all five golden output cases cell-by-cell, including blank cells and date number formats. Verification: `dotnet restore BidParser.sln`, `dotnet build BidParser.sln --configuration Release --no-restore`, focused `TemplateWriterTests`, parsing test project, and full solution `dotnet test BidParser.sln --configuration Release --no-build --verbosity normal` passed. Local Docker build intentionally not run.
-- Current checkpoint: working branch is `dotnet-refactor`, pushed separately from `main`. No PR is open. Next implementation phase is Phase 12 (parse orchestration and `/api/parsers` / `/api/parse` integration).
+- Phase 12 complete: `FileStorage`, `ParseService`, real `ParsersEndpoints`, `ParseEndpoints` (POST /api/parse with multipart form, all 7 error matrix cases, X-Validation/X-Computed-Total/X-Quoted-Total headers), and parse API contract tests added. Key notes: `Results.File(stream)` used (not `PhysicalFile`); empty `X-Quoted-Total` header encoded as `new StringValues(new string[] { "" })` to bypass ASP.NET Core's empty-string header stripping. Verification: `dotnet build BidParser.sln --configuration Release --no-restore` and `dotnet test BidParser.sln --configuration Release --no-build` passed (47 tests: 25 parsing + 22 API). Local Docker build intentionally not run.
+- Current checkpoint: working branch is `dotnet-refactor`, pushed separately from `main`. No PR is open. Next implementation phase is Phase 13 (history endpoints, retention service, and retention background task).
 
 **Why phased.** The whole port in one session would exhaust an agent's context budget mid-flight, leaving a half-finished branch nobody can safely resume. Each phase below is sized for **one git branch, one PR, one focused session, one merge to main**. The next session starts from a known-green `main`, not from a WIP working tree.
 
@@ -516,9 +517,9 @@ Each phase implements one parser, registers it in `ParserRegistry.Parsers`, and 
 | 6 | Complete | port/06-software-pdf | S | 3 | Software-only PDF parser registered and tested |
 | 7 | Complete | port/07-software-xlsx | S | 3 | Software-only XLSX parser registered and tested |
 | 8 | Complete | port/08-renewal-pdf | S | 3 | Renewal PDF parser registered and tested |
-| 9 | Pending | port/09-hardware-pdf | S | 3 | Quote C negative-assertion |
-| 10 | Pending | port/10-hardware-xlsx | S | 3 | Quote C negative-assertion |
-| 11 | Pending | port/11-template-writer | M | 5 | Phase 6-10 workbook tests run here |
+| 9 | Complete | port/09-hardware-pdf | S | 3 | Quote C negative-assertion |
+| 10 | Complete | port/10-hardware-xlsx | S | 3 | Quote C negative-assertion |
+| 11 | Complete | port/11-template-writer | M | 5 | Phase 6-10 workbook tests run here |
 | 12 | Pending | port/12a-parse-orchestration | **L** | 15 | Was one PR with Phase 13; split for budget |
 | 13 | Pending | port/12b-history-retention | M | 6 | |
 | 14 | Pending | port/13-cutover | S | docs + deletions | |
