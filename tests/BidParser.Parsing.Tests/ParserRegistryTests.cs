@@ -7,8 +7,11 @@ namespace BidParser.Parsing.Tests;
 public sealed class ParserRegistryTests
 {
     [Fact]
-    public void Phase5_registry_is_explicit_and_empty_until_supplier_parsers_land()
+    public void Registry_is_explicit_and_ordered()
     {
-        new ParserRegistry().Parsers.Should().BeEmpty();
+        new ParserRegistry().Parsers
+            .Select(parser => parser.Slug)
+            .Should()
+            .Equal("nutanix_software_only_pdf");
     }
 }
