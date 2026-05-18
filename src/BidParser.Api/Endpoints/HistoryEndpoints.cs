@@ -83,10 +83,11 @@ public static class HistoryEndpoints
             return Results.Json(new { detail = "File not found." }, statusCode: 404);
         }
 
+        context.Response.Headers["Content-Disposition"] =
+            $"attachment; filename=\"{job.SourceFilename}\"";
         return Results.File(
             new FileStream(job.SourcePath, FileMode.Open, FileAccess.Read, FileShare.Read),
-            MimeForExtension(job.SourcePath),
-            job.SourceFilename);
+            MimeForExtension(job.SourcePath));
     }
 
     private static async Task<IResult> DownloadOutputAsync(
@@ -104,10 +105,11 @@ public static class HistoryEndpoints
         }
 
         var downloadName = $"{Path.GetFileNameWithoutExtension(job.SourceFilename)}_parsed.xlsx";
+        context.Response.Headers["Content-Disposition"] =
+            $"attachment; filename=\"{downloadName}\"";
         return Results.File(
             new FileStream(job.OutputPath, FileMode.Open, FileAccess.Read, FileShare.Read),
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            downloadName);
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     }
 
     private static async Task<ParseJob?> GetJobForUserAsync(

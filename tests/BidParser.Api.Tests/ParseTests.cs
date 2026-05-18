@@ -31,10 +31,7 @@ public sealed class ParseTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         response.Content.Headers.ContentDisposition.Should().NotBeNull();
         response.Content.Headers.ContentDisposition!.DispositionType.Should().Be("attachment");
-        // Results.File sets filename* (RFC 5987); fall back to filename if needed
-        var downloadName = response.Content.Headers.ContentDisposition.FileNameStar
-            ?? response.Content.Headers.ContentDisposition.FileName?.Trim('"');
-        downloadName.Should().Be("XQ-4076249_parsed.xlsx");
+        response.Content.Headers.ContentDisposition.FileName.Should().Be("\"XQ-4076249_parsed.xlsx\"");
         response.Headers.GetValues("X-Validation").Should().ContainSingle().Which.Should().Be("match");
         response.Headers.GetValues("X-Computed-Total").Should().ContainSingle().Which.Should().Be("1625358.51");
         response.Headers.GetValues("X-Quoted-Total").Should().ContainSingle().Which.Should().Be("1625358.51");
