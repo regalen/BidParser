@@ -113,7 +113,7 @@ public static class ForeignUpliftWriter
 
     private static void SetNumber(IXLCell cell, decimal value)
     {
-        cell.Value = value == decimal.Truncate(value) ? decimal.ToInt32(value) : Convert.ToDouble(value);
+        cell.Value = value;
     }
 
     private static void SetDate(IXLCell cell, DateOnly value)

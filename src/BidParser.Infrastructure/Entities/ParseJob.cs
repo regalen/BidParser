@@ -14,6 +14,6 @@ public sealed class ParseJob
     public decimal ComputedTotal { get; set; }
     public decimal? QuotedTotal { get; set; }
     public bool TotalsMatch { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; }
     public User? User { get; set; }
 }
