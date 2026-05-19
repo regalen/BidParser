@@ -6,6 +6,7 @@ using BidParser.Domain.Abstractions;
 using BidParser.Domain.Models;
 using BidParser.Infrastructure.Persistence;
 using FluentAssertions;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -146,12 +147,92 @@ public sealed class ParseTests
         using var response = await PostParseAsync(client, new byte[] { 1 }, "test.pdf", "application/pdf",
             "TestVendor", "test-exception", "1.0", "5.0");
 
-        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-        var detail = json.GetProperty("detail");
-        detail.GetProperty("stage").GetString().Should().Be("parse");
-        detail.GetProperty("hint").GetString().Should().Be("Could not parse this file.");
-        detail.GetProperty("message").GetString().Should().NotBeNullOrEmpty();
+        json.GetProperty("status").GetInt32().Should().Be(500);
+        json.GetProperty("title").GetString().Should().Be("An unexpected error occurred.");
+        json.GetProperty("detail").GetString().Should().Be("The request could not be completed.");
+        json.ToString().Should().NotContain("something went wrong");
+    }
+
+    [Fact]
+    public async Task ParseRateLimitsByAuthenticatedUser()
+    {
+        var parser = new TestParser(
+            "test-rate-limit", "TestVendor", "application/pdf",
+            _ => new ParseResult
+            {
+                Metadata = new QuoteMetadata
+                {
+                    QuoteNumber = "T-001",
+                    Supplier = "Test",
+                    Currency = "USD",
+                    QuotedTotal = null,
+                    SourceFilename = "test.pdf",
+                    ParserSlug = "test-rate-limit"
+                },
+                LineItems = Array.Empty<LineItem>(),
+                Validation = new ValidationResult
+                {
+                    ComputedTotal = 0m,
+                    QuotedTotal = null,
+                    Matches = true,
+                    Difference = 0m
+                }
+            });
+
+        using var fixture = await CustomTestFixture.CreateAsync(new TestRegistry(parser));
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        for (var index = 0; index < 10; index++)
+        {
+            using var response = await PostParseAsync(client, new byte[] { 1 }, $"test-{index}.pdf", "application/pdf",
+                "TestVendor", "test-rate-limit", "1.0", "5.0");
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+        }
+
+        using var limited = await PostParseAsync(client, new byte[] { 1 }, "test-limited.pdf", "application/pdf",
+            "TestVendor", "test-rate-limit", "1.0", "5.0");
+        limited.StatusCode.Should().Be((HttpStatusCode)429);
+        limited.Headers.RetryAfter.Should().NotBeNull();
+        (await ApiTestFixture.DetailAsync(limited)).Should().Be("Too many parse requests. Please try again later.");
+    }
+
+    [Fact]
+    public async Task ForwardedHeadersIgnoreUntrustedSource()
+    {
+        using var fixture = await CustomTestFixture.CreateAsync(forwardedAllowIps: "203.0.113.10", environmentName: "Testing");
+        using var client = fixture.Factory.CreateClient();
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/test/connection");
+        request.Headers.Add("X-Test-Remote-Ip", "198.51.100.25");
+        request.Headers.Add("X-Forwarded-For", "1.2.3.4");
+        request.Headers.Add("X-Forwarded-Proto", "https");
+
+        using var response = await client.SendAsync(request);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("remote_ip").GetString().Should().NotBe("1.2.3.4");
+        json.GetProperty("scheme").GetString().Should().Be("http");
+    }
+
+    [Fact]
+    public async Task ForwardedHeadersAllowConfiguredProxy()
+    {
+        using var fixture = await CustomTestFixture.CreateAsync(forwardedAllowIps: "127.0.0.1,::1", environmentName: "Testing");
+        using var client = fixture.Factory.CreateClient();
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/test/connection");
+        request.Headers.Add("X-Test-Remote-Ip", "127.0.0.1");
+        request.Headers.Add("X-Forwarded-For", "1.2.3.4");
+        request.Headers.Add("X-Forwarded-Proto", "https");
+
+        using var response = await client.SendAsync(request);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("remote_ip").GetString().Should().Be("1.2.3.4");
+        json.GetProperty("scheme").GetString().Should().Be("https");
     }
 
     [Fact]
@@ -312,12 +393,16 @@ public sealed class ParseTests
 
         public WebApplicationFactory<Program> Factory { get; }
 
-        public static async Task<CustomTestFixture> CreateAsync(IParserRegistry? registry = null, int maxUploadMb = 10)
+        public static async Task<CustomTestFixture> CreateAsync(
+            IParserRegistry? registry = null,
+            int maxUploadMb = 10,
+            string? forwardedAllowIps = null,
+            string? environmentName = null)
         {
             var tempDir = Path.Combine(Path.GetTempPath(), $"bidparser-{Guid.NewGuid():N}");
             Directory.CreateDirectory(tempDir);
 
-            var env = new ScopedEnvironment(new Dictionary<string, string>
+            var envValues = new Dictionary<string, string>
             {
                 ["DATABASE_URL"] = $"sqlite:///{Path.Combine(tempDir, "db.sqlite")}",
                 ["UPLOAD_DIR"] = Path.Combine(tempDir, "files"),
@@ -326,22 +411,41 @@ public sealed class ParseTests
                 ["ADMIN_PASSWORD"] = "changeme",
                 ["RATE_LIMIT_AUTH_PER_MIN"] = "5",
                 ["MAX_UPLOAD_MB"] = maxUploadMb.ToString(System.Globalization.CultureInfo.InvariantCulture)
-            });
+            };
+            if (forwardedAllowIps is not null)
+            {
+                envValues["FORWARDED_ALLOW_IPS"] = forwardedAllowIps;
+            }
+
+            var env = new ScopedEnvironment(envValues);
 
             WebApplicationFactory<Program> factory;
             if (registry is not null)
             {
                 factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+                {
+                    if (environmentName is not null)
+                    {
+                        builder.UseEnvironment(environmentName);
+                    }
+
                     builder.ConfigureServices(services =>
                     {
                         var d = services.SingleOrDefault(s => s.ServiceType == typeof(IParserRegistry));
                         if (d is not null) services.Remove(d);
                         services.AddSingleton<IParserRegistry>(registry);
-                    }));
+                    });
+                });
             }
             else
             {
-                factory = new WebApplicationFactory<Program>();
+                factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+                {
+                    if (environmentName is not null)
+                    {
+                        builder.UseEnvironment(environmentName);
+                    }
+                });
             }
 
             await using var scope = factory.Services.CreateAsyncScope();

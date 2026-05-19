@@ -8,8 +8,9 @@ BidParser ships as a single Docker container that serves the ASP.NET Core API an
 # 1. Download the compose file
 curl -O https://raw.githubusercontent.com/regalen/bidparser/main/docker-compose.yml
 
-# 2. Create .env with a session secret
+# 2. Create .env with a session secret and trusted proxy IP
 echo "SESSION_SECRET=$(openssl rand -hex 32)" > .env
+echo "FORWARDED_ALLOW_IPS=127.0.0.1" >> .env
 
 # 3. (Optional) Override defaults
 # echo "ADMIN_PASSWORD=something-stronger" >> .env
@@ -46,7 +47,7 @@ All configuration is via environment variables. Set them in a `.env` file next t
 | `MAX_UPLOAD_MB` | `10` | Maximum upload file size. |
 | `DATABASE_URL` | `sqlite:///data/db.sqlite` | SQLite connection URL. Relative paths resolve inside the container. |
 | `DATA_DIR` | _(named volume)_ | Set to a host path (e.g. `/opt/bidparser/data`) to use a bind mount instead of a Docker named volume. |
-| `FORWARDED_ALLOW_IPS` | `*` | IPs trusted for `X-Forwarded-*` headers. Tighten to your reverse proxy's IP/CIDR in production. |
+| `FORWARDED_ALLOW_IPS` | _(required)_ | Comma-separated IPs trusted for `X-Forwarded-*` headers. Set this to the reverse proxy IP address as seen by the app container. |
 
 ## Data Volume
 
@@ -99,8 +100,8 @@ The compose file publishes container port `3447` to host port `3447`. Place it b
 ### Security notes
 
 - Session cookies are issued with `Secure=True` only when the request arrives over HTTPS (detected via `X-Forwarded-Proto` after `ForwardedHeadersMiddleware` processing). Local HTTP development keeps `Secure=False` so the browser accepts the cookie.
-- Rate limiting reads the real client IP from the `X-Forwarded-For` chain, not the proxy IP.
-- Consider tightening `FORWARDED_ALLOW_IPS` to your proxy's IP/CIDR rather than leaving it as `*`.
+- Rate limiting reads the real client IP from the trusted `X-Forwarded-For` chain, not the proxy IP.
+- `FORWARDED_ALLOW_IPS` must be explicit in production. Do not use `*`; untrusted forwarded headers are ignored.
 
 ## Building the Image Locally
 

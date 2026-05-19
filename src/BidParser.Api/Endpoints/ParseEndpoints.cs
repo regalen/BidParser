@@ -15,7 +15,8 @@ public static class ParseEndpoints
     {
         app.MapPost("/api/parse", ParseAsync)
             .RequireAuthorization(AuthPolicies.ActiveUser)
-            .AddEndpointFilter<RequireCsrfHeader>();
+            .AddEndpointFilter<RequireCsrfHeader>()
+            .RequireRateLimiting("parse");
 
         return app;
     }
@@ -25,8 +26,10 @@ public static class ParseEndpoints
         AppDbContext db,
         ParseService parseService,
         AppOptions appOptions,
+        ILoggerFactory loggerFactory,
         CancellationToken ct)
     {
+        var logger = loggerFactory.CreateLogger(nameof(ParseEndpoints));
         IFormCollection form;
         try
         {
@@ -103,14 +106,15 @@ public static class ParseEndpoints
         }
         catch (ParseError ex)
         {
+            logger.LogWarning(
+                ex,
+                "Parse error for {Filename} using {Slug} at stage {Stage}",
+                displayFilename,
+                parserSlug,
+                ex.Stage);
+
             return Results.Json(
                 new { detail = new { stage = ex.Stage, hint = ex.Hint, message = ex.Message } },
-                statusCode: 422);
-        }
-        catch (Exception ex)
-        {
-            return Results.Json(
-                new { detail = new { stage = "parse", hint = "Could not parse this file.", message = ex.Message } },
                 statusCode: 422);
         }
 
