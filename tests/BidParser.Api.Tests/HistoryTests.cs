@@ -83,6 +83,16 @@ public sealed class HistoryTests
         filtered.GetProperty("rows").EnumerateArray().Single()
             .GetProperty("source_filename").GetString().Should().Contain("4076249");
 
+        var lowerFiltered = await client.GetFromJsonAsync<JsonElement>("/api/history?q=xq-4076");
+        lowerFiltered.GetProperty("total").GetInt32().Should().Be(1);
+        lowerFiltered.GetProperty("rows").EnumerateArray().Single()
+            .GetProperty("source_filename").GetString().Should().Be("XQ-4076249.pdf");
+
+        var upperFiltered = await client.GetFromJsonAsync<JsonElement>("/api/history?q=XQ-4076");
+        upperFiltered.GetProperty("total").GetInt32().Should().Be(1);
+        upperFiltered.GetProperty("rows").EnumerateArray().Single()
+            .GetProperty("source_filename").GetString().Should().Be("XQ-4076249.pdf");
+
         // whitespace-only q treated as no filter
         var unfiltered = await client.GetFromJsonAsync<JsonElement>("/api/history?q=++++");
         unfiltered.GetProperty("total").GetInt32().Should().Be(2);

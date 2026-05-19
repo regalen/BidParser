@@ -47,6 +47,7 @@ public sealed class ParseService
         try
         {
             await _storage.SaveUploadAsync(fileStream, sourcePath, maxUploadBytes, ct);
+            await ValidateMagicBytesAsync(sourcePath, parser.AcceptedMime, ct);
 
             var result = parser.Parse(sourcePath);
 
@@ -124,6 +125,33 @@ public sealed class ParseService
         if (extensionMime != parserAcceptedMime)
         {
             throw new ParseValidationException(400, "File extension does not match selected parser.");
+        }
+    }
+
+    private static async Task ValidateMagicBytesAsync(string path, string parserAcceptedMime, CancellationToken ct)
+    {
+        var header = new byte[4];
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var bytesRead = await stream.ReadAsync(header, ct);
+
+        var matches = parserAcceptedMime switch
+        {
+            "application/pdf" => bytesRead >= 4
+                && header[0] == 0x25
+                && header[1] == 0x50
+                && header[2] == 0x44
+                && header[3] == 0x46,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" => bytesRead >= 4
+                && header[0] == 0x50
+                && header[1] == 0x4B
+                && header[2] == 0x03
+                && header[3] == 0x04,
+            _ => false
+        };
+
+        if (!matches)
+        {
+            throw new ParseError("upload", "Unsupported file format.", "Unsupported file format.");
         }
     }
 }

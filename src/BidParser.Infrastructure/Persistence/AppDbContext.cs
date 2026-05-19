@@ -57,9 +57,12 @@ public sealed class AppDbContext : DbContext
             entity.Property(job => job.Id).HasColumnName("id");
             entity.Property(job => job.UserId).HasColumnName("user_id").IsRequired();
             entity.HasIndex(job => job.UserId).HasDatabaseName("ix_parse_jobs_user_id");
+            entity.HasIndex(job => new { job.UserId, job.CreatedAt })
+                .IsDescending(false, true)
+                .HasDatabaseName("ix_parse_jobs_user_id_created_at");
             entity.Property(job => job.Vendor).HasColumnName("vendor").HasMaxLength(64).IsRequired();
             entity.Property(job => job.ParserSlug).HasColumnName("parser_slug").HasMaxLength(128).IsRequired();
-            entity.Property(job => job.SourceFilename).HasColumnName("source_filename").HasMaxLength(255).IsRequired();
+            entity.Property(job => job.SourceFilename).HasColumnName("source_filename").HasColumnType("TEXT COLLATE NOCASE").HasMaxLength(255).IsRequired();
             entity.Property(job => job.SourcePath).HasColumnName("source_path").HasMaxLength(1024).IsRequired();
             entity.Property(job => job.OutputPath).HasColumnName("output_path").HasMaxLength(1024).IsRequired();
             entity.Property(job => job.FxRate).HasColumnName("fx_rate").HasPrecision(12, 4).IsRequired();

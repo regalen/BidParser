@@ -9,11 +9,13 @@ namespace BidParser.Api.Endpoints;
 
 internal static class EndpointHelpers
 {
-    public static async Task<BodyReadResult<T>> ReadJsonBodyAsync<T>(HttpRequest request)
+    public static async Task<BodyReadResult<T>> ReadJsonBodyAsync<T>(
+        HttpRequest request,
+        CancellationToken ct = default)
     {
         try
         {
-            var payload = await request.ReadFromJsonAsync<T>();
+            var payload = await request.ReadFromJsonAsync<T>(cancellationToken: ct);
             return payload is null
                 ? BodyReadResult<T>.Failure("Invalid request body.")
                 : BodyReadResult<T>.Success(payload);
@@ -28,7 +30,10 @@ internal static class EndpointHelpers
         }
     }
 
-    public static async Task<User?> CurrentUserAsync(HttpContext context, AppDbContext db)
+    public static async Task<User?> CurrentUserAsync(
+        HttpContext context,
+        AppDbContext db,
+        CancellationToken ct = default)
     {
         var idValue = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!int.TryParse(idValue, CultureInfo.InvariantCulture, out var userId))
@@ -36,7 +41,7 @@ internal static class EndpointHelpers
             return null;
         }
 
-        return await db.Users.SingleOrDefaultAsync(user => user.Id == userId);
+        return await db.Users.SingleOrDefaultAsync(user => user.Id == userId, ct);
     }
 
     public static IResult ValidationProblem(string detail)

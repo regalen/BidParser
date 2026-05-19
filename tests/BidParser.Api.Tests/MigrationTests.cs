@@ -44,10 +44,21 @@ public sealed class MigrationTests
             BCrypt.Net.BCrypt.Verify("change-me-123!", admin.PasswordHash).Should().BeTrue();
 
             var migrationIds = await db.Database.GetAppliedMigrationsAsync();
-            migrationIds.Should().ContainSingle().Which.Should().Be("00000000000001_InitialCreate");
+            migrationIds.Should().Equal(
+                "00000000000001_InitialCreate",
+                "20260519000001_HistoryCompositeIndex",
+                "20260519000002_SourceFilenameNoCase");
 
             var userTableSql = await ReadScalarAsync(dbPath, "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users';");
             userTableSql.Should().Contain("TEXT COLLATE NOCASE");
+
+            var parseJobsTableSql = await ReadScalarAsync(dbPath, "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'parse_jobs';");
+            parseJobsTableSql.Should().Contain("\"source_filename\" TEXT COLLATE NOCASE");
+
+            var historyPlan = await ReadQueryPlanAsync(
+                dbPath,
+                "EXPLAIN QUERY PLAN SELECT id FROM parse_jobs WHERE user_id = 1 ORDER BY created_at DESC LIMIT 10;");
+            historyPlan.Should().Contain("ix_parse_jobs_user_id_created_at");
 
             var journalMode = await ReadScalarAsync(dbPath, "PRAGMA journal_mode;");
             journalMode.Should().Be("wal");
@@ -71,5 +82,22 @@ public sealed class MigrationTests
         command.CommandText = commandText;
         var value = await command.ExecuteScalarAsync();
         return value?.ToString() ?? string.Empty;
+    }
+
+    private static async Task<string> ReadQueryPlanAsync(string dbPath, string commandText)
+    {
+        await using var connection = new SqliteConnection($"Data Source={dbPath}");
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = commandText;
+        await using var reader = await command.ExecuteReaderAsync();
+
+        var details = new List<string>();
+        while (await reader.ReadAsync())
+        {
+            details.Add(reader.GetString(3));
+        }
+
+        return string.Join(Environment.NewLine, details);
     }
 }

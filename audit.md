@@ -38,14 +38,32 @@ The plan is structured so **Phase 1 is the production-blocking work** (must ship
 
 ## Implementation status
 
+- Last updated: 2026-05-19 after running the Phase 2 verification gate.
 - Phase 1 complete in commit `adb8be5` (`Harden production API blockers`).
   - Verified with `dotnet test BidParser.sln`: 57/57 passing.
   - Manual frontend happy-path verification remains outstanding.
 - Phase 2 started in commit `dd100b3` (`Start phase 2 remediation`).
   - Step 2.1 complete: `ForeignUpliftWriter` writes `decimal` values directly; template writer tests passed against existing golden workbooks, so no fixture regeneration was needed.
   - Step 2.2 complete: entity timestamp initializers removed; `AppDbContext.StampTimestamps()` is now the single source.
-  - Verified with `dotnet test BidParser.sln`: 57/57 passing after Steps 2.1 and 2.2.
-  - Next planned work: Step 2.3 composite history index and Step 2.4 filename search collation/migration.
+  - Step 2.3 complete: added `(user_id, created_at DESC)` history index plus migration `20260519000001_HistoryCompositeIndex`; migration test verifies SQLite uses `ix_parse_jobs_user_id_created_at`.
+  - Step 2.4 complete: `source_filename` is now `TEXT COLLATE NOCASE`; history search uses escaped `EF.Functions.Like` instead of `ToLower().Contains(...)`.
+  - Step 2.5 complete: upload content is sniffed by magic bytes after save; mismatches throw upload-stage `ParseError` before parser execution.
+  - Step 2.6 complete: structured logs added for login success/failure, password changes, parse success/errors, admin user mutations, settings updates, history list/downloads, and password-change authorization denials.
+  - Step 2.7 complete: cancellation tokens now flow through auth/users/me endpoint body reads, EF calls, saves, shared endpoint helpers, and `SessionCookieAuthHandler` via `Context.RequestAborted`.
+  - Step 2.8 complete: security headers middleware now emits `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, and HTTPS-only `Strict-Transport-Security` before static files/endpoints.
+  - Verified with `dotnet test BidParser.sln`: 59/59 passing after Steps 2.1 through 2.8.
+  - Verified Step 2.3 targeted with `dotnet test tests/BidParser.Api.Tests/BidParser.Api.Tests.csproj --filter MigrationTests`: 1/1 passing.
+  - Verified Step 2.4 targeted with `dotnet test tests/BidParser.Api.Tests/BidParser.Api.Tests.csproj --filter "MigrationTests|HistoryListUserScopedAndQFilter"`: 2/2 passing.
+  - Verified Step 2.5 targeted with `dotnet test tests/BidParser.Api.Tests/BidParser.Api.Tests.csproj --filter ParseErrors_MagicBytesMismatch`: 1/1 passing.
+  - Verified Step 2.6 targeted with `dotnet test tests/BidParser.Api.Tests/BidParser.Api.Tests.csproj`: 33/33 passing.
+  - Verified Step 2.7 targeted with `dotnet test tests/BidParser.Api.Tests/BidParser.Api.Tests.csproj`: 33/33 passing.
+  - Verified Step 2.8 targeted with `dotnet test tests/BidParser.Api.Tests/BidParser.Api.Tests.csproj --filter HealthTests`: 2/2 passing.
+  - Phase 2 verification gate status: implementation and local runtime checks passed; Docker-only verification remains blocked by environment.
+    - `dotnet test BidParser.sln`: 59/59 passing.
+    - Local API smoke via `dotnet src/BidParser.Api/bin/Debug/net10.0/BidParser.Api.dll`: migrations applied, admin bootstrap present, admin forced password change, non-admin create/login/password change, all five sample parses returned `X-Validation: match`, history total was 5, source/output downloads succeeded.
+    - Vite smoke via `npm run dev` with `VITE_API_PROXY_TARGET=http://127.0.0.1:5057`: root page returned 200 and `/api/healthz` proxy returned 200.
+    - Structured logs observed for login, password change, admin user create, parse success, history list, and history downloads.
+    - Docker verification blocked: Docker CLI exists, but `/var/run/docker.sock` is absent (`failed to connect to the docker API ... no such file or directory`).
 
 ### Phase 1 — Production blockers · ~1 day · MUST ship before broader rollout
 

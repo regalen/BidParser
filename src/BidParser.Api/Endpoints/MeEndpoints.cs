@@ -17,23 +17,28 @@ public static class MeEndpoints
         return app;
     }
 
-    private static async Task<IResult> MeAsync(HttpContext context, AppDbContext db)
+    private static async Task<IResult> MeAsync(HttpContext context, AppDbContext db, CancellationToken ct)
     {
-        var user = await EndpointHelpers.CurrentUserAsync(context, db);
+        var user = await EndpointHelpers.CurrentUserAsync(context, db, ct);
         return user is null
             ? Results.Json(new { detail = "not_authenticated" }, statusCode: StatusCodes.Status401Unauthorized)
             : Results.Ok(UserPublic.FromEntity(user));
     }
 
-    private static async Task<IResult> UpdateSettingsAsync(HttpContext context, HttpRequest request, AppDbContext db)
+    private static async Task<IResult> UpdateSettingsAsync(
+        HttpContext context,
+        HttpRequest request,
+        AppDbContext db,
+        ILoggerFactory loggerFactory,
+        CancellationToken ct)
     {
-        var body = await EndpointHelpers.ReadJsonBodyAsync<SettingsUpdateRequest>(request);
+        var body = await EndpointHelpers.ReadJsonBodyAsync<SettingsUpdateRequest>(request, ct);
         if (!body.IsSuccess || body.Value is null)
         {
             return EndpointHelpers.ValidationProblem(body.Error ?? "Invalid request body.");
         }
 
-        var user = await EndpointHelpers.CurrentUserAsync(context, db);
+        var user = await EndpointHelpers.CurrentUserAsync(context, db, ct);
         if (user is null)
         {
             return Results.Json(new { detail = "not_authenticated" }, statusCode: StatusCodes.Status401Unauthorized);
@@ -68,7 +73,13 @@ public static class MeEndpoints
             user.Margin = decimal.Round(body.Value.Margin.Value, 2, MidpointRounding.AwayFromZero);
         }
 
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(ct);
+        loggerFactory.CreateLogger(nameof(MeEndpoints)).LogInformation(
+            "Settings update user={UserId} vendor_set={VendorSet} fx_set={FxSet} margin_set={MarginSet}",
+            user.Id,
+            body.Value.DefaultVendor is not null,
+            body.Value.FxRate is not null,
+            body.Value.Margin is not null);
         return Results.Ok(UserPublic.FromEntity(user));
     }
 

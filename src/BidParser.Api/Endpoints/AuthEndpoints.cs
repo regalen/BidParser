@@ -27,9 +27,12 @@ public static class AuthEndpoints
         AppDbContext db,
         AuthRateLimiter rateLimiter,
         AppOptions options,
-        IDataProtectionProvider dataProtectionProvider)
+        IDataProtectionProvider dataProtectionProvider,
+        ILoggerFactory loggerFactory,
+        CancellationToken ct)
     {
-        var body = await EndpointHelpers.ReadJsonBodyAsync<LoginRequest>(request);
+        var logger = loggerFactory.CreateLogger(nameof(AuthEndpoints));
+        var body = await EndpointHelpers.ReadJsonBodyAsync<LoginRequest>(request, ct);
         if (!body.IsSuccess || body.Value is null || string.IsNullOrWhiteSpace(body.Value.Username) || string.IsNullOrEmpty(body.Value.Password))
         {
             return EndpointHelpers.ValidationProblem(body.Error ?? "Invalid request body.");
@@ -47,9 +50,10 @@ public static class AuthEndpoints
             return userLimit;
         }
 
-        var user = await db.Users.SingleOrDefaultAsync(candidate => candidate.Username == usernameKey);
+        var user = await db.Users.SingleOrDefaultAsync(candidate => candidate.Username == usernameKey, ct);
         if (user is null || !BCrypt.Net.BCrypt.Verify(body.Value.Password, user.PasswordHash))
         {
+            logger.LogWarning("Login failed {Username}", usernameKey);
             return Results.Json(new { detail = "Invalid username or password." }, statusCode: StatusCodes.Status401Unauthorized);
         }
 
@@ -64,12 +68,16 @@ public static class AuthEndpoints
             Path = "/"
         });
 
+        logger.LogInformation("Login success {Username}", user.Username);
         return Results.Ok(new LoginResponse(UserPublic.FromEntity(user)));
     }
 
-    private static IResult Logout(HttpResponse response)
+    private static IResult Logout(HttpContext context, HttpResponse response, ILoggerFactory loggerFactory)
     {
         response.Cookies.Delete(SessionCookieAuthHandler.CookieName, new CookieOptions { Path = "/" });
+        loggerFactory.CreateLogger(nameof(AuthEndpoints)).LogInformation(
+            "Logout user={UserId}",
+            context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown");
         return Results.Ok(new { ok = true });
     }
 
@@ -78,9 +86,12 @@ public static class AuthEndpoints
         HttpRequest request,
         AppDbContext db,
         AuthRateLimiter rateLimiter,
-        AppOptions options)
+        AppOptions options,
+        ILoggerFactory loggerFactory,
+        CancellationToken ct)
     {
-        var body = await EndpointHelpers.ReadJsonBodyAsync<ChangePasswordRequest>(request);
+        var logger = loggerFactory.CreateLogger(nameof(AuthEndpoints));
+        var body = await EndpointHelpers.ReadJsonBodyAsync<ChangePasswordRequest>(request, ct);
         if (!body.IsSuccess || body.Value is null)
         {
             return EndpointHelpers.ValidationProblem(body.Error ?? "Invalid request body.");
@@ -92,7 +103,7 @@ public static class AuthEndpoints
             return limit;
         }
 
-        var user = await EndpointHelpers.CurrentUserAsync(context, db);
+        var user = await EndpointHelpers.CurrentUserAsync(context, db, ct);
         if (user is null)
         {
             return Results.Json(new { detail = "not_authenticated" }, statusCode: StatusCodes.Status401Unauthorized);
@@ -100,6 +111,7 @@ public static class AuthEndpoints
 
         if (!BCrypt.Net.BCrypt.Verify(body.Value.OldPassword, user.PasswordHash))
         {
+            logger.LogWarning("Change password failed user={UserId}", user.Id);
             return Results.Json(new { detail = "Invalid password." }, statusCode: StatusCodes.Status401Unauthorized);
         }
 
@@ -111,8 +123,9 @@ public static class AuthEndpoints
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(body.Value.NewPassword, workFactor: 12);
         user.MustChangePassword = false;
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(ct);
 
+        logger.LogInformation("Change password success user={UserId}", user.Id);
         return Results.Ok(new { ok = true });
     }
 

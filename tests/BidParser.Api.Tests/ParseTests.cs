@@ -112,6 +112,25 @@ public sealed class ParseTests
     }
 
     [Fact]
+    public async Task ParseErrors_MagicBytesMismatch()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var zipRenamedToPdf = new byte[] { 0x50, 0x4B, 0x03, 0x04, 0x14, 0x00 };
+        using var response = await PostParseAsync(client, zipRenamedToPdf, "renamed.pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "1.0", "5.0");
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var detail = json.GetProperty("detail");
+        detail.GetProperty("stage").GetString().Should().Be("upload");
+        detail.GetProperty("hint").GetString().Should().Be("Unsupported file format.");
+        detail.GetProperty("message").GetString().Should().Be("Unsupported file format.");
+    }
+
+    [Fact]
     public async Task ParseErrors_ParseError()
     {
         var parseErrorParser = new TestParser(
@@ -122,7 +141,7 @@ public sealed class ParseTests
         using var client = fixture.Factory.CreateClient();
         await ApiTestFixture.UnlockAdminAsync(client);
 
-        using var response = await PostParseAsync(client, new byte[] { 1 }, "test.pdf", "application/pdf",
+        using var response = await PostParseAsync(client, MinimalPdfBytes(), "test.pdf", "application/pdf",
             "TestVendor", "test-parse-error", "1.0", "5.0");
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
@@ -144,7 +163,7 @@ public sealed class ParseTests
         using var client = fixture.Factory.CreateClient();
         await ApiTestFixture.UnlockAdminAsync(client);
 
-        using var response = await PostParseAsync(client, new byte[] { 1 }, "test.pdf", "application/pdf",
+        using var response = await PostParseAsync(client, MinimalPdfBytes(), "test.pdf", "application/pdf",
             "TestVendor", "test-exception", "1.0", "5.0");
 
         response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
@@ -187,12 +206,12 @@ public sealed class ParseTests
 
         for (var index = 0; index < 10; index++)
         {
-            using var response = await PostParseAsync(client, new byte[] { 1 }, $"test-{index}.pdf", "application/pdf",
+            using var response = await PostParseAsync(client, MinimalPdfBytes(), $"test-{index}.pdf", "application/pdf",
                 "TestVendor", "test-rate-limit", "1.0", "5.0");
             response.StatusCode.Should().Be(HttpStatusCode.OK);
         }
 
-        using var limited = await PostParseAsync(client, new byte[] { 1 }, "test-limited.pdf", "application/pdf",
+        using var limited = await PostParseAsync(client, MinimalPdfBytes(), "test-limited.pdf", "application/pdf",
             "TestVendor", "test-rate-limit", "1.0", "5.0");
         limited.StatusCode.Should().Be((HttpStatusCode)429);
         limited.Headers.RetryAfter.Should().NotBeNull();
@@ -285,7 +304,7 @@ public sealed class ParseTests
         using var client = fixture.Factory.CreateClient();
         await ApiTestFixture.UnlockAdminAsync(client);
 
-        using var response = await PostParseAsync(client, new byte[] { 1 }, "test.pdf", "application/pdf",
+        using var response = await PostParseAsync(client, MinimalPdfBytes(), "test.pdf", "application/pdf",
             "TestVendor", "test-null-total", "1.0", "5.0");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -376,6 +395,8 @@ public sealed class ParseTests
 
         throw new DirectoryNotFoundException("Could not locate repository root.");
     }
+
+    private static byte[] MinimalPdfBytes() => "%PDF-1.7\n"u8.ToArray();
 
     // ── test infrastructure ───────────────────────────────────────────────────
 

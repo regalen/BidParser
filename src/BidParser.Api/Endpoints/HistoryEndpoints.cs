@@ -24,12 +24,13 @@ public static class HistoryEndpoints
         HttpContext context,
         AppDbContext db,
         IParserRegistry registry,
+        ILoggerFactory loggerFactory,
         int limit = 10,
         int offset = 0,
         string? q = null,
         CancellationToken ct = default)
     {
-        var user = await EndpointHelpers.CurrentUserAsync(context, db);
+        var user = await EndpointHelpers.CurrentUserAsync(context, db, ct);
         if (user is null)
         {
             return Results.Json(new { detail = "not_authenticated" }, statusCode: 401);
@@ -42,8 +43,10 @@ public static class HistoryEndpoints
         var query = db.ParseJobs.Where(j => j.UserId == user.Id);
         if (needle.Length > 0)
         {
-            var lower = needle.ToLower();
-            query = query.Where(j => j.SourceFilename.ToLower().Contains(lower));
+            query = query.Where(j => EF.Functions.Like(
+                j.SourceFilename,
+                $"%{EscapeLikePattern(needle)}%",
+                "\\"));
         }
 
         var total = await query.CountAsync(ct);
@@ -66,11 +69,22 @@ public static class HistoryEndpoints
             RelativeWhen(j.CreatedAt),
             j.TotalsMatch)).ToList();
 
+        loggerFactory.CreateLogger(nameof(HistoryEndpoints)).LogInformation(
+            "History list user={UserId} limit={Limit} offset={Offset} has_query={HasQuery} total={Total}",
+            user.Id,
+            limit,
+            offset,
+            needle.Length > 0,
+            total);
         return Results.Ok(new HistoryResponse(rows, total));
     }
 
     private static async Task<IResult> DownloadSourceAsync(
-        int id, HttpContext context, AppDbContext db, CancellationToken ct)
+        int id,
+        HttpContext context,
+        AppDbContext db,
+        ILoggerFactory loggerFactory,
+        CancellationToken ct)
     {
         var job = await GetJobForUserAsync(id, context, db, ct);
         if (job is null)
@@ -85,13 +99,22 @@ public static class HistoryEndpoints
 
         context.Response.Headers["Content-Disposition"] =
             $"attachment; filename=\"{job.SourceFilename}\"";
+        loggerFactory.CreateLogger(nameof(HistoryEndpoints)).LogInformation(
+            "History download {Kind} job={JobId} user={UserId}",
+            "source",
+            job.Id,
+            job.UserId);
         return Results.File(
             new FileStream(job.SourcePath, FileMode.Open, FileAccess.Read, FileShare.Read),
             MimeForExtension(job.SourcePath));
     }
 
     private static async Task<IResult> DownloadOutputAsync(
-        int id, HttpContext context, AppDbContext db, CancellationToken ct)
+        int id,
+        HttpContext context,
+        AppDbContext db,
+        ILoggerFactory loggerFactory,
+        CancellationToken ct)
     {
         var job = await GetJobForUserAsync(id, context, db, ct);
         if (job is null)
@@ -107,6 +130,11 @@ public static class HistoryEndpoints
         var downloadName = $"{Path.GetFileNameWithoutExtension(job.SourceFilename)}_parsed.xlsx";
         context.Response.Headers["Content-Disposition"] =
             $"attachment; filename=\"{downloadName}\"";
+        loggerFactory.CreateLogger(nameof(HistoryEndpoints)).LogInformation(
+            "History download {Kind} job={JobId} user={UserId}",
+            "output",
+            job.Id,
+            job.UserId);
         return Results.File(
             new FileStream(job.OutputPath, FileMode.Open, FileAccess.Read, FileShare.Read),
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -132,6 +160,12 @@ public static class HistoryEndpoints
             ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             _ => "application/octet-stream"
         };
+
+    private static string EscapeLikePattern(string value) =>
+        value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
 
     // Verbatim port of Python's _relative_when(). Strings must match exactly.
     internal static string RelativeWhen(DateTime value)

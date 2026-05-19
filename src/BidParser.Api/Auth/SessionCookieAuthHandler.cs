@@ -69,7 +69,9 @@ public sealed class SessionCookieAuthHandler : AuthenticationHandler<Authenticat
 
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var user = await db.Users.AsNoTracking().SingleOrDefaultAsync(candidate => candidate.Id == payload.UserId);
+        var user = await db.Users.AsNoTracking().SingleOrDefaultAsync(
+            candidate => candidate.Id == payload.UserId,
+            Context.RequestAborted);
         if (user is null)
         {
             return AuthenticateResult.Fail("User not found.");
@@ -97,6 +99,13 @@ public sealed class SessionCookieAuthHandler : AuthenticationHandler<Authenticat
     {
         Response.StatusCode = StatusCodes.Status403Forbidden;
         var detail = Context.User.HasClaim("must_change_password", "true") ? "password_change_required" : "admin_required";
+        if (detail == "password_change_required")
+        {
+            Logger.LogWarning(
+                "Authorization denied: password_change_required user={UserId}",
+                Context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown");
+        }
+
         return Response.WriteAsJsonAsync(new { detail });
     }
 

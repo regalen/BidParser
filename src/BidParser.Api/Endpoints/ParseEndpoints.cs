@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Diagnostics;
 using BidParser.Api.Auth;
 using Microsoft.Extensions.Primitives;
 using BidParser.Api.Options;
@@ -80,7 +81,7 @@ public static class ParseEndpoints
             return Results.Json(new { detail = "File is too large." }, statusCode: 413);
         }
 
-        var user = await EndpointHelpers.CurrentUserAsync(context, db);
+        var user = await EndpointHelpers.CurrentUserAsync(context, db, ct);
         if (user is null)
         {
             return Results.Json(new { detail = "not_authenticated" }, statusCode: 401);
@@ -90,6 +91,7 @@ public static class ParseEndpoints
         await using var stream = file.OpenReadStream();
 
         ParseServiceResult result;
+        var stopwatch = Stopwatch.StartNew();
         try
         {
             result = await parseService.ParseAsync(
@@ -117,6 +119,16 @@ public static class ParseEndpoints
                 new { detail = new { stage = ex.Stage, hint = ex.Hint, message = ex.Message } },
                 statusCode: 422);
         }
+
+        stopwatch.Stop();
+        logger.LogInformation(
+            "Parse {Slug} ok user={UserId} computed={Computed:F2} quoted={Quoted:F2} match={Match} ms={Ms}",
+            parserSlug,
+            user.Id,
+            result.Validation.ComputedTotal,
+            result.Validation.QuotedTotal.GetValueOrDefault(),
+            result.Validation.Matches,
+            stopwatch.ElapsedMilliseconds);
 
         context.Response.Headers["X-Validation"] = result.Validation.Matches ? "match" : "mismatch";
         context.Response.Headers["X-Computed-Total"] =

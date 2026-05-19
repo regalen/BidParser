@@ -1,6 +1,7 @@
 using BidParser.Api.Auth;
 using BidParser.Api.Endpoints;
 using BidParser.Api.Hosting;
+using BidParser.Api.Middleware;
 using BidParser.Api.Options;
 using BidParser.Domain.Abstractions;
 using BidParser.Infrastructure.Persistence;
@@ -127,6 +128,7 @@ foreach (var ip in appOptions.ForwardedAllowIpAddresses)
 
 app.UseForwardedHeaders(forwardedHeadersOptions);
 app.UseExceptionHandler();
+app.UseSecurityHeaders();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();

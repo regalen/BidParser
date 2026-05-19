@@ -61,7 +61,7 @@ public sealed class AppDbContextModelSnapshot : ModelSnapshot
             entity.Property<string>("SourceFilename")
                 .IsRequired()
                 .HasMaxLength(255)
-                .HasColumnType("TEXT")
+                .HasColumnType("TEXT COLLATE NOCASE")
                 .HasColumnName("source_filename");
 
             entity.Property<string>("SourcePath")
@@ -86,6 +86,9 @@ public sealed class AppDbContextModelSnapshot : ModelSnapshot
 
             entity.HasKey("Id");
             entity.HasIndex("UserId").HasDatabaseName("ix_parse_jobs_user_id");
+            entity.HasIndex("UserId", "CreatedAt")
+                .IsDescending(false, true)
+                .HasDatabaseName("ix_parse_jobs_user_id_created_at");
             entity.ToTable("parse_jobs", (string)null);
         });
 

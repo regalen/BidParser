@@ -19,15 +19,20 @@ public static class UsersEndpoints
         return app;
     }
 
-    private static async Task<IResult> ListUsersAsync(AppDbContext db)
+    private static async Task<IResult> ListUsersAsync(AppDbContext db, CancellationToken ct)
     {
-        var users = await db.Users.OrderBy(user => user.Username).ToListAsync();
+        var users = await db.Users.OrderBy(user => user.Username).ToListAsync(ct);
         return Results.Ok(users.Select(UserPublic.FromEntity));
     }
 
-    private static async Task<IResult> CreateUserAsync(HttpRequest request, AppDbContext db)
+    private static async Task<IResult> CreateUserAsync(
+        HttpContext context,
+        HttpRequest request,
+        AppDbContext db,
+        ILoggerFactory loggerFactory,
+        CancellationToken ct)
     {
-        var body = await EndpointHelpers.ReadJsonBodyAsync<UserCreateRequest>(request);
+        var body = await EndpointHelpers.ReadJsonBodyAsync<UserCreateRequest>(request, ct);
         if (!body.IsSuccess || body.Value is null)
         {
             return EndpointHelpers.ValidationProblem(body.Error ?? "Invalid request body.");
@@ -44,11 +49,12 @@ public static class UsersEndpoints
             return EndpointHelpers.ValidationProblem("Invalid role.");
         }
 
-        if (await UsernameExistsAsync(db, username))
+        if (await UsernameExistsAsync(db, username, ct))
         {
             return Results.Json(new { detail = "Username already exists." }, statusCode: StatusCodes.Status409Conflict);
         }
 
+        var admin = await EndpointHelpers.CurrentUserAsync(context, db, ct);
         var user = new User
         {
             Username = username,
@@ -61,11 +67,11 @@ public static class UsersEndpoints
         db.Users.Add(user);
         try
         {
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(ct);
         }
         catch (DbUpdateException)
         {
-            if (await UsernameExistsAsync(db, username))
+            if (await UsernameExistsAsync(db, username, ct))
             {
                 return Results.Json(new { detail = "Username already exists." }, statusCode: StatusCodes.Status409Conflict);
             }
@@ -73,18 +79,29 @@ public static class UsersEndpoints
             throw;
         }
 
+        loggerFactory.CreateLogger(nameof(UsersEndpoints)).LogInformation(
+            "Admin {Action} user {TargetUserId} by {AdminUserId}",
+            "Create",
+            user.Id,
+            admin?.Id);
         return Results.Ok(UserPublic.FromEntity(user));
     }
 
-    private static async Task<IResult> UpdateUserAsync(int userId, HttpRequest request, AppDbContext db)
+    private static async Task<IResult> UpdateUserAsync(
+        int userId,
+        HttpContext context,
+        HttpRequest request,
+        AppDbContext db,
+        ILoggerFactory loggerFactory,
+        CancellationToken ct)
     {
-        var body = await EndpointHelpers.ReadJsonBodyAsync<UserUpdateRequest>(request);
+        var body = await EndpointHelpers.ReadJsonBodyAsync<UserUpdateRequest>(request, ct);
         if (!body.IsSuccess || body.Value is null)
         {
             return EndpointHelpers.ValidationProblem(body.Error ?? "Invalid request body.");
         }
 
-        var user = await db.Users.SingleOrDefaultAsync(candidate => candidate.Id == userId);
+        var user = await db.Users.SingleOrDefaultAsync(candidate => candidate.Id == userId, ct);
         if (user is null)
         {
             return Results.Json(new { detail = "User not found." }, statusCode: StatusCodes.Status404NotFound);
@@ -100,7 +117,7 @@ public static class UsersEndpoints
 
             if (!string.Equals(username, user.Username, StringComparison.OrdinalIgnoreCase))
             {
-                if (await UsernameExistsAsync(db, username))
+                if (await UsernameExistsAsync(db, username, ct))
                 {
                     return Results.Json(new { detail = "Username already exists." }, statusCode: StatusCodes.Status409Conflict);
                 }
@@ -126,7 +143,7 @@ public static class UsersEndpoints
                 return EndpointHelpers.ValidationProblem("Invalid role.");
             }
 
-            if (user.Role == UserRole.Admin && body.Value.Role != UserRole.Admin && await AdminCountAsync(db) <= 1)
+            if (user.Role == UserRole.Admin && body.Value.Role != UserRole.Admin && await AdminCountAsync(db, ct) <= 1)
             {
                 return Results.Json(new { detail = "Cannot remove the last admin." }, statusCode: StatusCodes.Status409Conflict);
             }
@@ -140,42 +157,58 @@ public static class UsersEndpoints
             user.MustChangePassword = true;
         }
 
-        await db.SaveChangesAsync();
+        var admin = await EndpointHelpers.CurrentUserAsync(context, db, ct);
+        await db.SaveChangesAsync(ct);
+        loggerFactory.CreateLogger(nameof(UsersEndpoints)).LogInformation(
+            "Admin {Action} user {TargetUserId} by {AdminUserId}",
+            "Update",
+            user.Id,
+            admin?.Id);
         return Results.Ok(UserPublic.FromEntity(user));
     }
 
-    private static async Task<IResult> DeleteUserAsync(int userId, HttpContext context, AppDbContext db)
+    private static async Task<IResult> DeleteUserAsync(
+        int userId,
+        HttpContext context,
+        AppDbContext db,
+        ILoggerFactory loggerFactory,
+        CancellationToken ct)
     {
-        var admin = await EndpointHelpers.CurrentUserAsync(context, db);
+        var admin = await EndpointHelpers.CurrentUserAsync(context, db, ct);
         if (admin is not null && userId == admin.Id)
         {
             return Results.Json(new { detail = "Admins cannot delete themselves." }, statusCode: StatusCodes.Status409Conflict);
         }
 
-        var user = await db.Users.SingleOrDefaultAsync(candidate => candidate.Id == userId);
+        var user = await db.Users.SingleOrDefaultAsync(candidate => candidate.Id == userId, ct);
         if (user is null)
         {
             return Results.Json(new { detail = "User not found." }, statusCode: StatusCodes.Status404NotFound);
         }
 
-        if (user.Role == UserRole.Admin && await AdminCountAsync(db) <= 1)
+        if (user.Role == UserRole.Admin && await AdminCountAsync(db, ct) <= 1)
         {
             return Results.Json(new { detail = "Cannot remove the last admin." }, statusCode: StatusCodes.Status409Conflict);
         }
 
         db.Users.Remove(user);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(ct);
+        loggerFactory.CreateLogger(nameof(UsersEndpoints)).LogInformation(
+            "Admin {Action} user {TargetUserId} by {AdminUserId}",
+            "Delete",
+            userId,
+            admin?.Id);
         return Results.Ok(new { ok = true });
     }
 
-    private static Task<bool> UsernameExistsAsync(AppDbContext db, string username)
+    private static Task<bool> UsernameExistsAsync(AppDbContext db, string username, CancellationToken ct)
     {
-        return db.Users.AnyAsync(user => user.Username == username);
+        return db.Users.AnyAsync(user => user.Username == username, ct);
     }
 
-    private static Task<int> AdminCountAsync(AppDbContext db)
+    private static Task<int> AdminCountAsync(AppDbContext db, CancellationToken ct)
     {
-        return db.Users.CountAsync(user => user.Role == UserRole.Admin);
+        return db.Users.CountAsync(user => user.Role == UserRole.Admin, ct);
     }
 
     private static bool IsValidRole(string role)
