@@ -41,10 +41,11 @@ The plan is structured so **Phase 1 is the production-blocking work** (must ship
 - Phase 1 complete in commit `adb8be5` (`Harden production API blockers`).
   - Verified with `dotnet test BidParser.sln`: 57/57 passing.
   - Manual frontend happy-path verification remains outstanding.
-- Phase 2 started.
+- Phase 2 started in commit `dd100b3` (`Start phase 2 remediation`).
   - Step 2.1 complete: `ForeignUpliftWriter` writes `decimal` values directly; template writer tests passed against existing golden workbooks, so no fixture regeneration was needed.
   - Step 2.2 complete: entity timestamp initializers removed; `AppDbContext.StampTimestamps()` is now the single source.
   - Verified with `dotnet test BidParser.sln`: 57/57 passing after Steps 2.1 and 2.2.
+  - Next planned work: Step 2.3 composite history index and Step 2.4 filename search collation/migration.
 
 ### Phase 1 — Production blockers · ~1 day · MUST ship before broader rollout
 
