@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Encodings.Web;
 using System.Globalization;
+using BidParser.Api.Contracts;
 using BidParser.Api.Options;
 using BidParser.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
@@ -77,13 +78,13 @@ public sealed class SessionCookieAuthHandler : AuthenticationHandler<Authenticat
             return AuthenticateResult.Fail("User not found.");
         }
 
-        var claims = new List<Claim>
-        {
+        List<Claim> claims =
+        [
             new(ClaimTypes.NameIdentifier, user.Id.ToString(CultureInfo.InvariantCulture)),
             new(ClaimTypes.Name, user.Username),
-            new(ClaimTypes.Role, user.Role),
+            new(ClaimTypes.Role, user.Role.ToString().ToLowerInvariant()),
             new("must_change_password", user.MustChangePassword ? "true" : "false")
-        };
+        ];
 
         var identity = new ClaimsIdentity(claims, SchemeName);
         return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName));
@@ -92,7 +93,7 @@ public sealed class SessionCookieAuthHandler : AuthenticationHandler<Authenticat
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
     {
         Response.StatusCode = StatusCodes.Status401Unauthorized;
-        return Response.WriteAsJsonAsync(new { detail = "not_authenticated" });
+        return Response.WriteAsJsonAsync(new ApiError("not_authenticated"));
     }
 
     protected override Task HandleForbiddenAsync(AuthenticationProperties properties)
@@ -106,7 +107,7 @@ public sealed class SessionCookieAuthHandler : AuthenticationHandler<Authenticat
                 Context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown");
         }
 
-        return Response.WriteAsJsonAsync(new { detail });
+        return Response.WriteAsJsonAsync(new ApiError(detail));
     }
 
     private sealed record SessionPayload(int UserId, long IssuedAt);

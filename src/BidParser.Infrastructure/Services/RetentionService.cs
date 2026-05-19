@@ -4,28 +4,27 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BidParser.Infrastructure.Services;
 
-public sealed class RetentionService
+public sealed class RetentionService(AppDbContext db, FileStorage storage)
 {
-    private readonly AppDbContext _db;
-    private readonly FileStorage _storage;
-
-    public RetentionService(AppDbContext db, FileStorage storage)
-    {
-        _db = db;
-        _storage = storage;
-    }
-
     public async Task<int> CleanupOldParseJobsAsync(int retentionDays, CancellationToken ct = default)
     {
         var cutoff = DateTime.UtcNow.AddDays(-retentionDays);
-        var jobs = await _db.ParseJobs.Where(j => j.CreatedAt < cutoff).ToListAsync(ct);
-        foreach (var job in jobs)
+
+        var filePaths = await db.ParseJobs
+            .Where(j => j.CreatedAt < cutoff)
+            .Select(j => new { j.SourcePath, j.OutputPath })
+            .ToListAsync(ct);
+
+        foreach (var paths in filePaths)
         {
-            _storage.TryDelete(job.SourcePath);
-            _storage.TryDelete(job.OutputPath);
-            _db.ParseJobs.Remove(job);
+            storage.TryDelete(paths.SourcePath);
+            storage.TryDelete(paths.OutputPath);
         }
-        await _db.SaveChangesAsync(ct);
-        return jobs.Count;
+
+        var deleted = await db.ParseJobs
+            .Where(j => j.CreatedAt < cutoff)
+            .ExecuteDeleteAsync(ct);
+
+        return deleted;
     }
 }

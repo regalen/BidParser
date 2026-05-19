@@ -1,4 +1,5 @@
 using BidParser.Api.Auth;
+using BidParser.Api.Contracts;
 using BidParser.Api.Endpoints;
 using BidParser.Api.Hosting;
 using BidParser.Api.Middleware;
@@ -35,7 +36,7 @@ builder.Services.Configure<JsonOptions>(options =>
     options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
 });
 builder.Services.AddSingleton<SqlitePragmaConnectionInterceptor>();
-builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
+builder.Services.AddDbContextPool<AppDbContext>((serviceProvider, options) =>
 {
     options.UseSqlite(appOptions.ToSqliteConnectionString());
     options.AddInterceptors(serviceProvider.GetRequiredService<SqlitePragmaConnectionInterceptor>());
@@ -74,7 +75,7 @@ builder.Services.AddRateLimiter(options =>
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
         context.HttpContext.Response.Headers.RetryAfter = "60";
         await context.HttpContext.Response.WriteAsJsonAsync(
-            new { detail = "Too many parse requests. Please try again later." },
+            new ApiError("Too many parse requests. Please try again later."),
             cancellationToken);
     };
 

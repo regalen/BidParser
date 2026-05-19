@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Globalization;
 using System.Text.Json;
+using BidParser.Api.Contracts;
 using BidParser.Infrastructure.Entities;
 using BidParser.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -46,7 +47,7 @@ internal static class EndpointHelpers
 
     public static IResult ValidationProblem(string detail)
     {
-        return Results.Json(new { detail }, statusCode: StatusCodes.Status400BadRequest);
+        return Results.Json(new ApiError(detail), statusCode: StatusCodes.Status400BadRequest);
     }
 }
 

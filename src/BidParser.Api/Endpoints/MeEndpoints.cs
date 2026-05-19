@@ -1,11 +1,13 @@
 using BidParser.Api.Auth;
+using BidParser.Api.Contracts;
+using BidParser.Domain.Constants;
 using BidParser.Infrastructure.Persistence;
 
 namespace BidParser.Api.Endpoints;
 
 public static class MeEndpoints
 {
-    private static readonly HashSet<string> KnownVendors = new(StringComparer.Ordinal) { "Nutanix" };
+    private static readonly HashSet<string> KnownVendors = new(StringComparer.Ordinal) { Vendors.Nutanix };
 
     public static IEndpointRouteBuilder MapMeEndpoints(this IEndpointRouteBuilder app)
     {
@@ -21,7 +23,7 @@ public static class MeEndpoints
     {
         var user = await EndpointHelpers.CurrentUserAsync(context, db, ct);
         return user is null
-            ? Results.Json(new { detail = "not_authenticated" }, statusCode: StatusCodes.Status401Unauthorized)
+            ? Results.Json(new ApiError("not_authenticated"), statusCode: StatusCodes.Status401Unauthorized)
             : Results.Ok(UserPublic.FromEntity(user));
     }
 
@@ -41,7 +43,7 @@ public static class MeEndpoints
         var user = await EndpointHelpers.CurrentUserAsync(context, db, ct);
         if (user is null)
         {
-            return Results.Json(new { detail = "not_authenticated" }, statusCode: StatusCodes.Status401Unauthorized);
+            return Results.Json(new ApiError("not_authenticated"), statusCode: StatusCodes.Status401Unauthorized);
         }
 
         if (body.Value.DefaultVendor is not null)
@@ -49,7 +51,7 @@ public static class MeEndpoints
             var vendor = body.Value.DefaultVendor.Trim();
             if (!KnownVendors.Contains(vendor))
             {
-                return Results.Json(new { detail = "Unknown vendor." }, statusCode: StatusCodes.Status400BadRequest);
+                return Results.Json(new ApiError("Unknown vendor."), statusCode: StatusCodes.Status400BadRequest);
             }
 
             user.DefaultVendor = vendor;

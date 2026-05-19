@@ -1,4 +1,5 @@
 using BidParser.Api.Auth;
+using BidParser.Api.Contracts;
 using BidParser.Infrastructure.Entities;
 using BidParser.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -51,7 +52,7 @@ public static class UsersEndpoints
 
         if (await UsernameExistsAsync(db, username, ct))
         {
-            return Results.Json(new { detail = "Username already exists." }, statusCode: StatusCodes.Status409Conflict);
+            return Results.Json(new ApiError("Username already exists."), statusCode: StatusCodes.Status409Conflict);
         }
 
         var admin = await EndpointHelpers.CurrentUserAsync(context, db, ct);
@@ -59,7 +60,7 @@ public static class UsersEndpoints
         {
             Username = username,
             Name = name,
-            Role = body.Value.Role,
+            Role = ParseUserRole(body.Value.Role),
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("changeme", workFactor: 12),
             MustChangePassword = true
         };
@@ -73,7 +74,7 @@ public static class UsersEndpoints
         {
             if (await UsernameExistsAsync(db, username, ct))
             {
-                return Results.Json(new { detail = "Username already exists." }, statusCode: StatusCodes.Status409Conflict);
+                return Results.Json(new ApiError("Username already exists."), statusCode: StatusCodes.Status409Conflict);
             }
 
             throw;
@@ -104,7 +105,7 @@ public static class UsersEndpoints
         var user = await db.Users.SingleOrDefaultAsync(candidate => candidate.Id == userId, ct);
         if (user is null)
         {
-            return Results.Json(new { detail = "User not found." }, statusCode: StatusCodes.Status404NotFound);
+            return Results.Json(new ApiError("User not found."), statusCode: StatusCodes.Status404NotFound);
         }
 
         if (body.Value.Username is not null)
@@ -119,7 +120,7 @@ public static class UsersEndpoints
             {
                 if (await UsernameExistsAsync(db, username, ct))
                 {
-                    return Results.Json(new { detail = "Username already exists." }, statusCode: StatusCodes.Status409Conflict);
+                    return Results.Json(new ApiError("Username already exists."), statusCode: StatusCodes.Status409Conflict);
                 }
 
                 user.Username = username;
@@ -136,19 +137,23 @@ public static class UsersEndpoints
             user.Name = name;
         }
 
-        if (body.Value.Role is not null && body.Value.Role != user.Role)
+        if (body.Value.Role is not null)
         {
             if (!IsValidRole(body.Value.Role))
             {
                 return EndpointHelpers.ValidationProblem("Invalid role.");
             }
 
-            if (user.Role == UserRole.Admin && body.Value.Role != UserRole.Admin && await AdminCountAsync(db, ct) <= 1)
+            var newRole = ParseUserRole(body.Value.Role);
+            if (newRole != user.Role)
             {
-                return Results.Json(new { detail = "Cannot remove the last admin." }, statusCode: StatusCodes.Status409Conflict);
-            }
+                if (user.Role == UserRole.Admin && newRole != UserRole.Admin && await AdminCountAsync(db, ct) <= 1)
+                {
+                    return Results.Json(new ApiError("Cannot remove the last admin."), statusCode: StatusCodes.Status409Conflict);
+                }
 
-            user.Role = body.Value.Role;
+                user.Role = newRole;
+            }
         }
 
         if (body.Value.ResetPassword)
@@ -177,18 +182,18 @@ public static class UsersEndpoints
         var admin = await EndpointHelpers.CurrentUserAsync(context, db, ct);
         if (admin is not null && userId == admin.Id)
         {
-            return Results.Json(new { detail = "Admins cannot delete themselves." }, statusCode: StatusCodes.Status409Conflict);
+            return Results.Json(new ApiError("Admins cannot delete themselves."), statusCode: StatusCodes.Status409Conflict);
         }
 
         var user = await db.Users.SingleOrDefaultAsync(candidate => candidate.Id == userId, ct);
         if (user is null)
         {
-            return Results.Json(new { detail = "User not found." }, statusCode: StatusCodes.Status404NotFound);
+            return Results.Json(new ApiError("User not found."), statusCode: StatusCodes.Status404NotFound);
         }
 
         if (user.Role == UserRole.Admin && await AdminCountAsync(db, ct) <= 1)
         {
-            return Results.Json(new { detail = "Cannot remove the last admin." }, statusCode: StatusCodes.Status409Conflict);
+            return Results.Json(new ApiError("Cannot remove the last admin."), statusCode: StatusCodes.Status409Conflict);
         }
 
         db.Users.Remove(user);
@@ -198,7 +203,7 @@ public static class UsersEndpoints
             "Delete",
             userId,
             admin?.Id);
-        return Results.Ok(new { ok = true });
+        return Results.Ok(new OkResponse());
     }
 
     private static Task<bool> UsernameExistsAsync(AppDbContext db, string username, CancellationToken ct)
@@ -211,11 +216,12 @@ public static class UsersEndpoints
         return db.Users.CountAsync(user => user.Role == UserRole.Admin, ct);
     }
 
-    private static bool IsValidRole(string role)
-    {
-        return role is UserRole.Admin or UserRole.User;
-    }
+    private static bool IsValidRole(string role) =>
+        Enum.TryParse<UserRole>(role, ignoreCase: true, out _);
 
-    private sealed record UserCreateRequest(string Username, string Name, string Role = UserRole.User);
+    private static UserRole ParseUserRole(string role) =>
+        Enum.Parse<UserRole>(role, ignoreCase: true);
+
+    private sealed record UserCreateRequest(string Username, string Name, string Role = "user");
     private sealed record UserUpdateRequest(string? Username, string? Name, string? Role, bool ResetPassword = false);
 }

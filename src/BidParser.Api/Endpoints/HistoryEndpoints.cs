@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 using BidParser.Api.Auth;
+using BidParser.Api.Contracts;
 using BidParser.Api.Serialization;
 using BidParser.Domain.Abstractions;
 using BidParser.Infrastructure.Entities;
@@ -33,7 +34,7 @@ public static class HistoryEndpoints
         var user = await EndpointHelpers.CurrentUserAsync(context, db, ct);
         if (user is null)
         {
-            return Results.Json(new { detail = "not_authenticated" }, statusCode: 401);
+            return Results.Json(new ApiError("not_authenticated"), statusCode: 401);
         }
 
         limit = Math.Clamp(limit, 1, 100);
@@ -89,12 +90,12 @@ public static class HistoryEndpoints
         var job = await GetJobForUserAsync(id, context, db, ct);
         if (job is null)
         {
-            return Results.Json(new { detail = "Job not found." }, statusCode: 404);
+            return Results.Json(new ApiError("Job not found."), statusCode: 404);
         }
 
         if (!File.Exists(job.SourcePath))
         {
-            return Results.Json(new { detail = "File not found." }, statusCode: 404);
+            return Results.Json(new ApiError("File not found."), statusCode: 404);
         }
 
         context.Response.Headers["Content-Disposition"] =
@@ -119,12 +120,12 @@ public static class HistoryEndpoints
         var job = await GetJobForUserAsync(id, context, db, ct);
         if (job is null)
         {
-            return Results.Json(new { detail = "Job not found." }, statusCode: 404);
+            return Results.Json(new ApiError("Job not found."), statusCode: 404);
         }
 
         if (!File.Exists(job.OutputPath))
         {
-            return Results.Json(new { detail = "File not found." }, statusCode: 404);
+            return Results.Json(new ApiError("File not found."), statusCode: 404);
         }
 
         var downloadName = $"{Path.GetFileNameWithoutExtension(job.SourceFilename)}_parsed.xlsx";

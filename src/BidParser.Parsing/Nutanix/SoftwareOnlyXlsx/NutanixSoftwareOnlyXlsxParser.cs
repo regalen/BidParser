@@ -1,4 +1,5 @@
 using BidParser.Domain.Abstractions;
+using BidParser.Domain.Constants;
 using BidParser.Domain.Models;
 using BidParser.Parsing.Cleaning;
 using BidParser.Parsing.Xlsx;
@@ -7,15 +8,16 @@ namespace BidParser.Parsing.Nutanix.SoftwareOnlyXlsx;
 
 public sealed class NutanixSoftwareOnlyXlsxParser : IParser
 {
-    public string Slug => "nutanix_software_only_xlsx";
+    public string Slug => ParserSlugs.NutanixSoftwareOnlyXlsx;
     public string DisplayName => "Software Only (XLSX)";
-    public string Vendor => "Nutanix";
+    public string Vendor => Vendors.Nutanix;
     public string AcceptedMime => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-    public string CrmTemplate => "Foreign Uplift";
+    public string CrmTemplate => CrmTemplates.ForeignUplift;
 
     public ParseResult Parse(string path)
     {
-        var sheet = WorkbookReader.ActiveSheet(path);
+        using var workbook = WorkbookReader.Open(path);
+        var sheet = workbook.Worksheets.First();
         var headerCell = WorkbookReader.FindCell(sheet, "Quote Number")
             ?? throw new ParseError("detect", "Could not find the Quote Number table header.", "Could not find Quote Number header");
 

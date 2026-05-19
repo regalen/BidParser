@@ -6,7 +6,7 @@ public sealed class User
     public required string Username { get; set; }
     public string? Name { get; set; }
     public required string PasswordHash { get; set; }
-    public string Role { get; set; } = UserRole.User;
+    public UserRole Role { get; set; } = UserRole.User;
     public bool MustChangePassword { get; set; } = true;
     public string? DefaultVendor { get; set; }
     public decimal? FxRate { get; set; }

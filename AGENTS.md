@@ -6,13 +6,13 @@ This file is the canonical project reference for AI coding agents working in thi
 
 The backend has been re-platformed from Python/FastAPI to ASP.NET Core 10. The current artefacts are:
 
-- `src/BidParser.Api/` — ASP.NET Core 10 Minimal API app. Endpoints for `/auth/*`, `/me`, admin `/users`, `/parsers`, `/parse`, `/history`, and health check. Auth via custom `SessionCookieAuthHandler` + Data Protection cookies. CSRF filter, rate limiter, decimal JSON converters, error normalisation. Hosts the React SPA from `wwwroot/` in production.
-- `src/BidParser.Domain/` — `LineItem`, `QuoteMetadata`, `ValidationResult`, `ParseResult`, `ParseError`, `IParser`, `IParserRegistry`.
-- `src/BidParser.Infrastructure/` — `AppDbContext` (EF Core + SQLite), `User`/`ParseJob` entities, EF migration, SQLite WAL interceptor, `FileStorage`, `ParseService`, `RetentionService`.
+- `src/BidParser.Api/` — ASP.NET Core 10 Minimal API app. Endpoints for `/auth/*`, `/me`, admin `/users`, `/parsers`, `/parse`, `/history`, and health check. Auth via custom `SessionCookieAuthHandler` + Data Protection cookies. CSRF filter, dual rate limiters (custom `AuthRateLimiter` on `/auth/*` plus the .NET built-in `"parse"` token-bucket policy on `/api/parse`), `GlobalExceptionHandler` returning 500 ProblemDetails (no exception details leaked), `SecurityHeadersMiddleware` (X-Content-Type-Options, X-Frame-Options, Referrer-Policy, HSTS-on-HTTPS), locked-down `ForwardedHeaders` (KnownProxies allowlist, rejects `"*"` in production), decimal JSON converters, error normalisation, and structured logging across endpoints. Typed response records live in `Contracts/` (`ApiError`, `OkResponse`, `ParseErrorDetail`, `ParseErrorResponse`, `PasswordValidationError`). Hosts the React SPA from `wwwroot/` in production.
+- `src/BidParser.Domain/` — `LineItem`, `QuoteMetadata`, `ValidationResult`, `ParseResult`, `ParseError`, `IParser`, `IParserRegistry`. `Constants/` centralises vendor (`Vendors.Nutanix`), CRM template (`CrmTemplates.ForeignUplift`), and parser slug (`ParserSlugs.NutanixSoftwareOnlyPdf`, etc.) string literals — never hand-roll these strings in new code.
+- `src/BidParser.Infrastructure/` — `AppDbContext` (EF Core + SQLite, registered via `AddDbContextPool`), `User`/`ParseJob` entities, three EF migrations (`InitialCreate`, `HistoryCompositeIndex` for `(user_id, created_at DESC)`, `SourceFilenameNoCase` for `TEXT COLLATE NOCASE` on `source_filename`), SQLite WAL interceptor, `FileStorage`, `ParseService` (validates uploads by extension AND magic bytes — `%PDF` / `PK\x03\x04` — and discards mismatches), `RetentionService` (project-then-`ExecuteDeleteAsync`). `User.Role` is the `UserRole` enum (`Admin`, `User`), stored as lowercase string via `HasConversion`. Entity timestamps are stamped exclusively by `AppDbContext.StampTimestamps()` — no `= DateTime.UtcNow` initializers on entities.
 - `src/BidParser.Parsing/` — Cleaning helpers, PDF word collection via PdfPig (`PdfWordCollector`, `PdfPigWordSplitter`, `PdfTableHelpers`), XLSX helpers via ClosedXML (`WorkbookReader`, `HeaderMap`), five Nutanix parsers, explicit `ParserRegistry`.
 - `src/BidParser.Output/` — `ForeignUpliftWriter` (ClosedXML), `OutputNaming`.
 - `tests/BidParser.Parsing.Tests/` — xUnit tests: cleaning helpers, all five parsers against golden inputs, template writer cell-by-cell equivalence against `samples/outputs/`.
-- `tests/BidParser.Api.Tests/` — xUnit + `WebApplicationFactory` integration tests: migration/bootstrap, auth flow, users admin, parse roundtrip + error matrix, history list/filter/pagination/downloads, retention cleanup.
+- `tests/BidParser.Api.Tests/` — xUnit + `WebApplicationFactory` integration tests: migration/bootstrap, auth flow, users admin, parse roundtrip + error matrix (including magic-byte mismatch, generic-exception 500 via global handler, per-user rate limit), history list/filter/pagination/downloads, health endpoint security headers, `ForwardedHeaders` trust boundary, retention cleanup.
 - `frontend/` — React/Vite/TypeScript app. Visual design language matches ProductLens (slate-50 page background, white cards with `border-slate-200` + `shadow-sm`, `#0077d4` accent, Inter typography, uppercase tracked labels). Shared utility classes live in `src/styles.css` (`.label`, `.field`, `.button`, `.button-primary`, `.button-danger`, `.icon-button`, `.card`, `.toast`). Contains the API client, auth context, route shell, login + forced password change screens (each rendered on the ProductLens slate-50 background with a centered card, accent-blue icon tile, and the shared `Footer`; the change-password screen has a live rule checklist for length/uppercase/digit/symbol/match), sticky white `AppHeader` with an `AccountChip` (display name + `@username` + ghost-red logout) and admin Settings link, V4 side-panel dashboard, Nutanix parser selection from `/api/parsers`, FX/margin inputs from `/api/me`, single-file dropzone/progress state, auto-download on parse, validation toasts, dynamic recent-uploads pagination with download actions, auth-expiry redirects, and admin user settings as a card grid. Components are extracted into individual files per the plan's repo layout, with a shared `Footer` used across all routes.
 - `samples/inputs/` — real supplier quote files. Three PDFs (`XQ-4076249.pdf`, `XQ-4108785.pdf`, `XQ-4128926.pdf`) and two XLSXs (`XQ-4076249.xlsx`, `XQ-4108785.xlsx`). All five are supplier-issued inputs the parser must handle. `XQ-4108785.pdf` and `XQ-4108785.xlsx` are the *same engagement* delivered in two envelopes; both parsers extract from **Quote D** (reseller-facing breakdown) within those files and produce matching totals (`USD 22,491.87`).
 - `samples/outputs/` — golden `XQ-*_parsed.xlsx` fixtures, one per quote number (not per input file — PDF and XLSX variants of the same quote share one golden file since they produce identical output). Used by the template-writer regression tests; regenerated whenever an output rule changes. Naming follows the spec: `<basename>_parsed.xlsx` (e.g. `XQ-4076249_parsed.xlsx`).
@@ -39,7 +39,9 @@ Implementation notes:
 
 Current implementation checkpoint:
 
-- Re-platform from Python/FastAPI to ASP.NET Core 10 complete (Phases 1–14). All 54 tests pass (`dotnet test BidParser.sln`): 25 parsing tests + 29 API integration tests.
+- Backend is ASP.NET Core 10 (re-platformed from the original Python/FastAPI implementation).
+- Production hardening complete: locked-down forwarded headers (KnownProxies allowlist, rejects `"*"` in production), `GlobalExceptionHandler` returning safe ProblemDetails (no exception messages leaked), per-user token-bucket rate limit on `/api/parse`, magic-byte upload validation (`%PDF` / `PK\x03\x04`), `SecurityHeadersMiddleware` (X-Content-Type-Options, X-Frame-Options, Referrer-Policy, HSTS on HTTPS), composite `(user_id, created_at DESC)` history index, case-insensitive filename search (`TEXT COLLATE NOCASE` + escaped `EF.Functions.Like`), structured logging across endpoints with no secrets, full `CancellationToken` propagation, typed response records (`Contracts/`), centralised vendor/slug/template constants (`Domain/Constants/`), primary constructors on services, and `AddDbContextPool` registration.
+- All 59 tests pass (`dotnet test BidParser.sln`): 25 parsing tests + 34 API integration tests.
 - Frontend unchanged — React 19 + Vite + TypeScript, proxying `/api` to `http://127.0.0.1:5000` in dev.
 - GitHub Actions CI/CD publishing is enabled: pushes to `main` and `v*` SemVer tags build and publish Docker images to GHCR.
 
@@ -363,6 +365,10 @@ Out of scope for MVP: multi-file batch upload, CSV vendor formats, vendors other
 - **CSRF**: every non-GET endpoint requires `X-Requested-With: BidParser` set by `frontend/src/api/client.ts`. Combined with SameSite=Lax, this is sufficient for an internal app.
 - **Rate limiting on `/auth/*`**: 5 attempts per minute, two independent buckets — per remote IP across `/auth/login` + `/auth/change-password`, AND per submitted username on `/auth/login` (applied pre-auth so attackers can't enumerate one username from many IPs). Either bucket tripping returns `429` with `Retry-After` and a generic body. In-memory leaky bucket; does not survive restart.
 - **`must_change_password` gate**: when the current user has the flag set, the backend returns `403 password_change_required` for every endpoint except `/auth/*` and `/me`. The frontend redirects to `/change-password` and `App.tsx` route guards keep the user there.
+- **Authorization policies are per-endpoint, not path-globbed.** A path-globbed middleware would let locked users update `/me/settings`. The three policies are:
+  - `LoggedIn` — valid session cookie; `must_change_password` is **ignored**. Used by `/auth/logout`, `/auth/change-password`, `GET /me`.
+  - `ActiveUser` — `LoggedIn` **and** `must_change_password=false`. Used everywhere else under `/api` except admin routes.
+  - `Admin` — `ActiveUser` + `role == "admin"`.
 - **Last-admin guard**: `PATCH /api/users/{id}` and `DELETE /api/users/{id}` return `409 Conflict` if the operation would leave zero admins, or if it targets the calling admin themselves.
 - **Password recovery**: no self-service. Admin `PATCH /api/users/{id}` with `{reset_password: true}` writes `changeme` and sets `must_change_password=True`.
 
@@ -382,9 +388,29 @@ Out of scope for MVP: multi-file batch upload, CSV vendor formats, vendors other
 | `GET` | `/history/{id}/output` | user | Streams the parsed `*_parsed.xlsx`. Same gating. |
 | `GET` | `/users` | admin | Admin-only user CRUD. `POST` requires `{username, name, role}`; password is set to `changeme` + `must_change_password=True`. `PATCH` accepts `{username?, name?, role?, reset_password?}`. |
 
-**`/parse` response headers** on success: `X-Validation: match | mismatch`, `X-Computed-Total`, `X-Quoted-Total`. The frontend reads these and shows a green or amber toast — mismatches never block the download.
+**`/parse` response headers** on success: `X-Validation: match | mismatch`, `X-Computed-Total`, `X-Quoted-Total`. The frontend reads these and shows a green or amber toast — mismatches never block the download. **`X-Quoted-Total` empty-header semantic**: when `QuotedTotal == null`, the header is **present with an empty string value**, not omitted. The SPA distinguishes "header missing" (parser ran but didn't emit a total) from "header present, value empty" (no quoted total to compare against). ASP.NET Core strips empty-string headers by default — preserve the empty value with `new StringValues(new string[] { "" })`.
 
 **`/parse` failure mode**: when the parser raises (PDF unreadable, header anchor missing, TOTAL missing, invalid file type, etc.), the backend returns `422` with `{detail: {stage, hint, message}}`. The uploaded source is **discarded** — no `ParseJob` row is recorded and no original is retained on disk. The frontend renders the error inline in the dropzone, preserving the form so the user can pick a different file.
+
+## Response conventions
+
+**Three error body shapes** (one per kind of failure — the SPA branches on the shape, so new endpoints must use the matching record from `src/BidParser.Api/Contracts/`):
+
+- `ApiError { Detail: string }` → `{"detail":"<message>"}` — most errors (auth 401, 404s, 409 conflicts, rate-limit 429, "Unknown vendor." 400, CSRF 403, etc.).
+- `PasswordValidationError { Detail: string[] }` → `{"detail":["msg1","msg2",…]}` — **only** `POST /auth/change-password` when password rules fail. Each string is one rule violation. The SPA joins them with a space. Do **not** stringify into a single detail.
+- `ParseErrorResponse { Detail: { Stage, Hint, Message } }` → `{"detail":{"stage":"…","hint":"…","message":"…"}}` — **only** `POST /parse` 422 (parser failure).
+
+Success responses that have no useful body use `OkResponse { Ok: true }` → `{"ok":true}`. New endpoints must use these typed records — no anonymous `new { detail = "…" }` objects.
+
+**Decimal serialisation** — money/rates always serialise as strings with a fixed scale so the SPA never has to re-format. Apply via `[JsonConverter]` attributes on DTO properties (per-field — same `decimal` type, different scales). Converters live in `src/BidParser.Api/Serialization/`.
+
+| Field(s) | Scale | Format | Notes |
+|---|---|---|---|
+| `fx_rate` | 4 dp | `"0.7400"` | EF `HasPrecision(12, 4)`; round with `decimal.Round(v, 4, MidpointRounding.AwayFromZero)` before write. |
+| `margin` | 2 dp | `"7.50"` | EF `HasPrecision(12, 2)`. |
+| `computed_total`, `quoted_total`, `X-Computed-Total`, `X-Quoted-Total` | 2 dp | `"1625358.51"` | `ToString("F2", InvariantCulture)`. |
+
+**JSON casing**: `JsonNamingPolicy.SnakeCaseLower` globally — C# `Detail` → JSON `"detail"`, `MustChangePassword` → `"must_change_password"`. New DTOs follow this without per-property `[JsonPropertyName]` attributes.
 
 ## CRM template mapping
 
@@ -419,7 +445,7 @@ Releases follow **Semantic Versioning 2.0.0**:
 
 To add a new format (new Nutanix file type, or a Dell/Lenovo quote):
 
-1. **One parser class**: `src/BidParser.Parsing/<Vendor>/<Slug>/Vendor<Slug>Parser.cs` implementing `IParser` — declare `Slug`, `DisplayName`, `Vendor`, `AcceptedMime`, `CrmTemplate`, `Parse(string path)`. Optional `Detect(string path)` defaults to `0.0`.
+1. **One parser class**: `src/BidParser.Parsing/<Vendor>/<Slug>/Vendor<Slug>Parser.cs` implementing `IParser` — declare `Slug`, `DisplayName`, `Vendor`, `AcceptedMime`, `CrmTemplate`, `Parse(string path)`. Optional `Detect(string path)` defaults to `0.0`. Reference `Vendors.X`, `CrmTemplates.X`, and `ParserSlugs.X` from `BidParser.Domain.Constants` — do not inline the string literals. For a new vendor or CRM template, add the constant first.
 2. **One registry entry**: append an instance to the `Parsers` list in `src/BidParser.Parsing/Registry/ParserRegistry.cs`. This is the only registration point; no assembly scanning.
 3. **One fixture + golden output**: drop the sample under `samples/inputs/`, hand-validate, commit the expected `*_parsed.xlsx` golden under `samples/outputs/`, and add a test case to `tests/BidParser.Parsing.Tests/`.
 4. **Optionally a new spec markdown** (`docs/<vendor>_<format>.md`) mirroring the existing five Nutanix specs, plus a one-line link from this file.
@@ -435,7 +461,7 @@ The developer **does not touch**: API routes, frontend components (dropdowns aut
 
 ## Commands
 
-- `dotnet test BidParser.sln` — full test suite (54 tests: parsing + API integration).
+- `dotnet test BidParser.sln` — full test suite (59 tests: 25 parsing + 34 API integration).
 - `dotnet run --project src/BidParser.Api` — local backend dev server (`http://localhost:5000`).
 - `cd frontend && npm run dev` — Vite frontend dev server, proxying `/api` to `http://127.0.0.1:5000`.
 - `cd frontend && npm run build` — TypeScript + production frontend build.

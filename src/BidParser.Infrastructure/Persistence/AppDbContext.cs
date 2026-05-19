@@ -36,7 +36,10 @@ public sealed class AppDbContext : DbContext
             entity.HasIndex(user => user.Username).IsUnique().HasDatabaseName("ix_users_username");
             entity.Property(user => user.Name).HasColumnName("name").HasMaxLength(255);
             entity.Property(user => user.PasswordHash).HasColumnName("password_hash").HasMaxLength(255).IsRequired();
-            entity.Property(user => user.Role).HasColumnName("role").HasMaxLength(16).IsRequired();
+            entity.Property(user => user.Role).HasColumnName("role").HasMaxLength(16).IsRequired()
+                .HasConversion(
+                    v => v.ToString().ToLowerInvariant(),
+                    v => Enum.Parse<UserRole>(v, ignoreCase: true));
             entity.Property(user => user.MustChangePassword).HasColumnName("must_change_password").IsRequired();
             entity.Property(user => user.DefaultVendor).HasColumnName("default_vendor").HasMaxLength(64);
             entity.Property(user => user.FxRate).HasColumnName("fx_rate").HasPrecision(12, 4);

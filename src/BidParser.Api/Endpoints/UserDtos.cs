@@ -21,7 +21,7 @@ public sealed record UserPublic(
             user.Id,
             user.Username,
             user.Name,
-            user.Role,
+            user.Role.ToString().ToLowerInvariant(),
             user.MustChangePassword,
             user.DefaultVendor,
             user.FxRate,

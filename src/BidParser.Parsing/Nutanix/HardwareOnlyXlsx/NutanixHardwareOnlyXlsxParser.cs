@@ -1,4 +1,5 @@
 using BidParser.Domain.Abstractions;
+using BidParser.Domain.Constants;
 using BidParser.Domain.Models;
 using BidParser.Parsing.Cleaning;
 using BidParser.Parsing.Xlsx;
@@ -10,15 +11,16 @@ public sealed class NutanixHardwareOnlyXlsxParser : IParser
 {
     private const string QuoteDBanner = "Quote D For distributor to quote to the reseller only";
 
-    public string Slug => "nutanix_hardware_only_xlsx";
+    public string Slug => ParserSlugs.NutanixHardwareOnlyXlsx;
     public string DisplayName => "Hardware Only (XLSX)";
-    public string Vendor => "Nutanix";
+    public string Vendor => Vendors.Nutanix;
     public string AcceptedMime => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-    public string CrmTemplate => "Foreign Uplift";
+    public string CrmTemplate => CrmTemplates.ForeignUplift;
 
     public ParseResult Parse(string path)
     {
-        var sheet = WorkbookReader.ActiveSheet(path);
+        using var workbook = WorkbookReader.Open(path);
+        var sheet = workbook.Worksheets.First();
         var bannerCell = WorkbookReader.FindCell(sheet, QuoteDBanner)
             ?? throw new ParseError("detect", "Could not find the Quote D section banner.", "Could not find Quote D banner");
         var headerCell = FindCellAfterRow(sheet, "Product Code", bannerCell.Address.RowNumber)

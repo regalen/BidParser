@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using BidParser.Api.Auth;
+using BidParser.Api.Contracts;
 using BidParser.Api.Options;
 using BidParser.Infrastructure.Persistence;
 using Microsoft.AspNetCore.DataProtection;
@@ -54,7 +55,7 @@ public static class AuthEndpoints
         if (user is null || !BCrypt.Net.BCrypt.Verify(body.Value.Password, user.PasswordHash))
         {
             logger.LogWarning("Login failed {Username}", usernameKey);
-            return Results.Json(new { detail = "Invalid username or password." }, statusCode: StatusCodes.Status401Unauthorized);
+            return Results.Json(new ApiError("Invalid username or password."), statusCode: StatusCodes.Status401Unauthorized);
         }
 
         var protector = dataProtectionProvider.CreateProtector("bidparser-session");
@@ -78,7 +79,7 @@ public static class AuthEndpoints
         loggerFactory.CreateLogger(nameof(AuthEndpoints)).LogInformation(
             "Logout user={UserId}",
             context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown");
-        return Results.Ok(new { ok = true });
+        return Results.Ok(new OkResponse());
     }
 
     private static async Task<IResult> ChangePasswordAsync(
@@ -106,19 +107,19 @@ public static class AuthEndpoints
         var user = await EndpointHelpers.CurrentUserAsync(context, db, ct);
         if (user is null)
         {
-            return Results.Json(new { detail = "not_authenticated" }, statusCode: StatusCodes.Status401Unauthorized);
+            return Results.Json(new ApiError("not_authenticated"), statusCode: StatusCodes.Status401Unauthorized);
         }
 
         if (!BCrypt.Net.BCrypt.Verify(body.Value.OldPassword, user.PasswordHash))
         {
             logger.LogWarning("Change password failed user={UserId}", user.Id);
-            return Results.Json(new { detail = "Invalid password." }, statusCode: StatusCodes.Status401Unauthorized);
+            return Results.Json(new ApiError("Invalid password."), statusCode: StatusCodes.Status401Unauthorized);
         }
 
         var errors = PasswordPolicy.Validate(body.Value.NewPassword);
         if (errors.Count > 0)
         {
-            return Results.Json(new { detail = errors }, statusCode: StatusCodes.Status400BadRequest);
+            return Results.Json(new PasswordValidationError(errors), statusCode: StatusCodes.Status400BadRequest);
         }
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(body.Value.NewPassword, workFactor: 12);
@@ -126,7 +127,7 @@ public static class AuthEndpoints
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation("Change password success user={UserId}", user.Id);
-        return Results.Ok(new { ok = true });
+        return Results.Ok(new OkResponse());
     }
 
     private static IResult? CheckRateLimit(AuthRateLimiter rateLimiter, string key, int limit)
@@ -173,7 +174,7 @@ public static class AuthEndpoints
         {
             httpContext.Response.Headers.RetryAfter = _retryAfterSeconds.ToString(CultureInfo.InvariantCulture);
             httpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-            return httpContext.Response.WriteAsJsonAsync(new { detail = "Too many attempts. Please try again later." });
+            return httpContext.Response.WriteAsJsonAsync(new ApiError("Too many attempts. Please try again later."));
         }
     }
 }

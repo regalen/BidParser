@@ -1,4 +1,5 @@
 using BidParser.Domain.Abstractions;
+using BidParser.Domain.Constants;
 using BidParser.Domain.Models;
 using BidParser.Parsing.Cleaning;
 using BidParser.Parsing.Pdf;
@@ -7,11 +8,11 @@ namespace BidParser.Parsing.Nutanix.RenewalPdf;
 
 public sealed class NutanixRenewalPdfParser : IParser
 {
-    public string Slug => "nutanix_renewal_pdf";
+    public string Slug => ParserSlugs.NutanixRenewalPdf;
     public string DisplayName => "Renewal (PDF)";
-    public string Vendor => "Nutanix";
+    public string Vendor => Vendors.Nutanix;
     public string AcceptedMime => "application/pdf";
-    public string CrmTemplate => "Foreign Uplift";
+    public string CrmTemplate => CrmTemplates.ForeignUplift;
 
     public ParseResult Parse(string path)
     {

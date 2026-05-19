@@ -7,24 +7,13 @@ using BidParser.Output;
 
 namespace BidParser.Infrastructure.Services;
 
-public sealed class ParseService
+public sealed class ParseService(IParserRegistry registry, FileStorage storage, AppDbContext db)
 {
     private static readonly Dictionary<string, string> ExtensionToMime = new(StringComparer.OrdinalIgnoreCase)
     {
         [".pdf"] = "application/pdf",
         [".xlsx"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     };
-
-    private readonly IParserRegistry _registry;
-    private readonly FileStorage _storage;
-    private readonly AppDbContext _db;
-
-    public ParseService(IParserRegistry registry, FileStorage storage, AppDbContext db)
-    {
-        _registry = registry;
-        _storage = storage;
-        _db = db;
-    }
 
     public async Task<ParseServiceResult> ParseAsync(
         User user,
@@ -41,12 +30,12 @@ public sealed class ParseService
         ValidateExtension(uploadFilename, parser.AcceptedMime);
 
         var displayFilename = Path.GetFileName(uploadFilename);
-        var sourcePath = _storage.NewOriginalPath(displayFilename);
-        var outputPath = _storage.NewOutputPath();
+        var sourcePath = storage.NewOriginalPath(displayFilename);
+        var outputPath = storage.NewOutputPath();
 
         try
         {
-            await _storage.SaveUploadAsync(fileStream, sourcePath, maxUploadBytes, ct);
+            await storage.SaveUploadAsync(fileStream, sourcePath, maxUploadBytes, ct);
             await ValidateMagicBytesAsync(sourcePath, parser.AcceptedMime, ct);
 
             var result = parser.Parse(sourcePath);
@@ -80,9 +69,9 @@ public sealed class ParseService
             user.DefaultVendor = vendor;
             user.FxRate = fxRateRounded;
             user.Margin = marginRounded;
-            _db.Update(user);
-            _db.Add(job);
-            await _db.SaveChangesAsync(ct);
+            db.Update(user);
+            db.Add(job);
+            await db.SaveChangesAsync(ct);
 
             return new ParseServiceResult(
                 job,
@@ -92,15 +81,15 @@ public sealed class ParseService
         }
         catch
         {
-            _storage.TryDelete(sourcePath);
-            _storage.TryDelete(outputPath);
+            storage.TryDelete(sourcePath);
+            storage.TryDelete(outputPath);
             throw;
         }
     }
 
     private IParser ResolveParser(string parserSlug, string vendor)
     {
-        var parser = _registry.Parsers.FirstOrDefault(p => p.Slug == parserSlug);
+        var parser = registry.Parsers.FirstOrDefault(p => p.Slug == parserSlug);
         if (parser is null)
         {
             throw new ParseValidationException(400, "Unknown parser.");

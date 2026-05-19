@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using BidParser.Domain.Abstractions;
+using BidParser.Domain.Constants;
 using BidParser.Domain.Models;
 using BidParser.Parsing.Cleaning;
 using BidParser.Parsing.Pdf;
@@ -8,11 +9,11 @@ namespace BidParser.Parsing.Nutanix.SoftwareOnlyPdf;
 
 public sealed partial class NutanixSoftwareOnlyPdfParser : IParser
 {
-    public string Slug => "nutanix_software_only_pdf";
+    public string Slug => ParserSlugs.NutanixSoftwareOnlyPdf;
     public string DisplayName => "Software Only (PDF)";
-    public string Vendor => "Nutanix";
+    public string Vendor => Vendors.Nutanix;
     public string AcceptedMime => "application/pdf";
-    public string CrmTemplate => "Foreign Uplift";
+    public string CrmTemplate => CrmTemplates.ForeignUplift;
 
     public ParseResult Parse(string path)
     {

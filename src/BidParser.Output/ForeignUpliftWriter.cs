@@ -1,3 +1,4 @@
+using BidParser.Domain.Constants;
 using BidParser.Domain.Models;
 using ClosedXML.Excel;
 
@@ -47,7 +48,7 @@ public static class ForeignUpliftWriter
         string currency = "USD")
     {
         using var workbook = new XLWorkbook();
-        var sheet = workbook.AddWorksheet("Foreign Uplift");
+        var sheet = workbook.AddWorksheet(CrmTemplates.ForeignUplift);
 
         sheet.Cell(1, 12).Value = "(Optional for Software and/or Services)";
         for (var index = 0; index < Headers.Length; index++)

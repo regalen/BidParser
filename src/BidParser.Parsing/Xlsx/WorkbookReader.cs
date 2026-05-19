@@ -5,11 +5,7 @@ namespace BidParser.Parsing.Xlsx;
 
 public static class WorkbookReader
 {
-    public static IXLWorksheet ActiveSheet(string path)
-    {
-        var workbook = new XLWorkbook(path);
-        return workbook.Worksheets.First();
-    }
+    public static XLWorkbook Open(string path) => new XLWorkbook(path);
 
     public static IXLCell? FindCell(IXLWorksheet sheet, string expected)
     {

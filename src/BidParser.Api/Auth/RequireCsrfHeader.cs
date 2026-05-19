@@ -1,3 +1,5 @@
+using BidParser.Api.Contracts;
+
 namespace BidParser.Api.Auth;
 
 public sealed class RequireCsrfHeader : IEndpointFilter
@@ -7,7 +9,7 @@ public sealed class RequireCsrfHeader : IEndpointFilter
         if (!HttpMethods.IsGet(context.HttpContext.Request.Method)
             && context.HttpContext.Request.Headers["X-Requested-With"] != "BidParser")
         {
-            return Results.Json(new { detail = "csrf_required" }, statusCode: StatusCodes.Status403Forbidden);
+            return Results.Json(new ApiError("csrf_required"), statusCode: StatusCodes.Status403Forbidden);
         }
 
         return await next(context);

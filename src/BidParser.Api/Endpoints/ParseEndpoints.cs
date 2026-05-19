@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Diagnostics;
 using BidParser.Api.Auth;
+using BidParser.Api.Contracts;
 using Microsoft.Extensions.Primitives;
 using BidParser.Api.Options;
 using BidParser.Domain.Models;
@@ -38,11 +39,11 @@ public static class ParseEndpoints
         }
         catch (BadHttpRequestException ex) when (ex.StatusCode == 413)
         {
-            return Results.Json(new { detail = "File is too large." }, statusCode: 413);
+            return Results.Json(new ApiError("File is too large."), statusCode: 413);
         }
         catch (InvalidDataException)
         {
-            return Results.Json(new { detail = "File is too large." }, statusCode: 413);
+            return Results.Json(new ApiError("File is too large."), statusCode: 413);
         }
 
         var file = form.Files.GetFile("file");
@@ -53,38 +54,38 @@ public static class ParseEndpoints
 
         if (file is null)
         {
-            return Results.Json(new { detail = "file is required." }, statusCode: 400);
+            return Results.Json(new ApiError("file is required."), statusCode: 400);
         }
 
         if (string.IsNullOrEmpty(vendor))
         {
-            return Results.Json(new { detail = "vendor is required." }, statusCode: 400);
+            return Results.Json(new ApiError("vendor is required."), statusCode: 400);
         }
 
         if (string.IsNullOrEmpty(parserSlug))
         {
-            return Results.Json(new { detail = "parser_slug is required." }, statusCode: 400);
+            return Results.Json(new ApiError("parser_slug is required."), statusCode: 400);
         }
 
         if (!decimal.TryParse(fxRateStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var fxRate))
         {
-            return Results.Json(new { detail = "Invalid fx_rate." }, statusCode: 400);
+            return Results.Json(new ApiError("Invalid fx_rate."), statusCode: 400);
         }
 
         if (!decimal.TryParse(marginStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var margin))
         {
-            return Results.Json(new { detail = "Invalid margin." }, statusCode: 400);
+            return Results.Json(new ApiError("Invalid margin."), statusCode: 400);
         }
 
         if (file.Length > appOptions.MaxUploadBytes)
         {
-            return Results.Json(new { detail = "File is too large." }, statusCode: 413);
+            return Results.Json(new ApiError("File is too large."), statusCode: 413);
         }
 
         var user = await EndpointHelpers.CurrentUserAsync(context, db, ct);
         if (user is null)
         {
-            return Results.Json(new { detail = "not_authenticated" }, statusCode: 401);
+            return Results.Json(new ApiError("not_authenticated"), statusCode: 401);
         }
 
         var displayFilename = Path.GetFileName(file.FileName ?? "quote");
@@ -100,11 +101,11 @@ public static class ParseEndpoints
         }
         catch (ParseValidationException ex)
         {
-            return Results.Json(new { detail = ex.Detail }, statusCode: ex.StatusCode);
+            return Results.Json(new ApiError(ex.Detail), statusCode: ex.StatusCode);
         }
         catch (UploadTooLargeException)
         {
-            return Results.Json(new { detail = "File is too large." }, statusCode: 413);
+            return Results.Json(new ApiError("File is too large."), statusCode: 413);
         }
         catch (ParseError ex)
         {
@@ -116,7 +117,7 @@ public static class ParseEndpoints
                 ex.Stage);
 
             return Results.Json(
-                new { detail = new { stage = ex.Stage, hint = ex.Hint, message = ex.Message } },
+                new ParseErrorResponse(new ParseErrorDetail(ex.Stage, ex.Hint, ex.Message)),
                 statusCode: 422);
         }
 
