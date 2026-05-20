@@ -60,21 +60,21 @@ The `*` in column B is required — our quoting system uses it as the loop senti
 | K | Margin | hardcoded `5.00` | Will become a UI-driven input later. |
 | L | Product Part Number (Warranty/Renewal) | _empty_ | Manual / future enrichment. |
 | M | Serial Number | _empty_ | **Always blank.** The parser's `serial_number` value lands in column R (Comments) instead. |
-| N | Warranty / Duration (months) | `term` | **Only written when `term >= 1`.** If `term` is null or `0`, leave the cell empty. |
+| N | Warranty / Duration (months) | `term` | **Only written when `term >= 1`, and only for non-Software-Only formats.** For Software Only (PDF + XLSX), `term` lands in column R instead and N stays empty. If `term` is null or `0`, leave the cell empty. |
 | O | Vendor Ref | _empty_ | Manual / future enrichment. |
 | P | Start Date | `start_date` | Native Excel date; cell format `DD/MM/YYYY`. Empty if null. |
 | Q | End Date | `end_date` | Same as Start Date. |
-| R | Comments | `serial_number` | Written verbatim (no `"License: "` prefix, no other formatting). Empty if `serial_number` is null. |
+| R | Comments | `term` (Software Only formats only) **or** `serial_number` (Renewal) | For `nutanix_software_only_pdf` and `nutanix_software_only_xlsx`, written as `"{term} Months"` when `term >= 1` (e.g. `60 Months`). For Renewal, `serial_number` is written verbatim (no `"License: "` prefix, no splitting). The two cases never collide because Renewal items don't carry a `term` and Software Only items don't carry a `serial_number`. Empty otherwise. |
 | S | Foreign Currency | hardcoded `"USD"` | All quotes parsed so far are USD-denominated. |
-| T | Foreign Cost | `cost` | |
-| U | Foreign MSRP | `msrp` | This is where the parser's MSRP value lives. |
+| T | Foreign Cost | `cost` | A value of `0` is written as the sentinel `0.000001` (the downstream uplift app rejects literal `0` and rounds the sentinel back to `0`). See locked rule #2. |
+| U | Foreign MSRP | `msrp` | This is where the parser's MSRP value lives. A value of `0` is written as the sentinel `0.000001` (same reason as column T). |
 | V | Foreign Exchange Rate | hardcoded `1.000` | Will become a UI-driven input later. |
 | W–AA | (other) | _empty_ | Manual / future enrichment. |
 
 **Locked output rules (decided iteratively with the user, in order)**
 1. Local `MSRP` (column H) is **never** populated. The parser's `msrp` value lives in `Foreign MSRP` (column U) only.
-2. Bundled-component rows (Hardware Only Quote D rows where the supplier left price cells blank) get `msrp = 0` and `cost = 0` at parse time — those land as numeric `0` in T and U, not blank cells.
-3. `Warranty / Duration (months)` (column N) is **only written when `term >= 1`**. A term of `0` or null is treated as "no term" and the cell is left empty.
+2. Bundled-component rows (Hardware Only Quote D rows where the supplier left price cells blank) get `msrp = 0` and `cost = 0` at parse time. When writing to `Foreign Cost` (column T) and `Foreign MSRP` (column U), a value of `0` is replaced with the sentinel `0.000001` because the downstream uplift app treats literal `0` as an invalid price — it rounds the sentinel back to `0` on import. The substitution is per-column at write time only; the in-memory `LineItem.Cost` / `LineItem.Msrp` remain `0` and validation totals are unaffected.
+3. `Warranty / Duration (months)` (column N) is **only written when `term >= 1`** *and* the parser is not a Software Only format. For Software Only (PDF + XLSX), N stays empty and the term lands in `Comments` (column R) as `"{term} Months"` instead (e.g. `60 Months`). A term of `0` or null is treated as "no term" and both cells are left empty.
 4. `Serial Number` column (M) is **never** populated. The supplier's serial-cell string (which may contain an embedded license number, e.g. `"24SW000351227,LIC-02472987"`) is written verbatim into `Comments` (column R) instead. No `"License: "` prefix, no splitting.
 5. Numbers are written as raw values — no forced decimal places. Excel will display `383` rather than `383.00` unless a cell format is applied; this is intentional.
 6. Dates are written as native `date` values with the cell number format `DD/MM/YYYY` so Excel displays them as DD/MM/YYYY but they remain sortable/filterable as real dates.

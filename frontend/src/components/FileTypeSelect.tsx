@@ -1,5 +1,13 @@
 import type { ParserInfo } from '../types';
 
+const SAMPLE_FILES: Record<string, string> = {
+  nutanix_software_only_pdf: 'XQ-4076249.pdf',
+  nutanix_software_only_xlsx: 'XQ-4076249.xlsx',
+  nutanix_renewal_pdf: 'XQ-4128926.pdf',
+  nutanix_hardware_only_pdf: 'XQ-4108785.pdf',
+  nutanix_hardware_only_xlsx: 'XQ-4108785.xlsx',
+};
+
 export function FileTypeSelect({
   parsers,
   value,
@@ -11,6 +19,8 @@ export function FileTypeSelect({
   disabled: boolean;
   onChange: (value: string) => void;
 }) {
+  const sampleFilename = value ? SAMPLE_FILES[value] : undefined;
+
   return (
     <label className="flex flex-col gap-2">
       <span className="label">File type</span>
@@ -27,7 +37,22 @@ export function FileTypeSelect({
           </option>
         ))}
       </select>
-      <span className="text-[11px] text-slate-500">Types depend on the vendor.</span>
+      <span className="text-[11px] text-slate-500">
+        Types depend on the vendor.
+        {sampleFilename && (
+          <>
+            {' '}
+            <a
+              className="text-[#0077d4] underline hover:no-underline"
+              href={`/samples/${sampleFilename}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Sample File
+            </a>
+          </>
+        )}
+      </span>
     </label>
   );
 }

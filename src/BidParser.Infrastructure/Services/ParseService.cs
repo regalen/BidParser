@@ -46,7 +46,8 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
                 margin,
                 fxRate,
                 vendor.ToUpperInvariant(),
-                result.Metadata.Currency);
+                result.Metadata.Currency,
+                parser.Slug);
 
             var fxRateRounded = Math.Round(fxRate, 4, MidpointRounding.AwayFromZero);
             var marginRounded = Math.Round(margin, 2, MidpointRounding.AwayFromZero);

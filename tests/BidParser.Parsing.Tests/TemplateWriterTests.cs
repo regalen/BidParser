@@ -21,7 +21,7 @@ public sealed class TemplateWriterTests
         using var tempDirectory = new TempDirectory();
         var actualPath = Path.Combine(tempDirectory.Path, expectedName);
 
-        ForeignUpliftWriter.WriteForeignUplift(result.LineItems, actualPath, fxRate: 1.000m, margin: 5.00m);
+        ForeignUpliftWriter.WriteForeignUplift(result.LineItems, actualPath, fxRate: 1.000m, margin: 5.00m, parserSlug: slug);
 
         WorkbookComparer.AssertEqual(actualPath, Path.Combine(root, "samples", "outputs", expectedName));
     }

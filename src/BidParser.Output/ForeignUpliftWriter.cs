@@ -45,7 +45,8 @@ public static class ForeignUpliftWriter
         decimal margin = 5.00m,
         decimal fxRate = 1.000m,
         string vendorName = "NUTANIX",
-        string currency = "USD")
+        string currency = "USD",
+        string? parserSlug = null)
     {
         using var workbook = new XLWorkbook();
         var sheet = workbook.AddWorksheet(CrmTemplates.ForeignUplift);
@@ -55,6 +56,8 @@ public static class ForeignUpliftWriter
         {
             sheet.Cell(2, index + 1).Value = Headers[index];
         }
+
+        var termAsComment = parserSlug is "nutanix_software_only_pdf" or "nutanix_software_only_xlsx";
 
         var rowNumber = 3;
         var itemIndex = 1;
@@ -72,7 +75,14 @@ public static class ForeignUpliftWriter
             SetNumber(sheet.Cell(rowNumber, 11), margin);
             if (item.Term is >= 1)
             {
-                sheet.Cell(rowNumber, 14).Value = item.Term.Value;
+                if (termAsComment)
+                {
+                    sheet.Cell(rowNumber, 18).Value = $"{item.Term.Value} Months";
+                }
+                else
+                {
+                    sheet.Cell(rowNumber, 14).Value = item.Term.Value;
+                }
             }
 
             if (item.StartDate is not null)
@@ -91,8 +101,8 @@ public static class ForeignUpliftWriter
             }
 
             sheet.Cell(rowNumber, 19).Value = currency;
-            SetNumber(sheet.Cell(rowNumber, 20), item.Cost);
-            SetNumber(sheet.Cell(rowNumber, 21), item.Msrp ?? 0m);
+            SetNumber(sheet.Cell(rowNumber, 20), NonZeroPrice(item.Cost));
+            SetNumber(sheet.Cell(rowNumber, 21), NonZeroPrice(item.Msrp ?? 0m));
             SetNumber(sheet.Cell(rowNumber, 22), fxRate);
 
             rowNumber++;
@@ -116,6 +126,9 @@ public static class ForeignUpliftWriter
     {
         cell.Value = value;
     }
+
+    // Downstream uplift app treats literal 0 as an invalid price; the sentinel rounds back to 0 on import.
+    private static decimal NonZeroPrice(decimal value) => value == 0m ? 0.000001m : value;
 
     private static void SetDate(IXLCell cell, DateOnly value)
     {
