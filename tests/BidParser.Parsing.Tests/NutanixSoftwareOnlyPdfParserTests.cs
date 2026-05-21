@@ -29,6 +29,54 @@ public sealed class NutanixSoftwareOnlyPdfParserTests
                 ("SW-NCM-E-STR-PR", 60, 583m, 153.91m, 145));
     }
 
+    [Fact]
+    public void Extracts_extended_layout_single_line_item()
+    {
+        var root = FindRepoRoot();
+        var parser = new ParserRegistry().Parsers.Single(parser => parser.Slug == "nutanix_software_only_pdf");
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "XQ-4157308.pdf"));
+
+        result.Metadata.QuoteNumber.Should().Be("XQ-4157308");
+        result.Metadata.QuotedTotal.Should().Be(206169.60m);
+        result.Validation.ComputedTotal.Should().Be(206169.60m);
+        result.Validation.Matches.Should().BeTrue();
+        result.LineItems
+            .Select(item => (item.Vpn, item.Term, item.Msrp, item.Cost, item.Qty, item.StartDate))
+            .Should()
+            .Equal(
+                ("SW-NDB-PR", (int?)12, (decimal?)1092m, 644.28m, 320, (DateOnly?)new DateOnly(2026, 7, 13)));
+    }
+
+    [Fact]
+    public void Extracts_extended_layout_with_selected_start_date_and_wrapped_skus()
+    {
+        var root = FindRepoRoot();
+        var parser = new ParserRegistry().Parsers.Single(parser => parser.Slug == "nutanix_software_only_pdf");
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "XQ-4165884.pdf"));
+
+        result.Metadata.QuoteNumber.Should().Be("XQ-4165884");
+        result.Metadata.QuotedTotal.Should().Be(320562.54m);
+        result.Validation.ComputedTotal.Should().Be(320562.54m);
+        result.Validation.Matches.Should().BeTrue();
+        result.LineItems
+            .Select(item => (item.Vpn, item.Term, item.Msrp, item.Cost, item.Qty, item.StartDate))
+            .Should()
+            .Equal(
+                ("SW-NDB-PR", (int?)36, (decimal?)3275m, 545.83m, 288, (DateOnly?)new DateOnly(2026, 7, 31)),
+                ("FLEX-CST-CR", 12, 100m, 85m, 60, null),
+                ("CNS-INF-A-WRK-DSGN-BAS-MS-SD-VIRT", null, 38105m, 34294.50m, 1, null),
+                ("CNS-INF-A-SVC-DEP-ONP-AHV", null, 3440m, 3096m, 3, null),
+                ("CNS-INF-A-SVC-DEP-ONP-AHV", null, 3440m, 3096m, 3, null),
+                ("CNS-INF-A-SVC-DRD-LEAP", null, 9980m, 8982m, 1, null),
+                ("CNS-INF-A-SVC-MIG-VMS-VIRT", null, 3745m, 3370.50m, 2, null),
+                ("EDU-C-ADM5-PVT-PK", null, 28875m, 26355m, 1, null),
+                ("EDU-ONSITE-FEE", null, 0m, 0m, 1, null),
+                ("EDU-C-NDMA-INV", null, 2310m, 2079m, 1, null),
+                ("PS-RES-IRE-CONS-QRTR-12MO", null, 68040m, 61236m, 1, null));
+    }
+
     private static string FindRepoRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

@@ -11,6 +11,13 @@ This is the XLSX counterpart of the Software Only (PDF) format — same supplier
 3. Iterate data rows immediately below the header row. The required field labels in the map are: `Product Code`, `Product Description`, `Term (Months)`, `List Price`, `Sale Price`, `Quantity`.
 4. Stop iterating when you reach either (a) the first wholly-empty row, or (b) a cell whose value starts with the literal string `TOTAL ` (whichever comes first). The `TOTAL ` cell carries the quoted total in the same string.
 
+**Optional columns** (extended layout, mirroring the extended Software Only PDF):
+
+Some real quotes include extra columns alongside the required set — `Selected Start Date`, `Total Discount`, `Total Net Price`. The header-map approach handles them transparently:
+
+- `Selected Start Date` — when present, parse the cell as a `DateOnly`. If the cell holds a native date, use it directly; otherwise parse the displayed string with `MM/dd/yyyy` (the supplier's default), falling back to `M/d/yyyy`, `yyyy-MM-dd`, or `dd/MM/yyyy`. The value lands in `LineItem.StartDate` and writes to the output template's `Start Date` column (column P) with the standard `DD/MM/YYYY` display format.
+- `Total Discount` and `Total Net Price` — labels are unmapped in the parser; the cells are read into `Raw` for debugging but not extracted to any output field.
+
 **Extracting Line Items**
 Every row between the header row and the stop condition is a candidate line item. Skip rows where the `Product Code` cell trims to `Term-Months` — these are filler rows that repeat after every real line item and are not actual line items.
 
@@ -27,7 +34,7 @@ SW-NCM-E-STR-PR
 From the `Product Description` column. Single cell per row — no wrapping. Trim whitespace and emit.
 
 **Term (Months)**
-From the `Term (Months)` column. Already a number in the source (e.g. `60`). Skip on `Term-Months` filler rows. In the sample every kept item has term `60`.
+From the `Term (Months)` column. Already a number in the source (e.g. `60`). Empty cells (allowed under the extended layout, e.g. non-subscription services) emit `null`. Skip on `Term-Months` filler rows. In the sample every kept item has term `60`.
 
 **List Price**
 From the `List Price` column. Stored as a string with a dollar sign and thousands separators, e.g. `$383.00` or `$2,275.00`. Strip the `$`, commas, and whitespace and parse as a number — `$2,275.00` becomes `2275.00`, `$383.00` becomes `383.00`. This is the supplier's MSRP / list value.

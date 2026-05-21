@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using BidParser.Domain.Abstractions;
 using BidParser.Domain.Constants;
@@ -28,16 +29,43 @@ public sealed partial class NutanixSoftwareOnlyPdfParser : IParser
 
         foreach (var row in rows)
         {
-            var cells = row.Cells;
+            var cells = row.Cells.ToDictionary(pair => pair.Key, pair => TextCleaner.Clean(pair.Value));
             var productCode = Cell(cells, "Product Code");
             var product = Cell(cells, "Product");
 
-            if (productCode == "Term-Months" || product == "Term in months")
+            // Anchor signal is restricted to Quantity (and Term as a backup) because the supplier
+            // template puts the "USD" label and the Quantity on the anchor row while the numeric
+            // List/Net/Total values land one visual line below (continuation row). Treating List
+            // or Net values as an anchor cue would mis-classify continuation rows as new items
+            // whenever the Product Code wraps onto multiple lines.
+            var hasAnchorSignal = HasAny(cells, "Quantity", "Term (Months)");
+
+            // Page-footer skip. The supplier template prints "Page X of Y" between body rows
+            // on every page; without skipping, its words land in column cells and pollute the
+            // last line item on the previous page.
+            var rowText = string.Join(" ", cells.Values.Where(value => value.Length > 0));
+            if (PageFooterPattern().IsMatch(rowText))
             {
                 continue;
             }
 
-            if (ProductCodePattern().IsMatch(productCode))
+            // Sub-header / "Term-Months" filler skip. Two variants ship in real quotes:
+            //   - Wide layout: one row, Product Code "Term-Months", Product "Term in months".
+            //   - Narrow layout: row 1 Product Code "Term-" + Product "Term in months",
+            //     row 2 Product Code "Months" only (no anchor signal).
+            // The first form is caught by either branch below. The wrap's row 2 falls through to
+            // the continuation branch and does nothing because "Months" fails the SKU shape check.
+            if (product == "Term in months"
+                || (hasAnchorSignal && productCode.Length > 0 && !ProductCodePattern().IsMatch(productCode)))
+            {
+                continue;
+            }
+
+            var isAnchor = hasAnchorSignal
+                && productCode.Length > 0
+                && ProductCodePattern().IsMatch(productCode);
+
+            if (isAnchor)
             {
                 if (current is not null)
                 {
@@ -46,12 +74,36 @@ public sealed partial class NutanixSoftwareOnlyPdfParser : IParser
 
                 current = new CurrentItem(
                     [productCode],
-                    [product],
-                    cells);
+                    product.Length > 0 ? [product] : [],
+                    new Dictionary<string, string>(cells, StringComparer.Ordinal));
             }
-            else if (current is not null && productCode.Length == 0 && product.Length > 0)
+            else if (current is not null)
             {
-                current.DescriptionParts.Add(product);
+                if (productCode.Length > 0 && ProductCodePattern().IsMatch(productCode))
+                {
+                    current.CodeParts.Add(productCode);
+                }
+
+                if (product.Length > 0)
+                {
+                    current.DescriptionParts.Add(product);
+                }
+
+                // Merge any non-Product cells (numeric values) from continuation rows. The
+                // supplier template often puts "USD" on the anchor row and the numeric tail on
+                // the next visual row, so List/Net/Total values arrive across two rows; append
+                // so DecimalCleaner can strip "USD" and parse the combined value.
+                foreach (var (key, value) in cells)
+                {
+                    if (key == "Product Code" || key == "Product" || value.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    current.Cells[key] = current.Cells.TryGetValue(key, out var existing) && existing.Length > 0
+                        ? $"{existing} {value}"
+                        : value;
+                }
             }
         }
 
@@ -77,6 +129,34 @@ public sealed partial class NutanixSoftwareOnlyPdfParser : IParser
         };
     }
 
+    private static LineItem BuildItem(CurrentItem item)
+    {
+        var cells = item.Cells;
+        return new LineItem
+        {
+            Vpn = TextCleaner.JoinUnspaced(item.CodeParts),
+            Description = TextCleaner.JoinSpaced(item.DescriptionParts),
+            Term = DecimalCleaner.ParseOptionalInt(Cell(cells, "Term (Months)")),
+            Msrp = DecimalCleaner.Parse(Cell(cells, "List Unit Price"), defaultZero: true),
+            Cost = DecimalCleaner.Parse(Cell(cells, "Net Unit Price"), defaultZero: true),
+            Qty = DecimalCleaner.ParseInt(Cell(cells, "Quantity")),
+            StartDate = ParseStartDate(Cell(cells, "Selected Start Date")),
+            Raw = RawDict(cells)
+        };
+    }
+
+    private static DateOnly? ParseStartDate(string value)
+    {
+        if (value.Length == 0)
+        {
+            return null;
+        }
+
+        return DateOnly.TryParseExact(value, "MM/dd/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
+            ? date
+            : null;
+    }
+
     private static PdfWord FindHeader(IReadOnlyList<PdfWord> words)
     {
         for (var i = 0; i < words.Count; i++)
@@ -89,12 +169,11 @@ public sealed partial class NutanixSoftwareOnlyPdfParser : IParser
 
             var code = words
                 .Skip(i + 1)
-                .Take(8)
+                .Take(12)
                 .FirstOrDefault(word =>
                     word.Text == "Code"
                     && word.PageIndex == first.PageIndex
-                    && Math.Abs(word.Top - first.Top) <= 4
-                    && word.X0 > first.X0);
+                    && IsAdjacentCode(first, word));
             if (code is not null)
             {
                 return first;
@@ -104,71 +183,156 @@ public sealed partial class NutanixSoftwareOnlyPdfParser : IParser
         throw new ParseError("detect", "Could not find the Product Code table header.", "Could not find Product Code header");
     }
 
+    // "Code" can sit either to the right of "Product" on the same baseline (wide-column layouts)
+    // or directly beneath it (narrow-column layouts where the cell wraps onto two lines).
+    private static bool IsAdjacentCode(PdfWord product, PdfWord code)
+    {
+        if (Math.Abs(code.Top - product.Top) <= 4 && code.X0 > product.X0)
+        {
+            return true;
+        }
+
+        var verticalGap = code.Top - product.Top;
+        var xOverlaps = code.X0 <= product.X1 + 2 && code.X1 >= product.X0 - 2;
+        return verticalGap > 0 && verticalGap <= 16 && xOverlaps;
+    }
+
     private static IReadOnlyDictionary<string, (double Left, double Right)> BuildColumns(IReadOnlyList<PdfWord> words, PdfWord header)
     {
-        var headerWords = words
-            .Where(word => word.PageIndex == header.PageIndex && word.Top >= header.Top - 16 && word.Top <= header.Top + 16)
-            .ToList();
-
-        var productWords = headerWords
-            .Where(word => word.Text == "Product")
+        var band = words
+            .Where(word => word.PageIndex == header.PageIndex && word.Top >= header.Top - 14 && word.Top <= header.Top + 22)
             .OrderBy(word => word.X0)
             .ToList();
-        if (productWords.Count < 2)
+
+        // Header labels span multiple visual lines (e.g. "Selected" / "Start" / "Date" stacked).
+        // Cluster header words into vertical columns by overlapping x-extent so each cluster
+        // represents one logical column whose left edge is the cluster's leftmost x0.
+        var clusters = new List<List<PdfWord>>();
+        foreach (var word in band)
+        {
+            var match = clusters.FirstOrDefault(cluster =>
+                cluster.Any(other => other.X0 <= word.X1 + 4 && other.X1 >= word.X0 - 4));
+            if (match is null)
+            {
+                clusters.Add([word]);
+            }
+            else
+            {
+                match.Add(word);
+            }
+        }
+
+        var anchored = clusters
+            .Select(cluster => new
+            {
+                X0 = cluster.Min(word => word.X0),
+                X1 = cluster.Max(word => word.X1),
+                Tokens = cluster.Select(word => word.Text).ToHashSet(StringComparer.Ordinal)
+            })
+            .OrderBy(cluster => cluster.X0)
+            .ToList();
+
+        var named = new List<(string Name, double X0, double X1)>();
+        var foundProductCode = false;
+        var foundProduct = false;
+        foreach (var cluster in anchored)
+        {
+            string? name = null;
+            if (!foundProductCode && cluster.Tokens.Contains("Code") && cluster.Tokens.Contains("Product"))
+            {
+                name = "Product Code";
+                foundProductCode = true;
+            }
+            else if (!foundProduct && cluster.Tokens.Contains("Product"))
+            {
+                name = "Product";
+                foundProduct = true;
+            }
+            else if (cluster.Tokens.Contains("Term") || cluster.Tokens.Contains("(Months)"))
+            {
+                name = "Term (Months)";
+            }
+            else if (cluster.Tokens.Contains("Selected") || cluster.Tokens.Contains("Start") || cluster.Tokens.Contains("Date"))
+            {
+                name = "Selected Start Date";
+            }
+            else if (cluster.Tokens.Contains("List"))
+            {
+                name = "List Unit Price";
+            }
+            else if (cluster.Tokens.Contains("Discount"))
+            {
+                // Captured for column-range completeness only; the value is ignored downstream.
+                name = "Total Discount";
+            }
+            else if (cluster.Tokens.Contains("Quantity"))
+            {
+                name = "Quantity";
+            }
+            else if (cluster.Tokens.Contains("Net") && cluster.Tokens.Contains("Unit"))
+            {
+                name = "Net Unit Price";
+            }
+            else if (cluster.Tokens.Contains("Net") && cluster.Tokens.Contains("Price"))
+            {
+                // No "Unit" token → this is the rightmost "Total Net Price" column. Ignored.
+                name = "Total Net Price";
+            }
+
+            if (name is not null)
+            {
+                named.Add((name, cluster.X0, cluster.X1));
+            }
+        }
+
+        if (!foundProductCode || !foundProduct)
         {
             throw new ParseError("detect", "Could not find the Product Code table header.", "Could not resolve Product Code columns");
         }
 
-        var discountWords = headerWords
-            .Where(word => word.Text == "Discount")
-            .OrderBy(word => word.X0)
-            .ToList();
-        var discountX0 = discountWords.FirstOrDefault()?.X0 ?? 348.0;
-        var netWord = headerWords
-            .Where(word => word.Text == "Net" && word.X0 > discountX0)
-            .OrderBy(word => word.X0)
-            .FirstOrDefault();
-        var totalWord = headerWords
-            .Where(word => word.Text == "Total" && word.X0 > 450)
-            .OrderBy(word => word.X0)
-            .FirstOrDefault();
-
-        var headers = new List<(string Name, double X0)>
+        // Compute each column's left boundary. Text columns and narrow numeric columns snap to
+        // the next header cluster's X0. Wide right-aligned numeric columns ("List Unit Price",
+        // "Net Unit Price", "Total Net Price") need extra leftward padding because their body
+        // cells (e.g. "USD 157,199.04") extend past the header word's X0 by several points.
+        // The padding amount is column-specific and tuned empirically against real quotes.
+        var sorted = named.OrderBy(entry => entry.X0).ToList();
+        var lefts = new double[sorted.Count];
+        for (var i = 0; i < sorted.Count; i++)
         {
-            ("Product Code", productWords[0].X0),
-            ("Product", productWords[1].X0),
-            ("Term (Months)", headerWords
-                .Where(word => (word.Text == "Term" || word.Text == "(Months)") && word.X0 > productWords[1].X0)
-                .Select(word => word.X0)
-                .DefaultIfEmpty(220.0)
-                .Min()),
-            ("List Unit Price", headerWords
-                .Where(word => (word.Text == "List" || word.Text == "Unit" || word.Text == "Price") && word.X0 >= 260 && word.X0 <= 340)
-                .Select(word => word.X0)
-                .DefaultIfEmpty(280.0)
-                .Min()),
-            ("Total Discount", discountX0),
-            ("Net Unit Price", netWord is null ? 396.0 : netWord.X0 - 22),
-            ("Quantity", headerWords.FirstOrDefault(word => word.Text == "Quantity")?.X0 ?? 460.0),
-            ("Total Net Price", totalWord?.X0 ?? 514.0)
-        };
+            if (i == 0)
+            {
+                lefts[i] = sorted[i].X0;
+            }
+            else
+            {
+                var padding = LeftPadding(sorted[i].Name);
+                lefts[i] = padding > 0
+                    ? sorted[i].X0 - padding
+                    : sorted[i].X0;
+            }
+        }
 
-        return PdfTableHelpers.ColumnRanges(headers, header.PageWidth);
+        var ranges = new Dictionary<string, (double Left, double Right)>(StringComparer.Ordinal);
+        for (var i = 0; i < sorted.Count; i++)
+        {
+            var right = i == sorted.Count - 1 ? header.PageWidth : lefts[i + 1];
+            ranges[sorted[i].Name] = (lefts[i], right);
+        }
+
+        return ranges;
     }
 
-    private static LineItem BuildItem(CurrentItem item)
+    private static double LeftPadding(string name) => name switch
     {
-        var cells = item.Cells;
-        return new LineItem
-        {
-            Vpn = TextCleaner.JoinSpaced(item.CodeParts),
-            Description = TextCleaner.JoinSpaced(item.DescriptionParts),
-            Term = DecimalCleaner.ParseInt(Cell(cells, "Term (Months)")),
-            Msrp = DecimalCleaner.Parse(Cell(cells, "List Unit Price")),
-            Cost = DecimalCleaner.Parse(Cell(cells, "Net Unit Price")),
-            Qty = DecimalCleaner.ParseInt(Cell(cells, "Quantity")),
-            Raw = RawDict(cells)
-        };
+        "List Unit Price" => 5.0,
+        "Net Unit Price" => 10.0,
+        "Total Net Price" => 25.0,
+        _ => 0.0
+    };
+
+    private static bool HasAny(IReadOnlyDictionary<string, string> cells, params string[] keys)
+    {
+        return keys.Any(key => Cell(cells, key).Length > 0);
     }
 
     private static string Cell(IReadOnlyDictionary<string, string> cells, string key)
@@ -187,8 +351,11 @@ public sealed partial class NutanixSoftwareOnlyPdfParser : IParser
     [GeneratedRegex(@"^[A-Z0-9-]+$")]
     private static partial Regex ProductCodePattern();
 
+    [GeneratedRegex(@"^Page\s+\d+\s+of\s+\d+$")]
+    private static partial Regex PageFooterPattern();
+
     private sealed record CurrentItem(
         List<string> CodeParts,
         List<string> DescriptionParts,
-        IReadOnlyDictionary<string, string> Cells);
+        Dictionary<string, string> Cells);
 }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using BidParser.Domain.Abstractions;
 using BidParser.Domain.Constants;
 using BidParser.Domain.Models;
@@ -60,10 +61,11 @@ public sealed class NutanixSoftwareOnlyXlsxParser : IParser
             {
                 Vpn = vpn,
                 Description = Text(sheet, row, headerMap, "Product Description"),
-                Term = DecimalCleaner.ParseInt(Text(sheet, row, headerMap, "Term (Months)")),
-                Msrp = DecimalCleaner.Parse(Text(sheet, row, headerMap, "List Price")),
-                Cost = DecimalCleaner.Parse(Text(sheet, row, headerMap, "Sale Price")),
+                Term = DecimalCleaner.ParseOptionalInt(Text(sheet, row, headerMap, "Term (Months)")),
+                Msrp = DecimalCleaner.Parse(Text(sheet, row, headerMap, "List Price"), defaultZero: true),
+                Cost = DecimalCleaner.Parse(Text(sheet, row, headerMap, "Sale Price"), defaultZero: true),
                 Qty = DecimalCleaner.ParseInt(Text(sheet, row, headerMap, "Quantity")),
+                StartDate = ReadOptionalDate(sheet, row, headerMap, "Selected Start Date"),
                 Raw = RawDict(sheet, row, headerMap)
             });
         }
@@ -125,6 +127,31 @@ public sealed class NutanixSoftwareOnlyXlsxParser : IParser
     private static string Text(ClosedXML.Excel.IXLWorksheet sheet, int row, HeaderMap headerMap, string label)
     {
         return WorkbookReader.CellText(sheet.Cell(row, headerMap.Require(label)));
+    }
+
+    private static DateOnly? ReadOptionalDate(ClosedXML.Excel.IXLWorksheet sheet, int row, HeaderMap headerMap, string label)
+    {
+        if (!headerMap.Columns.TryGetValue(label, out var column))
+        {
+            return null;
+        }
+
+        var cell = sheet.Cell(row, column);
+        if (cell.Value.IsDateTime)
+        {
+            return DateOnly.FromDateTime(cell.Value.GetDateTime());
+        }
+
+        var text = WorkbookReader.CellText(cell);
+        if (text.Length == 0)
+        {
+            return null;
+        }
+
+        string[] formats = ["MM/dd/yyyy", "M/d/yyyy", "yyyy-MM-dd", "dd/MM/yyyy"];
+        return DateOnly.TryParseExact(text, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
+            ? date
+            : null;
     }
 
     private static IReadOnlyDictionary<string, string> RawDict(

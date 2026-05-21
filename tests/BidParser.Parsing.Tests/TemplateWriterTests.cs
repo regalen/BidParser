@@ -9,6 +9,8 @@ public sealed class TemplateWriterTests
 {
     [Theory]
     [InlineData("nutanix_software_only_pdf", "XQ-4076249.pdf", "XQ-4076249_parsed.xlsx")]
+    [InlineData("nutanix_software_only_pdf", "XQ-4157308.pdf", "XQ-4157308_parsed.xlsx")]
+    [InlineData("nutanix_software_only_pdf", "XQ-4165884.pdf", "XQ-4165884_parsed.xlsx")]
     [InlineData("nutanix_software_only_xlsx", "XQ-4076249.xlsx", "XQ-4076249_parsed.xlsx")]
     [InlineData("nutanix_hardware_only_pdf", "XQ-4108785.pdf", "XQ-4108785_parsed.xlsx")]
     [InlineData("nutanix_hardware_only_xlsx", "XQ-4108785.xlsx", "XQ-4108785_parsed.xlsx")]

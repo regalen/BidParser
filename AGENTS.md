@@ -14,7 +14,7 @@ The backend has been re-platformed from Python/FastAPI to ASP.NET Core 10. The c
 - `tests/BidParser.Parsing.Tests/` — xUnit tests: cleaning helpers, all five parsers against golden inputs, template writer cell-by-cell equivalence against `samples/outputs/`.
 - `tests/BidParser.Api.Tests/` — xUnit + `WebApplicationFactory` integration tests: migration/bootstrap, auth flow, users admin, parse roundtrip + error matrix (including magic-byte mismatch, generic-exception 500 via global handler, per-user rate limit), history list/filter/pagination/downloads, health endpoint security headers, `ForwardedHeaders` trust boundary, retention cleanup.
 - `frontend/` — React/Vite/TypeScript app. Visual design language matches ProductLens (slate-50 page background, white cards with `border-slate-200` + `shadow-sm`, `#0077d4` accent, Inter typography, uppercase tracked labels). Shared utility classes live in `src/styles.css` (`.label`, `.field`, `.button`, `.button-primary`, `.button-danger`, `.icon-button`, `.card`, `.toast`). Contains the API client, auth context, route shell, login + forced password change screens (each rendered on the ProductLens slate-50 background with a centered card, accent-blue icon tile, and the shared `Footer`; the change-password screen has a live rule checklist for length/uppercase/digit/symbol/match), sticky white `AppHeader` with an `AccountChip` (display name + `@username` + ghost-red logout) and admin Settings link, V4 side-panel dashboard, Nutanix parser selection from `/api/parsers`, FX/margin inputs from `/api/me`, single-file dropzone/progress state, auto-download on parse, validation toasts, dynamic recent-uploads pagination with download actions, auth-expiry redirects, and admin user settings as a card grid. Components are extracted into individual files per the plan's repo layout, with a shared `Footer` used across all routes.
-- `samples/inputs/` — real supplier quote files. Three PDFs (`XQ-4076249.pdf`, `XQ-4108785.pdf`, `XQ-4128926.pdf`) and two XLSXs (`XQ-4076249.xlsx`, `XQ-4108785.xlsx`). All five are supplier-issued inputs the parser must handle. `XQ-4108785.pdf` and `XQ-4108785.xlsx` are the *same engagement* delivered in two envelopes; both parsers extract from **Quote D** (reseller-facing breakdown) within those files and produce matching totals (`USD 22,491.87`).
+- `samples/inputs/` — real supplier quote files. Five PDFs (`XQ-4076249.pdf`, `XQ-4108785.pdf`, `XQ-4128926.pdf`, `XQ-4157308.pdf`, `XQ-4165884.pdf`) and two XLSXs (`XQ-4076249.xlsx`, `XQ-4108785.xlsx`). All seven are supplier-issued inputs the parser must handle. `XQ-4108785.pdf` and `XQ-4108785.xlsx` are the *same engagement* delivered in two envelopes; both parsers extract from **Quote D** (reseller-facing breakdown) within those files and produce matching totals (`USD 22,491.87`). `XQ-4157308.pdf` and `XQ-4165884.pdf` are both Software Only (PDF) samples using the **extended 9-column layout** (adds `Selected Start Date`, `Total Discount`, `Total Net Price`); `XQ-4157308.pdf` is the minimal case (1 line item, side-by-side `Product Code` header) and `XQ-4165884.pdf` is the heavy case (11 line items, stacked `Product`/`Code` header, wrapped multi-line SKUs).
 - `samples/outputs/` — golden `XQ-*_parsed.xlsx` fixtures, one per quote number (not per input file — PDF and XLSX variants of the same quote share one golden file since they produce identical output). Used by the template-writer regression tests; regenerated whenever an output rule changes. Naming follows the spec: `<basename>_parsed.xlsx` (e.g. `XQ-4076249_parsed.xlsx`).
 - `samples/template/ANZ-GENERIC_ForeignUplift.xlsx` — the standardised internal template that parsed line items are written into. Field mapping is locked in `docs/output_mapping.md`; do not interpret cell positions from this file directly.
 - `docs/nutanix_software_only_pdf.md` — human-written extraction spec for the "Software Only (PDF)" format (Nutanix subscription quotes).
@@ -41,19 +41,21 @@ Current implementation checkpoint:
 
 - Backend is ASP.NET Core 10 (re-platformed from the original Python/FastAPI implementation).
 - Production hardening complete: locked-down forwarded headers (KnownProxies allowlist, rejects `"*"` in production), `GlobalExceptionHandler` returning safe ProblemDetails (no exception messages leaked), per-user token-bucket rate limit on `/api/parse`, magic-byte upload validation (`%PDF` / `PK\x03\x04`), `SecurityHeadersMiddleware` (X-Content-Type-Options, X-Frame-Options, Referrer-Policy, HSTS on HTTPS), composite `(user_id, created_at DESC)` history index, case-insensitive filename search (`TEXT COLLATE NOCASE` + escaped `EF.Functions.Like`), structured logging across endpoints with no secrets, full `CancellationToken` propagation, typed response records (`Contracts/`), centralised vendor/slug/template constants (`Domain/Constants/`), primary constructors on services, and `AddDbContextPool` registration.
-- All 59 tests pass (`dotnet test BidParser.sln`): 25 parsing tests + 34 API integration tests.
+- All 63 tests pass (`dotnet test BidParser.sln`): 29 parsing tests + 34 API integration tests.
 - Frontend unchanged — React 19 + Vite + TypeScript, proxying `/api` to `http://127.0.0.1:5000` in dev.
 - GitHub Actions CI/CD publishing is enabled: pushes to `main` and `v*` SemVer tags build and publish Docker images to GHCR.
 
 Sample → format mapping:
 
-| Sample file        | Format                 |
-|--------------------|------------------------|
-| `XQ-4076249.pdf`   | Software Only (PDF)    |
-| `XQ-4076249.xlsx`  | Software Only (XLSX)   |
-| `XQ-4108785.pdf`   | Hardware Only (PDF)    |
-| `XQ-4108785.xlsx`  | Hardware Only (XLSX)   |
-| `XQ-4128926.pdf`   | Renewal (PDF)          |
+| Sample file        | Format                 | Notes                                  |
+|--------------------|------------------------|----------------------------------------|
+| `XQ-4076249.pdf`   | Software Only (PDF)    | Compact 6-column layout                |
+| `XQ-4076249.xlsx`  | Software Only (XLSX)   |                                        |
+| `XQ-4108785.pdf`   | Hardware Only (PDF)    |                                        |
+| `XQ-4108785.xlsx`  | Hardware Only (XLSX)   |                                        |
+| `XQ-4128926.pdf`   | Renewal (PDF)          |                                        |
+| `XQ-4157308.pdf`   | Software Only (PDF)    | Extended 9-column layout, 1 line item  |
+| `XQ-4165884.pdf`   | Software Only (PDF)    | Extended 9-column layout, wrapped SKUs |
 
 ## What is being built
 
@@ -429,7 +431,7 @@ Agent-relevant deployment facts:
 - **Persistent state** lives entirely under `/data` (`db.sqlite` + `dp-keys/` + `files/originals/` + `files/outputs/`). **`/data/dp-keys` must persist** — it holds the Data Protection keyring; losing it logs everyone out. `${DATA_DIR:-bidparser-data}:/data` defaults to a Docker named volume; `DATA_DIR` in the operator's `.env` swaps it for a bind mount.
 - **`SESSION_SECRET`** is the Data Protection app-name discriminator, **not** a cryptographic key. The keyring in `/data/dp-keys` is the actual signing material. Rotating `SESSION_SECRET` scopes new cookies away from old ones (effectively logs everyone out). Deleting `/data/dp-keys` invalidates the keyring.
 - **Key env-var defaults**: `ADMIN_USERNAME=admin`, `ADMIN_PASSWORD=changeme`, `MAX_UPLOAD_MB=10`, `RATE_LIMIT_AUTH_PER_MIN=5`, `RETENTION_DAYS=90`, `SESSION_LIFETIME_HOURS=12`. `SESSION_SECRET` has a dev default (`dev-only-change-me`) and must be overridden in production. Full table lives in `docs/DEPLOYMENT.md`.
-- GitHub Actions CI/CD (`.github/workflows/build.yml`) is enabled — pushes to `main` publish multi-arch Docker images to `ghcr.io` with `latest` and `sha-<short-sha>` tags; pushes of `v*` SemVer tags also publish the SemVer image tag.
+- GitHub Actions CI/CD (`.github/workflows/build.yml`) is enabled — pushes to `main` publish a `linux/amd64` Docker image to `ghcr.io` with `latest` and `sha-<short-sha>` tags; pushes of `v*` SemVer tags also publish the SemVer image tag.
 
 ## Release versioning
 
@@ -461,7 +463,7 @@ The developer **does not touch**: API routes, frontend components (dropdowns aut
 
 ## Commands
 
-- `dotnet test BidParser.sln` — full test suite (59 tests: 25 parsing + 34 API integration).
+- `dotnet test BidParser.sln` — full test suite (63 tests: 29 parsing + 34 API integration).
 - `dotnet run --project src/BidParser.Api` — local backend dev server (`http://localhost:5000`).
 - `cd frontend && npm run dev` — Vite frontend dev server, proxying `/api` to `http://127.0.0.1:5000`.
 - `cd frontend && npm run build` — TypeScript + production frontend build.
