@@ -446,6 +446,7 @@ Agent-relevant deployment facts:
 - **`SESSION_SECRET`** is the Data Protection app-name discriminator, **not** a cryptographic key. The keyring in `/data/dp-keys` is the actual signing material. Rotating `SESSION_SECRET` scopes new cookies away from old ones (effectively logs everyone out). Deleting `/data/dp-keys` invalidates the keyring.
 - **Key env-var defaults**: `ADMIN_USERNAME=admin`, `ADMIN_PASSWORD=changeme`, `MAX_UPLOAD_MB=10`, `RATE_LIMIT_AUTH_PER_MIN=5`, `RETENTION_DAYS=90`, `SESSION_LIFETIME_HOURS=12`. `SESSION_SECRET` has a dev default (`dev-only-change-me`) and must be overridden in production. Full table lives in `docs/DEPLOYMENT.md`.
 - GitHub Actions CI/CD (`.github/workflows/build.yml`) is enabled — pushes to `main` publish a `linux/amd64` Docker image to `ghcr.io` with `latest` and `sha-<short-sha>` tags; pushes of `v*` SemVer tags also publish the SemVer image tag.
+- **UI version string** in the footer (`frontend/src/components/Footer.tsx`) comes from `import.meta.env.VITE_APP_VERSION`, injected at frontend build time via the `APP_VERSION` Docker build-arg. The CI workflow resolves `APP_VERSION` to the tag's SemVer (e.g. `v0.2.0` → `0.2.0`, rendered as `v0.2.0`) on tagged releases, and to `dev-<short-sha>` on branch/PR builds (rendered as `dev-<short-sha>` without the `v` prefix). No file edits required to bump the version — pushing a new `v*` tag is sufficient.
 
 ## Release versioning
 

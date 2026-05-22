@@ -1,4 +1,5 @@
-const APP_VERSION = '0.1.0';
+const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? 'dev';
+const versionDisplay = /^\d/.test(APP_VERSION) ? `v${APP_VERSION}` : APP_VERSION;
 
 export function Footer() {
   return (
@@ -6,7 +7,7 @@ export function Footer() {
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
         <span className="normal-case">
           <span className="tracking-tight text-slate-500">BidParser</span>{' '}
-          <span className="text-slate-500">v{APP_VERSION}</span>
+          <span className="text-slate-500">{versionDisplay}</span>
         </span>
       </div>
     </footer>

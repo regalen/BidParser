@@ -1,5 +1,7 @@
 # Stage 1: build frontend
 FROM node:20-alpine AS frontend-build
+ARG APP_VERSION=dev
+ENV VITE_APP_VERSION=$APP_VERSION
 WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
