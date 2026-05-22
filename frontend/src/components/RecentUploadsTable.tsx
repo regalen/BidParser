@@ -3,6 +3,8 @@ import { useEffect, useRef } from 'react';
 
 import type { HistoryRow } from '../types';
 
+const MAX_PAGE_SIZE = 10;
+
 export function RecentUploadsTable({
   rows,
   total,
@@ -34,7 +36,8 @@ export function RecentUploadsTable({
 
     const observer = new ResizeObserver(([entry]) => {
       const availableBodyHeight = entry.contentRect.height - 124;
-      const nextPageSize = Math.max(1, Math.floor(availableBodyHeight / 48));
+      const fitsByHeight = Math.max(1, Math.floor(availableBodyHeight / 48));
+      const nextPageSize = Math.min(MAX_PAGE_SIZE, fitsByHeight);
       if (nextPageSize !== pageSize) {
         onPageSize(nextPageSize);
       }

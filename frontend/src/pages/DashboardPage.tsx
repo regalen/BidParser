@@ -26,7 +26,7 @@ export function DashboardPage() {
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(10);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
