@@ -52,8 +52,24 @@ public sealed class NutanixSoftwareOnlyXlsxParser : IParser
             }
 
             var vpn = Text(sheet, row, headerMap, "Product Code");
-            if (vpn.Length == 0 || vpn == "Term-Months")
+            if (vpn.Length == 0)
             {
+                continue;
+            }
+
+            if (vpn == "Term-Months")
+            {
+                var termValue = DecimalCleaner.ParseOptionalInt(Text(sheet, row, headerMap, "Term (Months)"));
+                items.Add(new LineItem
+                {
+                    Vpn = "Term-Months",
+                    Description = "Term in months",
+                    Term = termValue,
+                    Qty = termValue ?? 0,
+                    Cost = 0m,
+                    Msrp = 0m,
+                    Raw = RawDict(sheet, row, headerMap)
+                });
                 continue;
             }
 

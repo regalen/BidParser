@@ -19,22 +19,27 @@ Some real quotes include extra columns alongside the required set — `Selected 
 - `Total Discount` and `Total Net Price` — labels are unmapped in the parser; the cells are read into `Raw` for debugging but not extracted to any output field.
 
 **Extracting Line Items**
-Every row between the header row and the stop condition is a candidate line item. Skip rows where the `Product Code` cell trims to `Term-Months` — these are filler rows that repeat after every real line item and are not actual line items.
+Every row between the header row and the stop condition is a candidate line item. Keep rows where the `Product Code` cell trims to `Term-Months` as real line items with `Vpn="Term-Months"`, `Description="Term in months"`, `Term` and `Qty` set to the term value, and `Cost=Msrp=0`.
 
 **Part Number**
-From the `Product Code` column. Trim whitespace. After skipping `Term-Months` rows in `XQ-4076249.xlsx` the values are:
+From the `Product Code` column. Trim whitespace. The values extracted from `XQ-4076249.xlsx` (including `Term-Months` filler rows) are:
 
 SW-NCM-STR-PR
+Term-Months
 SW-NCI-PRO-PR
+Term-Months
 SW-NCI-PRO-PR
+Term-Months
 SW-NCI-E-PRO-PR
+Term-Months
 SW-NCM-E-STR-PR
+Term-Months
 
 **Product Description**
 From the `Product Description` column. Single cell per row — no wrapping. Trim whitespace and emit.
 
 **Term (Months)**
-From the `Term (Months)` column. Already a number in the source (e.g. `60`). Empty cells (allowed under the extended layout, e.g. non-subscription services) emit `null`. Skip on `Term-Months` filler rows. In the sample every kept item has term `60`.
+From the `Term (Months)` column. Already a number in the source (e.g. `60`). Empty cells (allowed under the extended layout, e.g. non-subscription services) emit `null`. For `Term-Months` rows, this value is extracted and used for both `Term` and `Qty`. In the sample, every item has term `60`.
 
 **List Price**
 From the `List Price` column. Stored as a string with a dollar sign and thousands separators, e.g. `$383.00` or `$2,275.00`. Strip the `$`, commas, and whitespace and parse as a number — `$2,275.00` becomes `2275.00`, `$383.00` becomes `383.00`. This is the supplier's MSRP / list value.

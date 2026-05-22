@@ -49,14 +49,32 @@ public sealed partial class NutanixSoftwareOnlyPdfParser : IParser
                 continue;
             }
 
-            // Sub-header / "Term-Months" filler skip. Two variants ship in real quotes:
-            //   - Wide layout: one row, Product Code "Term-Months", Product "Term in months".
-            //   - Narrow layout: row 1 Product Code "Term-" + Product "Term in months",
-            //     row 2 Product Code "Months" only (no anchor signal).
-            // The first form is caught by either branch below. The wrap's row 2 falls through to
-            // the continuation branch and does nothing because "Months" fails the SKU shape check.
-            if (product == "Term in months"
-                || (hasAnchorSignal && productCode.Length > 0 && !ProductCodePattern().IsMatch(productCode)))
+            // Term-Months row — KEEP as a line item with sentinel-zero pricing.
+            if (product == "Term in months")
+            {
+                if (current is not null)
+                {
+                    items.Add(BuildItem(current));
+                    current = null;
+                }
+
+                var termValue = DecimalCleaner.ParseOptionalInt(Cell(cells, "Term (Months)"));
+                items.Add(new LineItem
+                {
+                    Vpn = "Term-Months",
+                    Description = "Term in months",
+                    Term = termValue,
+                    Qty = termValue ?? 0,
+                    Cost = 0m,
+                    Msrp = 0m,
+                    Raw = RawDict(cells)
+                });
+                continue;
+            }
+
+            // Narrow-layout continuation row ("Months" alone after "Term-") — already
+            // canonicalised above, drop it so it doesn't append to the next real anchor.
+            if (hasAnchorSignal && productCode.Length > 0 && !ProductCodePattern().IsMatch(productCode))
             {
                 continue;
             }

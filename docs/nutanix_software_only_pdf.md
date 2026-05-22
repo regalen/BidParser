@@ -28,9 +28,10 @@ Header column ranges are derived by clustering the header band's words by overla
 For each body row, classify as anchor or continuation:
 
 - **Anchor row** — Product Code matches `^[A-Z0-9-]+$` AND the row carries an anchor signal (Quantity or Term cell is non-empty). Start a new line item, seeded with this row's Product Code and Product cell.
+- **Term-Months row** — Product cell is exactly `Term in months`. Flushes the current item (if any) and creates a new line item with `vpn = "Term-Months"`, `description = "Term in months"`, `term` and `qty` set to the term value, and `cost = msrp = 0` (sentinel pricing). Resets continuation grouping.
 - **Continuation row** — anything else. Append non-empty Product Code fragments to the current item's code parts (concatenated with no separator) and Product fragments to its description parts (joined with single spaces). Numeric cells (List, Net, Total, Quantity, Term, Selected Start Date) are appended into the current item's cells with a space separator — required to handle the split USD-label / numeric-value pattern.
 
-**Filler / sub-header skip:** any row whose Product cell is exactly `Term in months`, OR whose Product Code is non-empty but doesn't match the SKU shape while still carrying an anchor signal, is treated as a filler sub-header and ignored entirely. This catches both the single-row `Term-Months` form and the wrapped `Term-` / `Months` form. The second wrap row (`Months` only, no anchor signal) falls through harmlessly because `Months` fails the SKU shape check.
+**Filler / sub-header skip:** if a row has an anchor signal but the product code is non-empty and does not match the SKU shape (e.g. wrapped narrow-layout continuation row artifacts like `"Term-"`), it is skipped. The second wrap row of a narrow-layout `Term-Months` row (`"Months"` only, no anchor signal) falls through harmlessly because there is no active `current` item (grouping was reset by the `Term-Months` row) and it fails the SKU shape check.
 
 **Page-footer skip:** rows whose joined text matches `^Page\s+\d+\s+of\s+\d+$` are dropped before classification.
 

@@ -150,7 +150,7 @@ Shared helpers live in `src/BidParser.Parsing/Xlsx/`: `WorkbookReader`, `HeaderM
 Header anchor: `"Product"` immediately followed (same y-band ±3pt, increasing x) by `"Code"`. Columns: `Product Code`, `Product`, `Term (Months)`, `List Unit Price`, `Net Unit Price`, `Quantity`.
 
 Row classification:
-- `Product Code` cell trims to `"Term-Months"` OR `Product` cell is `"Term in months"` → **skip** (sub-header that repeats per page).
+- `Product Code` cell trims to `"Term-Months"` OR `Product` cell is `"Term in months"` → **Term-Months row** (KEEP as a line item with sentinel-zero pricing, and reset continuation grouping).
 - `Product Code` matches `^[A-Z0-9-]+$` after trim → **anchor row** (new `LineItem`).
 - `Product Code` empty AND `Product` non-empty → **continuation row** (append `Product` text to current anchor's description).
 - Otherwise → ignore.
@@ -159,7 +159,7 @@ Per-field handling: flatten description by joining continuation snippets with si
 
 Edge cases the tests must cover:
 - 3–5 line description wrap per item.
-- `Term-Months` sub-header repeating on each page.
+- `Term-Months` row kept as a line item.
 - `TOTAL:` wrapping onto a later page.
 - Thousands separators in prices (`2,275.00`).
 
@@ -168,10 +168,15 @@ Expected output for `XQ-4076249.pdf` (already validated by hand — use these as
 | Part Number      | Term | List Price | Sale Price | Quantity |
 |------------------|------|------------|------------|----------|
 | SW-NCM-STR-PR    | 60   | 383        | 101.11     | 2096     |
+| Term-Months      | 60   | 0          | 0          | 60       |
 | SW-NCI-PRO-PR    | 60   | 2275       | 600.60     | 864      |
+| Term-Months      | 60   | 0          | 0          | 60       |
 | SW-NCI-PRO-PR    | 60   | 2275       | 600.60     | 1232     |
+| Term-Months      | 60   | 0          | 0          | 60       |
 | SW-NCI-E-PRO-PR  | 60   | 3455       | 912.12     | 145      |
+| Term-Months      | 60   | 0          | 0          | 60       |
 | SW-NCM-E-STR-PR  | 60   | 583        | 153.91     | 145      |
+| Term-Months      | 60   | 0          | 0          | 60       |
 
 Computed total = quoted total = `USD 1,625,358.51`.
 
@@ -188,7 +193,7 @@ Section + header location (all anchor-based — no fixed rows or columns):
 4. Iterate data rows below the header. Stop at the first wholly-empty row or the first cell whose value starts with `TOTAL ` (whichever comes first).
 
 Row classification (data rows below the header):
-- `Product Code` cell trims to `Term-Months` → **skip** (filler row identical in purpose to the PDF sub-header; appears after every real line item).
+- `Product Code` cell trims to `Term-Months` → **Term-Months row** (KEEP as a line item with sentinel-zero pricing).
 - `Product Code` cell non-empty and not `Term-Months` → **anchor row** (new `LineItem`). One row per item — no continuation rows in this format because cells don't wrap.
 
 Per-field handling:
@@ -203,7 +208,7 @@ Total location: scan downward from the last data row for a cell whose value star
 
 Edge cases the tests must cover:
 - Header row position not fixed (metadata block above the table can grow across samples).
-- `Term-Months` filler rows present and correctly skipped.
+- `Term-Months` rows present and correctly kept.
 - Currency strings prefixed with `$` (not `USD `), with thousands separators (`$2,275.00`).
 - `Total Discount (%)` sits between `List Price` and `Sale Price` in the sample, so the label-to-column map must use header text — never assume adjacency or fixed column letters.
 
@@ -212,10 +217,15 @@ Expected output for `XQ-4076249.xlsx` (already validated by hand — golden valu
 | Part Number      | Term | List Price | Sale Price | Quantity |
 |------------------|------|------------|------------|----------|
 | SW-NCM-STR-PR    | 60   | 383.00     | 101.11     | 2096     |
+| Term-Months      | 60   | 0          | 0          | 60       |
 | SW-NCI-PRO-PR    | 60   | 2275.00    | 600.60     | 864      |
+| Term-Months      | 60   | 0          | 0          | 60       |
 | SW-NCI-PRO-PR    | 60   | 2275.00    | 600.60     | 1232     |
+| Term-Months      | 60   | 0          | 0          | 60       |
 | SW-NCI-E-PRO-PR  | 60   | 3455.00    | 912.12     | 145      |
+| Term-Months      | 60   | 0          | 0          | 60       |
 | SW-NCM-E-STR-PR  | 60   | 583.00     | 153.91     | 145      |
+| Term-Months      | 60   | 0          | 0          | 60       |
 
 Computed total = quoted total = `$1,625,358.51`.
 
@@ -270,7 +280,7 @@ Row classification:
 - `Product Code` empty AND at least one other column non-empty → **continuation row**. Append text per column to the corresponding field on the current anchor — both `Product Code` and `Product` wrap independently in this format.
 - Otherwise → ignore.
 
-**Every classified line item is kept** — no filler rows are skipped. In particular the `Support-Term` row (Product Code `Support-Term`, Description `Support Term in Months`) is a real line item here. This is the *opposite* rule to Software Only PDF, where the analogous `Term-Months` row is filler and skipped.
+**Every classified line item is kept** — no filler rows are skipped. In particular the `Support-Term` row (Product Code `Support-Term`, Description `Support Term in Months`) is a real line item here. This matches the rule for Software Only formats where `Term-Months` rows are also kept.
 
 Per-field handling:
 - **Part Number** (`vpn`): concatenate the anchor + continuation `Product Code` snippets with **no separator** (e.g. `NX-1175S-G10-` + `6517P-CM` → `NX-1175S-G10-6517P-CM`). Trim whitespace at the end. Keep non-SKU labels verbatim.
@@ -285,7 +295,7 @@ Edge cases the tests must cover:
 - Part Number wrap: several SKUs wrap (`NX-1175S-G10-`/`6517P-CM`, `C-NVM-7.68TB-`/`AB1A-CM`, `C-PWR-4FC13C14A-`/`CM`). The no-separator join is critical.
 - Description wrap: 1–4 lines per item.
 - Bundled-component rows: Product Code + Description + Quantity populated, but Term / List / Discount / Net Unit Price cells empty → emit `0` for both prices, null for term.
-- `Support-Term` is **not** a sub-header — keep it. Do not apply the Software-Only `Term-Months` skip rule.
+- `Support-Term` is **not** a sub-header — keep it.
 - The `TOTAL:` line may sit on the same row as `USD <amount>` (Quote D in the sample) or wrap to a separate row (Software Only PDF) — handle both.
 
 Expected output for `XQ-4108785.pdf` Quote D (already validated by hand — golden values):
@@ -316,7 +326,7 @@ Section + header location (all anchor-based — no fixed positions):
 3. Build a label→column-letter map from that header row. **Do not assume column letters carry over from Quote C** — in the sample, Quote C has `Product Code` in column H, Quote D has it in column E.
 4. Stop at the first cell below the header whose value starts with `TOTAL ` — that cell ends the section and carries the quoted total.
 
-Row classification: every non-empty row between the header row and the `TOTAL ` row is a line item. **No filler rows are skipped in this format** — in particular the `Support-Term` row (Product Code `Support-Term`, Description `Support Term in Months`) *is* a kept line item here. Compare with Software Only where the analogous `Term-Months` row is skipped; the difference is per-format and the user has confirmed it.
+Row classification: every non-empty row between the header row and the `TOTAL ` row is a line item. **No filler rows are skipped in this format** — in particular the `Support-Term` row (Product Code `Support-Term`, Description `Support Term in Months`) *is* a kept line item here. This matches Software Only where the analogous `Term-Months` row is also kept.
 
 Per-field handling:
 - **Part Number** (`vpn`): trim source `Product Code`. Some rows have non-SKU labels (`Support-Term`, `Platform Integration`) — keep them verbatim.

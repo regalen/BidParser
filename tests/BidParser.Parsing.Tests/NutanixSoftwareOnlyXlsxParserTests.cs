@@ -23,10 +23,21 @@ public sealed class NutanixSoftwareOnlyXlsxParserTests
             .Should()
             .Equal(
                 ("SW-NCM-STR-PR", 60, 383m, 101.11m, 2096),
+                ("Term-Months", 60, 0m, 0m, 60),
                 ("SW-NCI-PRO-PR", 60, 2275m, 600.60m, 864),
+                ("Term-Months", 60, 0m, 0m, 60),
                 ("SW-NCI-PRO-PR", 60, 2275m, 600.60m, 1232),
+                ("Term-Months", 60, 0m, 0m, 60),
                 ("SW-NCI-E-PRO-PR", 60, 3455m, 912.12m, 145),
-                ("SW-NCM-E-STR-PR", 60, 583m, 153.91m, 145));
+                ("Term-Months", 60, 0m, 0m, 60),
+                ("SW-NCM-E-STR-PR", 60, 583m, 153.91m, 145),
+                ("Term-Months", 60, 0m, 0m, 60));
+
+        result.LineItems
+            .Where(item => item.Vpn == "Term-Months")
+            .Select(item => item.Description)
+            .Should()
+            .AllBe("Term in months");
     }
 
     private static string FindRepoRoot()

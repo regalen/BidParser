@@ -23,10 +23,21 @@ public sealed class NutanixSoftwareOnlyPdfParserTests
             .Should()
             .Equal(
                 ("SW-NCM-STR-PR", 60, 383m, 101.11m, 2096),
+                ("Term-Months", 60, 0m, 0m, 60),
                 ("SW-NCI-PRO-PR", 60, 2275m, 600.60m, 864),
+                ("Term-Months", 60, 0m, 0m, 60),
                 ("SW-NCI-PRO-PR", 60, 2275m, 600.60m, 1232),
+                ("Term-Months", 60, 0m, 0m, 60),
                 ("SW-NCI-E-PRO-PR", 60, 3455m, 912.12m, 145),
-                ("SW-NCM-E-STR-PR", 60, 583m, 153.91m, 145));
+                ("Term-Months", 60, 0m, 0m, 60),
+                ("SW-NCM-E-STR-PR", 60, 583m, 153.91m, 145),
+                ("Term-Months", 60, 0m, 0m, 60));
+
+        result.LineItems
+            .Where(item => item.Vpn == "Term-Months")
+            .Select(item => item.Description)
+            .Should()
+            .AllBe("Term in months");
     }
 
     [Fact]
@@ -45,7 +56,14 @@ public sealed class NutanixSoftwareOnlyPdfParserTests
             .Select(item => (item.Vpn, item.Term, item.Msrp, item.Cost, item.Qty, item.StartDate))
             .Should()
             .Equal(
-                ("SW-NDB-PR", (int?)12, (decimal?)1092m, 644.28m, 320, (DateOnly?)new DateOnly(2026, 7, 13)));
+                ("SW-NDB-PR", (int?)12, (decimal?)1092m, 644.28m, 320, (DateOnly?)new DateOnly(2026, 7, 13)),
+                ("Term-Months", 12, 0m, 0m, 12, null));
+
+        result.LineItems
+            .Where(item => item.Vpn == "Term-Months")
+            .Select(item => item.Description)
+            .Should()
+            .AllBe("Term in months");
     }
 
     [Fact]
@@ -65,6 +83,7 @@ public sealed class NutanixSoftwareOnlyPdfParserTests
             .Should()
             .Equal(
                 ("SW-NDB-PR", (int?)36, (decimal?)3275m, 545.83m, 288, (DateOnly?)new DateOnly(2026, 7, 31)),
+                ("Term-Months", 36, 0m, 0m, 36, null),
                 ("FLEX-CST-CR", 12, 100m, 85m, 60, null),
                 ("CNS-INF-A-WRK-DSGN-BAS-MS-SD-VIRT", null, 38105m, 34294.50m, 1, null),
                 ("CNS-INF-A-SVC-DEP-ONP-AHV", null, 3440m, 3096m, 3, null),
@@ -75,6 +94,12 @@ public sealed class NutanixSoftwareOnlyPdfParserTests
                 ("EDU-ONSITE-FEE", null, 0m, 0m, 1, null),
                 ("EDU-C-NDMA-INV", null, 2310m, 2079m, 1, null),
                 ("PS-RES-IRE-CONS-QRTR-12MO", null, 68040m, 61236m, 1, null));
+
+        result.LineItems
+            .Where(item => item.Vpn == "Term-Months")
+            .Select(item => item.Description)
+            .Should()
+            .AllBe("Term in months");
     }
 
     private static string FindRepoRoot()
