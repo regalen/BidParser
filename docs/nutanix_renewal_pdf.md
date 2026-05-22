@@ -54,6 +54,25 @@ Using the "Qty" column, extract the quantity. In the provide sample XQ-4128926.p
 160
 
 **Validation**
-Once all lines are extracted, you will need to validate that the values are captured accurately. To achieve this I would first look to the "TOTAL: " field at the bottom of the able, in the sample file XQ-4128926.pdf this contains the string "USD 60,205.68". You would need to strip the currency text "USD" and parse the raw number which is 60205.68.
+Once all lines are extracted, you will need to validate that the values are captured accurately. To achieve this I would first look to the "TOTAL: " field at the bottom of the table, in the sample file XQ-4128926.pdf this contains the string "USD 60,205.68". You would need to strip the currency text "USD" and parse the raw number which is 60205.68.
 
 With the raw number, you would then calculate the total value using the extracted values for each line. You would multiply the value you extracted for Cost Price with Quantity and then add them all up. The resulting number should match the total you obtain of 60205.68
+
+## XQ-4166696.pdf Sample (Wrapped Prices)
+
+This is a second example of a Renewal (PDF) quote, but with larger pricing amounts that trigger multi-line wrapping in the price columns (e.g. `USD` is printed on the first line of the cell, and the price amount like `1,121.00` wraps to the second line of the cell). Fusing the adjacent currency token `"USD"` and the numeric amount before column bucketing is required to prevent parsing issues.
+
+### Extracted Line Items
+
+| No | Product Code | Serial Number | Start Date | End Date | MSRP | Cost Price | Quantity | Total Net Price |
+|----|--------------|---------------|------------|----------|------|------------|----------|-----------------|
+| 1  | RSW-NCM-STR-PR | 25SW000430057,LIC-02537784 | 17/06/2026 | 01/12/2028 | 189.00 | 54.64 | 80 | 4,371.20 |
+| 2  | RSW-NCI-PRO-PR | 25SW000430055,LIC-02537786 | 17/06/2026 | 01/12/2028 | 1,121.00 | 661.61 | 80 | 52,928.80 |
+| 3  | RSW-NCM-STR-PR | 25SW000430056,LIC-02537783 | 28/10/2026 | 01/12/2028 | 161.00 | 40.20 | 400 | 16,080.00 |
+| 4  | RSW-NCI-PRO-PR | 25SW000430054,LIC-02537785 | 28/10/2026 | 01/12/2028 | 955.00 | 755.64 | 400 | 302,256.00 |
+
+### Validation
+
+- Quoted Total: `USD 375,636.00`
+- Computed Total: `(54.64 * 80) + (661.61 * 80) + (40.20 * 400) + (755.64 * 400) = 4,371.20 + 52,928.80 + 16,080.00 + 302,256.00 = 375,636.00`
+- Matches: Yes
