@@ -16,7 +16,7 @@ The backend has been re-platformed from Python/FastAPI to ASP.NET Core 10. The c
 - `src/BidParser.Output/` — `ForeignUpliftWriter` (ClosedXML), `OutputNaming`.
 - `tests/BidParser.Parsing.Tests/` — xUnit tests: cleaning helpers, all five parsers against golden inputs, template writer cell-by-cell equivalence against `samples/outputs/`.
 - `tests/BidParser.Api.Tests/` — xUnit + `WebApplicationFactory` integration tests: migration/bootstrap, auth flow, users admin, parse roundtrip + error matrix (including magic-byte mismatch, generic-exception 500 via global handler, per-user rate limit), history list/filter/pagination/downloads, health endpoint security headers, `ForwardedHeaders` trust boundary, retention cleanup.
-- `frontend/` — React/Vite/TypeScript app. Visual design language matches ProductLens (slate-50 page background, white cards with `border-slate-200` + `shadow-sm`, `#0077d4` accent, Inter typography, uppercase tracked labels). Shared utility classes live in `src/styles.css` (`.label`, `.field`, `.button`, `.button-primary`, `.button-danger`, `.icon-button`, `.card`, `.toast`). Contains the API client, auth context, route shell, login + forced password change screens (each rendered on the ProductLens slate-50 background with a centered card, accent-blue icon tile, and the shared `Footer`; the change-password screen has a live rule checklist for length/uppercase/digit/symbol/match), sticky white `AppHeader` with an `AccountChip` (display name + `@username` + ghost-red logout) and admin Settings link, V4 side-panel dashboard, Nutanix parser selection from `/api/parsers`, FX/margin inputs from `/api/me`, single-file dropzone/progress state, auto-download on parse, validation toasts, dynamic recent-uploads pagination with download actions, auth-expiry redirects, and admin user settings as a card grid. Components are extracted into individual files per the plan's repo layout, with a shared `Footer` used across all routes.
+- `frontend/` — React/Vite/TypeScript app. Visual design language matches ProductLens (slate-50 page background, white cards with `border-slate-200` + `shadow-sm`, `#0077d4` accent, Inter typography, uppercase tracked labels). Shared utility classes live in `src/styles.css` (`.label`, `.field`, `.button`, `.button-primary`, `.button-danger`, `.icon-button`, `.card`, `.toast`). Contains the API client, auth context, route shell, login + forced password change screens (each rendered on the ProductLens slate-50 background with a centered card, accent-blue icon tile, and the shared `Footer`; the change-password screen has a live rule checklist for length/uppercase/digit/symbol/match), sticky white `AppHeader` with an `AccountChip` (display name + `@username` + ghost-red logout) and admin Settings link, V4 side-panel dashboard, Nutanix parser selection from `/api/parsers`, FX/margin inputs from `/api/me`, single-file dropzone/progress state, auto-download on parse, validation toasts, recent-uploads pagination (page size adapts to viewport height, capped at `MAX_PAGE_SIZE = 10` in `RecentUploadsTable.tsx`) with download actions, auth-expiry redirects, and admin user settings as a card grid. Components are extracted into individual files per the plan's repo layout, with a shared `Footer` used across all routes.
 - `samples/inputs/` — real supplier quote files. Six PDFs (`XQ-4076249.pdf`, `XQ-4108785.pdf`, `XQ-4128926.pdf`, `XQ-4157308.pdf`, `XQ-4165884.pdf`, `XQ-4166696.pdf`) and two XLSXs (`XQ-4076249.xlsx`, `XQ-4108785.xlsx`). All eight are supplier-issued inputs the parser must handle. `XQ-4108785.pdf` and `XQ-4108785.xlsx` are the *same engagement* delivered in two envelopes; both parsers extract from **Quote D** (reseller-facing breakdown) within those files and produce matching totals (`USD 22,491.87`). `XQ-4157308.pdf` and `XQ-4165884.pdf` are both Software Only (PDF) samples using the **extended 9-column layout** (adds `Selected Start Date`, `Total Discount`, `Total Net Price`); `XQ-4157308.pdf` is the minimal case (1 line item, side-by-side `Product Code` header) and `XQ-4165884.pdf` is the heavy case (11 line items, stacked `Product`/`Code` header, wrapped multi-line SKUs).
 - `samples/outputs/` — golden `XQ-*_parsed.xlsx` fixtures, one per quote number (not per input file — PDF and XLSX variants of the same quote share one golden file since they produce identical output). Used by the template-writer regression tests; regenerated whenever an output rule changes. Naming follows the spec: `<basename>_parsed.xlsx` (e.g. `XQ-4076249_parsed.xlsx`).
 - `samples/template/ANZ-GENERIC_ForeignUplift.xlsx` — the standardised internal template that parsed line items are written into. Field mapping is locked in `docs/output_mapping.md`; do not interpret cell positions from this file directly.
@@ -248,11 +248,14 @@ Per-field handling:
 
 The Renewal layout has no Term-Months sub-header to skip and no description wrap. The `Total Net Price` column wraps onto the next line because the column is narrow, but we don't extract that field — the validation comes from the `TOTAL:` line.
 
+**USD-prefix fusion:** before column bucketing, `NutanixRenewalPdfParser.FuseCurrencyTokens` walks the word stream and pairs each `"USD"` token with its nearby numeric amount (forward window of 6 words; spatial tolerance `Top ∈ [USD.Top − 3.5, USD.Top + 15.0]`, same page). The pair is collapsed into one synthetic `PdfWord` anchored at the *amount's* coordinates, so wider or wrapped amounts (e.g. `USD` left-aligned on one line, `1,121.00` right-aligned on the line below) always land in the correct price column. Without this, the `USD` prefix and the numeric token can straddle the column boundary and `DecimalCleaner.Parse` throws on a bare `'USD'`.
+
 Edge cases the tests must cover:
 - `Serial Number` cell wrapping across two lines (the comma is at the end of the first line, so the no-separator join is correct).
 - `Net Unit Price` and `Qty` running together visually with no space (e.g. `USD 54.41 160`) — column x-ranges disambiguate.
 - `TOTAL: USD ...` itself wraps onto two lines (`TOTAL:` and `USD` on one line, the amount on the next).
 - The serial cell could in principle contain only a serial with no embedded license/comma — the no-separator join still produces a valid single-string value; no special handling needed.
+- Wrapped-currency layout (`XQ-4166696.pdf`): `USD` sits on a different visual line from its amount. `FuseCurrencyTokens` joins them so column assignment uses the amount's x position.
 
 Expected output for `XQ-4128926.pdf` (already validated by hand — golden values):
 
@@ -264,6 +267,17 @@ Expected output for `XQ-4128926.pdf` (already validated by hand — golden value
 | RSW-NCM-STR-PR  | 24SW000351228,LIC-02472985  | 2026-07-13  | 2027-07-12  | 77         | 54.41      | 160      |
 
 Computed total = quoted total = `USD 60,205.68`.
+
+Expected output for `XQ-4166696.pdf` (wrapped-currency sample, hand-validated golden values):
+
+| Part Number     | Serial Number               | Start Date  | End Date    | List Price | Sale Price | Quantity |
+|-----------------|-----------------------------|-------------|-------------|------------|------------|----------|
+| RSW-NCM-STR-PR  | 25SW000430057,LIC-02537784  | 2026-06-17  | 2028-12-01  | 189        | 54.64      | 80       |
+| RSW-NCI-PRO-PR  | 25SW000430055,LIC-02537786  | 2026-06-17  | 2028-12-01  | 1121       | 661.61     | 80       |
+| RSW-NCM-STR-PR  | 25SW000430056,LIC-02537783  | 2026-10-28  | 2028-12-01  | 161        | 40.20      | 400      |
+| RSW-NCI-PRO-PR  | 25SW000430054,LIC-02537785  | 2026-10-28  | 2028-12-01  | 955        | 755.64     | 400      |
+
+Computed total = quoted total = `USD 375,636.00`.
 
 ## Hardware Only (PDF) — extraction algorithm
 
