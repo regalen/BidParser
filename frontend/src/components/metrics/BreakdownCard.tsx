@@ -6,14 +6,16 @@ export interface BreakdownRow {
   count: number;
   filterKey: string;
   filterValue: string;
+  disabled?: boolean;
 }
 
 export function BreakdownCard({ title, rows }: { title: string; rows: BreakdownRow[] }) {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const handleRowClick = (key: string, value: string) => {
+  const handleRowClick = (row: BreakdownRow) => {
+    if (row.disabled || !row.filterValue) return;
     const newParams = new URLSearchParams(searchParams);
-    newParams.set(key, value);
+    newParams.set(row.filterKey, row.filterValue);
     setSearchParams(newParams);
   };
 
@@ -33,8 +35,10 @@ export function BreakdownCard({ title, rows }: { title: string; rows: BreakdownR
             return (
               <button
                 key={idx}
-                className="group relative flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-slate-50"
-                onClick={() => handleRowClick(row.filterKey, row.filterValue)}
+                type="button"
+                disabled={row.disabled}
+                className="group relative flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-slate-50 disabled:cursor-default disabled:hover:bg-transparent"
+                onClick={() => handleRowClick(row)}
               >
                 <div
                   className="absolute bottom-0 left-0 top-0 bg-accent-soft opacity-30 transition-all group-hover:opacity-50"

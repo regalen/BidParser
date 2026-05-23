@@ -1,6 +1,8 @@
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-export function UtilisationTimeChart({ data }: { data: any }) {
+import type { MetricsSummaryResponse } from '../../types';
+
+export function UtilisationTimeChart({ data }: { data: MetricsSummaryResponse | null }) {
   if (!data?.time_series || data.time_series.length === 0) {
     return (
       <div className="card flex h-64 flex-col items-center justify-center p-4">
@@ -9,8 +11,7 @@ export function UtilisationTimeChart({ data }: { data: any }) {
     );
   }
 
-  // Format dates for display (e.g., "Apr 23")
-  const chartData = data.time_series.map((point: any) => {
+  const chartData = data.time_series.map((point) => {
     const d = new Date(point.date);
     return {
       ...point,

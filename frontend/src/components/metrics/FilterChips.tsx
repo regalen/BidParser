@@ -1,7 +1,9 @@
 import { X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
-export function FilterChips({ data }: { data: any }) {
+import type { MetricsSummaryResponse } from '../../types';
+
+export function FilterChips({ data }: { data: MetricsSummaryResponse | null }) {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const vendor = searchParams.get('vendor');
@@ -11,41 +13,41 @@ export function FilterChips({ data }: { data: any }) {
   if (!vendor && !userId && !parserSlug) return null;
 
   const removeFilter = (key: string) => {
-    const newParams = new URLSearchParams(searchParams);
-    newParams.delete(key);
-    setSearchParams(newParams);
+    const next = new URLSearchParams(searchParams);
+    next.delete(key);
+    setSearchParams(next);
   };
 
-  // Attempt to find display names from the data
-  const userDisplay = data?.by_user?.[0]?.name || data?.by_user?.[0]?.username || userId;
-  const parserDisplay = data?.by_parser?.[0]?.display_name || parserSlug;
+  const userMatch = userId
+    ? data?.by_user.find((u) => u.user_id !== null && String(u.user_id) === userId)
+    : undefined;
+  const userDisplay = userMatch ? userMatch.name ?? userMatch.username : userId;
+
+  const parserMatch = parserSlug ? data?.by_parser.find((p) => p.parser_slug === parserSlug) : undefined;
+  const parserDisplay = parserMatch?.display_name ?? parserSlug;
 
   return (
     <div className="flex flex-wrap items-center gap-2 py-2">
       {vendor && (
-        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-800">
-          Vendor: {vendor}
-          <button onClick={() => removeFilter('vendor')} className="ml-1 rounded-full p-0.5 hover:bg-slate-200">
-            <X className="h-3 w-3" />
-          </button>
-        </span>
+        <Chip label={`Vendor: ${vendor}`} onRemove={() => removeFilter('vendor')} />
       )}
       {userId && (
-        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-800">
-          User: {userDisplay}
-          <button onClick={() => removeFilter('userId')} className="ml-1 rounded-full p-0.5 hover:bg-slate-200">
-            <X className="h-3 w-3" />
-          </button>
-        </span>
+        <Chip label={`User: ${userDisplay}`} onRemove={() => removeFilter('userId')} />
       )}
       {parserSlug && (
-        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-800">
-          File Type: {parserDisplay}
-          <button onClick={() => removeFilter('parserSlug')} className="ml-1 rounded-full p-0.5 hover:bg-slate-200">
-            <X className="h-3 w-3" />
-          </button>
-        </span>
+        <Chip label={`File Type: ${parserDisplay}`} onRemove={() => removeFilter('parserSlug')} />
       )}
     </div>
+  );
+}
+
+function Chip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-800">
+      {label}
+      <button type="button" onClick={onRemove} className="ml-1 rounded-full p-0.5 hover:bg-slate-200" aria-label={`Remove ${label}`}>
+        <X className="h-3 w-3" />
+      </button>
+    </span>
   );
 }

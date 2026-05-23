@@ -1,4 +1,6 @@
-export function KpiStrip({ data }: { data: any }) {
+import type { MetricsSummaryResponse } from '../../types';
+
+export function KpiStrip({ data }: { data: MetricsSummaryResponse | null }) {
   if (!data?.kpis) return null;
 
   const { total_parses, active_users, active_vendors, mismatch_rate } = data.kpis;

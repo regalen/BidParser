@@ -1,12 +1,27 @@
-import { Settings, Users, BarChart3, Activity } from 'lucide-react';
+import { Activity, BarChart3, Settings, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
 import { useAuth } from '../auth/AuthContext';
+
+interface MenuItem {
+  label: string;
+  path: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const ITEMS: MenuItem[] = [
+  { label: 'Users', path: '/admin/users', icon: Users },
+  { label: 'Metrics', path: '/admin/metrics', icon: BarChart3 },
+  { label: 'Monitoring', path: '/admin/monitoring', icon: Activity },
+];
 
 export function AdminMenu() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  const [focusIndex, setFocusIndex] = useState(0);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -16,23 +31,60 @@ export function AdminMenu() {
         setOpen(false);
       }
     }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setOpen(false);
-      }
-    }
     document.addEventListener('mousedown', onClickOutside);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', onClickOutside);
-      document.removeEventListener('keydown', onKeyDown);
-    };
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      setFocusIndex(0);
+      requestAnimationFrame(() => itemRefs.current[0]?.focus());
+    }
   }, [open]);
 
   if (!user || user.role !== 'admin') return null;
 
+  function handleSelect(item: MenuItem) {
+    setOpen(false);
+    navigate(item.path);
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setOpen(false);
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      const next = (focusIndex + 1) % ITEMS.length;
+      setFocusIndex(next);
+      itemRefs.current[next]?.focus();
+      return;
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      const next = (focusIndex - 1 + ITEMS.length) % ITEMS.length;
+      setFocusIndex(next);
+      itemRefs.current[next]?.focus();
+      return;
+    }
+    if (event.key === 'Home') {
+      event.preventDefault();
+      setFocusIndex(0);
+      itemRefs.current[0]?.focus();
+      return;
+    }
+    if (event.key === 'End') {
+      event.preventDefault();
+      const last = ITEMS.length - 1;
+      setFocusIndex(last);
+      itemRefs.current[last]?.focus();
+    }
+  }
+
   return (
-    <div className="relative" ref={wrapperRef}>
+    <div className="relative" ref={wrapperRef} onKeyDown={handleKeyDown}>
       <button
         type="button"
         className="icon-button"
@@ -48,39 +100,24 @@ export function AdminMenu() {
           role="menu"
           className="absolute right-0 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
         >
-          <button
-            role="menuitem"
-            className="flex w-full items-center gap-3 px-4 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100"
-            onClick={() => {
-              setOpen(false);
-              navigate('/admin/users');
-            }}
-          >
-            <Users className="h-4 w-4 text-slate-400" />
-            <span className="font-medium">Users</span>
-          </button>
-          <button
-            role="menuitem"
-            className="flex w-full items-center gap-3 px-4 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100"
-            onClick={() => {
-              setOpen(false);
-              navigate('/admin/metrics');
-            }}
-          >
-            <BarChart3 className="h-4 w-4 text-slate-400" />
-            <span className="font-medium">Metrics</span>
-          </button>
-          <button
-            role="menuitem"
-            className="flex w-full items-center gap-3 px-4 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100"
-            onClick={() => {
-              setOpen(false);
-              navigate('/admin/monitoring');
-            }}
-          >
-            <Activity className="h-4 w-4 text-slate-400" />
-            <span className="font-medium">Monitoring</span>
-          </button>
+          {ITEMS.map((item, index) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.path}
+                ref={(el) => {
+                  itemRefs.current[index] = el;
+                }}
+                role="menuitem"
+                tabIndex={focusIndex === index ? 0 : -1}
+                className="flex w-full items-center gap-3 px-4 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100 focus:bg-slate-100 focus:outline-none"
+                onClick={() => handleSelect(item)}
+              >
+                <Icon className="h-4 w-4 text-slate-400" />
+                <span className="font-medium">{item.label}</span>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

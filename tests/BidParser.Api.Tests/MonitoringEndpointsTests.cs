@@ -72,6 +72,47 @@ public sealed class MonitoringEndpointsTests
     }
 
     [Fact]
+    public async Task ListResponseFlipsSourceAvailableWhenFileMissing()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        using var scope = fixture.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var sourcePath = Path.Combine(fixture.UploadDir, "vanish.pdf");
+        Directory.CreateDirectory(fixture.UploadDir);
+        await File.WriteAllTextAsync(sourcePath, "still here");
+
+        var failure = new FailedParseJob
+        {
+            UserUsername = "admin",
+            Vendor = "Nutanix",
+            ParserSlug = "nutanix_software_only_pdf",
+            SourceFilename = "vanish.pdf",
+            SourcePath = sourcePath,
+            Category = FailureCategory.ParserError,
+            ErrorDetail = "err",
+            FxRate = 1m,
+            Margin = 0m,
+        };
+        db.FailedParseJobs.Add(failure);
+        await db.SaveChangesAsync();
+
+        var before = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/monitoring/failures");
+        before.GetProperty("items").EnumerateArray().Single()
+            .GetProperty("source_available").GetBoolean().Should().BeTrue();
+
+        File.Delete(sourcePath);
+
+        var after = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/monitoring/failures");
+        var item = after.GetProperty("items").EnumerateArray().Single();
+        item.GetProperty("source_available").GetBoolean().Should().BeFalse();
+        item.GetProperty("category").GetString().Should().Be("parser_error");
+    }
+
+    [Fact]
     public async Task GetSource_StreamsFile_AndReturns404IfMissing()
     {
         using var fixture = await ApiTestFixture.CreateAsync();

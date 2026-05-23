@@ -10,10 +10,11 @@ import { DateRangeControl } from '../../components/metrics/DateRangeControl';
 import { FilterChips } from '../../components/metrics/FilterChips';
 import { KpiStrip } from '../../components/metrics/KpiStrip';
 import { UtilisationTimeChart } from '../../components/metrics/UtilisationTimeChart';
+import type { MetricsSummaryResponse } from '../../types';
 
 export function MetricsDashboard() {
   const [searchParams] = useSearchParams();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<MetricsSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,22 +44,23 @@ export function MetricsDashboard() {
     window.location.href = `/api/metrics/export?${searchParams.toString()}`;
   };
 
-  const userRows: BreakdownRow[] = (data?.by_user || []).map((u: any) => ({
-    label: u.name || u.username,
+  const userRows: BreakdownRow[] = (data?.by_user ?? []).map((u) => ({
+    label: u.name ?? u.username,
     subLabel: `@${u.username}`,
     count: u.count,
     filterKey: 'userId',
-    filterValue: String(u.user_id),
+    filterValue: u.user_id !== null ? String(u.user_id) : '',
+    disabled: u.user_id === null,
   }));
 
-  const vendorRows: BreakdownRow[] = (data?.by_vendor || []).map((v: any) => ({
+  const vendorRows: BreakdownRow[] = (data?.by_vendor ?? []).map((v) => ({
     label: v.vendor,
     count: v.count,
     filterKey: 'vendor',
     filterValue: v.vendor,
   }));
 
-  const parserRows: BreakdownRow[] = (data?.by_parser || []).map((p: any) => ({
+  const parserRows: BreakdownRow[] = (data?.by_parser ?? []).map((p) => ({
     label: p.display_name,
     subLabel: p.parser_slug,
     count: p.count,
@@ -98,7 +100,7 @@ export function MetricsDashboard() {
           <div className="mt-4 flex flex-col gap-6">
             <KpiStrip data={data} />
             <UtilisationTimeChart data={data} />
-            
+
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               <BreakdownCard title="By User" rows={userRows} />
               <BreakdownCard title="By Vendor" rows={vendorRows} />

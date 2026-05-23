@@ -1,4 +1,10 @@
-import type { HistoryResponse, ParserInfo, User } from '../types';
+import type {
+  FailedParseJobResponse,
+  HistoryResponse,
+  MetricsSummaryResponse,
+  ParserInfo,
+  User,
+} from '../types';
 
 export class ApiError extends Error {
   status: number;
@@ -99,13 +105,13 @@ export const api = {
     return request<User[]>('/users');
   },
 
-  metricsSummary(params: URLSearchParams): Promise<any> {
-    return request<any>(`/metrics/summary?${params.toString()}`);
+  metricsSummary(params: URLSearchParams): Promise<MetricsSummaryResponse> {
+    return request<MetricsSummaryResponse>(`/metrics/summary?${params.toString()}`);
   },
 
-  monitoringFailures(limit: number, offset: number): Promise<import('../types').FailedParseJobResponse> {
+  monitoringFailures(limit: number, offset: number): Promise<FailedParseJobResponse> {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-    return request<import('../types').FailedParseJobResponse>(`/monitoring/failures?${params.toString()}`);
+    return request<FailedParseJobResponse>(`/monitoring/failures?${params.toString()}`);
   },
 
   createUser(payload: { username: string; name: string; role: 'admin' | 'user' }): Promise<User> {

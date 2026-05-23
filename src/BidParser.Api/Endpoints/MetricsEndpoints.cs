@@ -83,11 +83,6 @@ public static class MetricsEndpoints
             .OrderByDescending(x => x.Count)
             .ToList();
 
-        // 5. Time Series
-        // We use string interpolation here, but ensure no SQL injection by not passing parameters to it.
-        // EF Core 8+ allows string interpolation with `FromSql` but we are using LINQ grouping on top.
-        // Instead of FromSql, let's just do it securely.
-        
         var timeSeriesQuery = db.Database.SqlQuery<TimeSeriesRow>(
             $@"
             SELECT date(created_at, 'localtime') as Date, COUNT(*) as Count

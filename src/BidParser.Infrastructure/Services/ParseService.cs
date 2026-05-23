@@ -33,9 +33,10 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
         var sourcePath = storage.NewOriginalPath(displayFilename);
         var outputPath = storage.NewOutputPath();
 
+        await storage.SaveUploadAsync(fileStream, sourcePath, maxUploadBytes, ct);
+
         try
         {
-            await storage.SaveUploadAsync(fileStream, sourcePath, maxUploadBytes, ct);
             await ValidateMagicBytesAsync(sourcePath, parser.AcceptedMime, ct);
 
             var result = parser.Parse(sourcePath);

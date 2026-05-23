@@ -150,6 +150,73 @@ public sealed class MetricsEndpointsTests
     }
 
     [Fact]
+    public async Task MismatchRateIsZeroStringOnEmptyRange()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        // No seed data — the default 30-day window is empty.
+        var response = await client.GetAsync("/api/metrics/summary");
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        var kpis = json.GetProperty("kpis");
+
+        kpis.GetProperty("total_parses").GetInt32().Should().Be(0);
+        kpis.GetProperty("mismatch_rate").GetString().Should().Be("0");
+    }
+
+    [Fact]
+    public async Task TimeSeriesBucketsByLocalDate()
+    {
+        var previousTz = Environment.GetEnvironmentVariable("TZ");
+        Environment.SetEnvironmentVariable("TZ", "UTC");
+        TimeZoneInfo.ClearCachedData();
+
+        try
+        {
+            using var fixture = await ApiTestFixture.CreateAsync();
+            using var client = fixture.Factory.CreateClient();
+            await ApiTestFixture.UnlockAdminAsync(client);
+
+            using (var scope = fixture.Factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                db.ParseMetrics.RemoveRange(db.ParseMetrics);
+                var anchor = new DateTime(2026, 5, 10, 12, 0, 0, DateTimeKind.Utc);
+                db.ParseMetrics.Add(new ParseMetric
+                {
+                    UserId = null,
+                    UserUsername = "tz-test",
+                    Vendor = "Nutanix",
+                    ParserSlug = "nutanix_software_only_pdf",
+                    SourceFilename = "tz.pdf",
+                    Currency = "USD",
+                    ComputedTotal = 1m,
+                    TotalsMatch = true,
+                    FxRate = 1m,
+                    Margin = 0m,
+                    CreatedAt = anchor
+                });
+                await db.SaveChangesAsync();
+            }
+
+            var response = await client.GetAsync("/api/metrics/summary?from=2026-05-10&to=2026-05-10");
+            response.EnsureSuccessStatusCode();
+            var json = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            var ts = json.GetProperty("time_series").EnumerateArray().Single();
+            ts.GetProperty("date").GetString().Should().Be("2026-05-10");
+            ts.GetProperty("count").GetInt32().Should().Be(1);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("TZ", previousTz);
+            TimeZoneInfo.ClearCachedData();
+        }
+    }
+
+    [Fact]
     public async Task SummaryRespectsCustomDateRange()
     {
         using var fixture = await ApiTestFixture.CreateAsync();

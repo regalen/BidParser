@@ -67,6 +67,67 @@ public sealed class MetricsExportTests
     }
 
     [Fact]
+    public async Task ExportFiltersByVendorAndIncludesDateRangeInFilename()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        using (var scope = fixture.Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.ParseMetrics.RemoveRange(db.ParseMetrics);
+            var now = DateTime.UtcNow;
+
+            db.ParseMetrics.AddRange(
+                new ParseMetric
+                {
+                    UserId = null,
+                    UserUsername = "u",
+                    Vendor = "Nutanix",
+                    ParserSlug = "nutanix_software_only_pdf",
+                    SourceFilename = "keep.pdf",
+                    Currency = "USD",
+                    ComputedTotal = 100,
+                    TotalsMatch = true,
+                    FxRate = 1m,
+                    Margin = 0m,
+                    CreatedAt = now.AddDays(-2)
+                },
+                new ParseMetric
+                {
+                    UserId = null,
+                    UserUsername = "u",
+                    Vendor = "Other",
+                    ParserSlug = "other_parser",
+                    SourceFilename = "drop.pdf",
+                    Currency = "USD",
+                    ComputedTotal = 50,
+                    TotalsMatch = true,
+                    FxRate = 1m,
+                    Margin = 0m,
+                    CreatedAt = now.AddDays(-2)
+                });
+            await db.SaveChangesAsync();
+        }
+
+        var from = DateTime.Today.AddDays(-7).ToString("yyyy-MM-dd");
+        var to = DateTime.Today.ToString("yyyy-MM-dd");
+        var response = await client.GetAsync($"/api/metrics/export?vendor=Nutanix&from={from}&to={to}");
+        response.EnsureSuccessStatusCode();
+
+        var filename = response.Content.Headers.ContentDisposition!.FileNameStar ?? response.Content.Headers.ContentDisposition!.FileName!;
+        filename.Should().Contain(from);
+        filename.Should().Contain(to);
+
+        var stream = await response.Content.ReadAsStreamAsync();
+        using var wb = new XLWorkbook(stream);
+        var ws = wb.Worksheets.Single();
+        ws.Cell(2, 6).GetString().Should().Be("keep.pdf");
+        ws.Cell(3, 6).IsEmpty().Should().BeTrue();
+    }
+
+    [Fact]
     public async Task ExportReturnsValidExcelFile()
     {
         using var fixture = await ApiTestFixture.CreateAsync();

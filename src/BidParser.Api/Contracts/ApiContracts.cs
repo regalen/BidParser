@@ -53,3 +53,26 @@ public sealed record MetricsDateRange(
     string From,
     string To
 );
+
+public sealed record FailedParseJobItem(
+    int Id,
+    DateTime CreatedAt,
+    int? UserId,
+    string Username,
+    string? Name,
+    string Vendor,
+    string ParserSlug,
+    string ParserDisplayName,
+    string SourceFilename,
+    string Category,
+    string? Stage,
+    string? Hint,
+    string? Message,
+    string ErrorDetail,
+    bool SourceAvailable
+);
+
+public sealed record FailedParseJobListResponse(
+    int Total,
+    IReadOnlyList<FailedParseJobItem> Items
+);
