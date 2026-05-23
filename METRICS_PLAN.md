@@ -25,7 +25,7 @@ Phases 1–3 (Metrics) and Phases 4–6 (Monitoring) are two independent vertica
 
 ---
 
-### Phase 1 — Metrics ledger foundation (backend only)
+### Phase 1 — Metrics ledger foundation (backend only) [COMPLETED]
 
 **Goal**: Persist a `ParseMetric` row alongside every successful `ParseJob`. Backfill from existing `parse_jobs` rows at migration time.
 
@@ -45,7 +45,7 @@ Phases 1–3 (Metrics) and Phases 4–6 (Monitoring) are two independent vertica
 
 ---
 
-### Phase 2 — Metrics API
+### Phase 2 — Metrics API [COMPLETED]
 
 **Goal**: Expose `/api/metrics/summary` and `/api/metrics/export`.
 
@@ -63,7 +63,7 @@ Phases 1–3 (Metrics) and Phases 4–6 (Monitoring) are two independent vertica
 
 ---
 
-### Phase 3 — Admin shell + Metrics dashboard (frontend)
+### Phase 3 — Admin shell + Metrics dashboard (frontend) [COMPLETED]
 
 **Goal**: Land the `/admin/*` route shell, the dropdown menu, and the Utilisation Dashboard UI.
 
@@ -84,7 +84,7 @@ Phases 1–3 (Metrics) and Phases 4–6 (Monitoring) are two independent vertica
 
 ---
 
-### Phase 4 — Monitoring ledger foundation (backend only)
+### Phase 4 — Monitoring ledger foundation (backend only) [COMPLETED]
 
 **Goal**: Capture every post-save parse failure as a `FailedParseJob` row, retain its source file, and clean up both at retention.
 
@@ -107,7 +107,7 @@ Phases 1–3 (Metrics) and Phases 4–6 (Monitoring) are two independent vertica
 
 ---
 
-### Phase 5 — Monitoring API
+### Phase 5 — Monitoring API [COMPLETED]
 
 **Goal**: Expose `/api/monitoring/failures` (list) and `/api/monitoring/failures/{id}/source` (download).
 
@@ -124,7 +124,7 @@ Phases 1–3 (Metrics) and Phases 4–6 (Monitoring) are two independent vertica
 
 ---
 
-### Phase 6 — Monitoring page (frontend) + ops/docs
+### Phase 6 — Monitoring page (frontend) + ops/docs [COMPLETED]
 
 **Goal**: Add the Monitoring page, wire it into the admin dropdown, finalise ops config and docs.
 
