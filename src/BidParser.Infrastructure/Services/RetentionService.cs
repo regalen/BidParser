@@ -25,6 +25,20 @@ public sealed class RetentionService(AppDbContext db, FileStorage storage)
             .Where(j => j.CreatedAt < cutoff)
             .ExecuteDeleteAsync(ct);
 
+        var oldFailures = await db.FailedParseJobs
+            .Where(f => f.CreatedAt < cutoff)
+            .Select(f => new { f.SourcePath })
+            .ToListAsync(ct);
+
+        foreach (var f in oldFailures)
+        {
+            storage.TryDelete(f.SourcePath);
+        }
+
+        await db.FailedParseJobs
+            .Where(f => f.CreatedAt < cutoff)
+            .ExecuteDeleteAsync(ct);
+
         return deleted;
     }
 }

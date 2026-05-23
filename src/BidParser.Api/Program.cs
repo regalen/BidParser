@@ -65,6 +65,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddSingleton<IParserRegistry, ParserRegistry>();
 builder.Services.AddSingleton(new FileStorage(appOptions.UploadDir));
 builder.Services.AddScoped<ParseService>();
+builder.Services.AddScoped<FailedParseJobRecorder>();
 builder.Services.AddScoped<RetentionService>();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();

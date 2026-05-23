@@ -7,7 +7,7 @@ using BidParser.Output;
 
 namespace BidParser.Infrastructure.Services;
 
-public sealed class ParseService(IParserRegistry registry, FileStorage storage, AppDbContext db)
+public sealed class ParseService(IParserRegistry registry, FileStorage storage, AppDbContext db, FailedParseJobRecorder failureRecorder)
 {
     private static readonly Dictionary<string, string> ExtensionToMime = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -98,10 +98,17 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
                 outputPath,
                 result.Validation);
         }
-        catch
+        catch (Exception ex)
         {
-            storage.TryDelete(sourcePath);
             storage.TryDelete(outputPath);
+
+            var fxRateRounded = Math.Round(fxRate, 4, MidpointRounding.AwayFromZero);
+            var marginRounded = Math.Round(margin, 2, MidpointRounding.AwayFromZero);
+
+            await failureRecorder.RecordAsync(
+                user, vendor, parser.Slug, displayFilename, sourcePath,
+                fxRateRounded, marginRounded, ex, ct);
+
             throw;
         }
     }

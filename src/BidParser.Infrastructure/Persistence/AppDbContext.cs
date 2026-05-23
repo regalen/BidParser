@@ -13,6 +13,7 @@ public sealed class AppDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<ParseJob> ParseJobs => Set<ParseJob>();
     public DbSet<ParseMetric> ParseMetrics => Set<ParseMetric>();
+    public DbSet<FailedParseJob> FailedParseJobs => Set<FailedParseJob>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
@@ -110,6 +111,45 @@ public sealed class AppDbContext : DbContext
             entity.HasIndex(m => new { m.ParserSlug, m.CreatedAt }).HasDatabaseName("ix_parse_metrics_parser_slug_created_at");
             entity.HasIndex(m => new { m.UserId, m.CreatedAt }).HasDatabaseName("ix_parse_metrics_user_id_created_at");
         });
+
+        modelBuilder.Entity<FailedParseJob>(entity =>
+        {
+            entity.ToTable("failed_parse_jobs");
+            entity.HasKey(f => f.Id);
+            entity.Property(f => f.Id).HasColumnName("id");
+
+            entity.Property(f => f.UserId).HasColumnName("user_id");
+            entity.HasOne(f => f.User).WithMany().HasForeignKey(f => f.UserId).OnDelete(DeleteBehavior.SetNull);
+
+            entity.Property(f => f.UserUsername).HasColumnName("user_username").HasMaxLength(128).IsRequired();
+            entity.Property(f => f.UserName).HasColumnName("user_name").HasMaxLength(255);
+
+            entity.Property(f => f.Vendor).HasColumnName("vendor").HasMaxLength(64).IsRequired();
+            entity.Property(f => f.ParserSlug).HasColumnName("parser_slug").HasMaxLength(128).IsRequired();
+
+            entity.Property(f => f.SourceFilename).HasColumnName("source_filename").HasColumnType("TEXT COLLATE NOCASE").HasMaxLength(255).IsRequired();
+            entity.Property(f => f.SourcePath).HasColumnName("source_path").HasMaxLength(1024).IsRequired();
+
+            entity.Property(f => f.Category).HasColumnName("category").HasMaxLength(32).IsRequired()
+                .HasConversion(
+                    v => v.ToString().ToLowerInvariant(),
+                    v => Enum.Parse<FailureCategory>(v, ignoreCase: true));
+
+            entity.Property(f => f.Stage).HasColumnName("stage").HasMaxLength(128);
+            entity.Property(f => f.Hint).HasColumnName("hint").HasMaxLength(512);
+            entity.Property(f => f.Message).HasColumnName("message").HasMaxLength(1024);
+
+            entity.Property(f => f.ErrorDetail).HasColumnName("error_detail").HasColumnType("TEXT").IsRequired();
+
+            entity.Property(f => f.FxRate).HasColumnName("fx_rate").HasPrecision(12, 4).IsRequired();
+            entity.Property(f => f.Margin).HasColumnName("margin").HasPrecision(12, 2).IsRequired();
+
+            entity.Property(f => f.CreatedAt).HasColumnName("created_at").IsRequired();
+
+            entity.HasIndex(f => f.CreatedAt).IsDescending().HasDatabaseName("ix_failed_parse_jobs_created_at");
+            entity.HasIndex(f => new { f.UserId, f.CreatedAt }).IsDescending(false, true).HasDatabaseName("ix_failed_parse_jobs_user_id_created_at");
+            entity.HasIndex(f => new { f.Category, f.CreatedAt }).IsDescending(false, true).HasDatabaseName("ix_failed_parse_jobs_category_created_at");
+        });
     }
 
     private void StampTimestamps()
@@ -137,6 +177,14 @@ public sealed class AppDbContext : DbContext
         }
 
         foreach (var entry in ChangeTracker.Entries<ParseMetric>())
+        {
+            if (entry.State == EntityState.Added && entry.Entity.CreatedAt == default)
+            {
+                entry.Entity.CreatedAt = now;
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<FailedParseJob>())
         {
             if (entry.State == EntityState.Added && entry.Entity.CreatedAt == default)
             {
