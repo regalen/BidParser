@@ -41,6 +41,7 @@ All configuration is via environment variables. Set them in a `.env` file next t
 | `SESSION_SECRET` | _(required)_ | Data Protection app-name discriminator. **Not** a cryptographic signing key — the actual signing material is the keyring in `/data/dp-keys`. Generate with `openssl rand -hex 32`. Changing this value scopes new cookies away from old ones (effectively logs everyone out), but the keyring is what must be deleted for a hard reset. |
 | `ADMIN_USERNAME` | `admin` | Username for the initial admin user (only used on first run when no users exist). |
 | `ADMIN_PASSWORD` | `changeme` | Password for the initial admin user (only used on first run). |
+| `TZ` | `Australia/Sydney` | Controls server-local time used for the Utilisation Dashboard's daily buckets. Set to your operating timezone in `.env` if different. |
 | `SESSION_LIFETIME_HOURS` | `12` | Hard session expiry from login. No sliding refresh. |
 | `RETENTION_DAYS` | `90` | Uploaded files and parse history older than this are deleted daily. |
 | `RATE_LIMIT_AUTH_PER_MIN` | `5` | Max login/change-password attempts per minute per IP and per username. |

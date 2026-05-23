@@ -9,6 +9,7 @@ services:
     volumes:
       - ${DATA_DIR:-bidparser-data}:/data
     environment:
+      - TZ=${TZ:-Australia/Sydney}
       - SESSION_SECRET=${SESSION_SECRET:?Set SESSION_SECRET in .env}
       - SESSION_LIFETIME_HOURS=${SESSION_LIFETIME_HOURS:-12}
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
