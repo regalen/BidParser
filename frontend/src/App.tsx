@@ -4,7 +4,16 @@ import { useAuth } from './auth/AuthContext';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
-import { SettingsPage } from './pages/SettingsPage';
+import { MetricsDashboard } from './pages/admin/MetricsDashboard';
+import { UsersPage } from './pages/admin/UsersPage';
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.must_change_password) return <Navigate to="/change-password" replace />;
+  if (user.role !== 'admin') return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
 
 export function App() {
   const { user, loading } = useAuth();
@@ -25,22 +34,12 @@ export function App() {
         path="/dashboard"
         element={user ? (user.must_change_password ? <Navigate to="/change-password" replace /> : <DashboardPage />) : <Navigate to="/login" replace />}
       />
-      <Route
-        path="/settings"
-        element={
-          user ? (
-            user.must_change_password ? (
-              <Navigate to="/change-password" replace />
-            ) : user.role === 'admin' ? (
-              <SettingsPage />
-            ) : (
-              <Navigate to="/dashboard" replace />
-            )
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
+      
+      {/* Admin Shell Routes */}
+      <Route path="/settings" element={<Navigate to="/admin/users" replace />} />
+      <Route path="/admin/users" element={<AdminRoute><UsersPage /></AdminRoute>} />
+      <Route path="/admin/metrics" element={<AdminRoute><MetricsDashboard /></AdminRoute>} />
+      
       <Route path="*" element={<Navigate to={user ? (user.must_change_password ? '/change-password' : '/dashboard') : '/login'} replace />} />
     </Routes>
   );

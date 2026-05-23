@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "dotnet-architect": {
+      "source": "rmyndharis/antigravity-skills",
+      "sourceType": "github",
+      "skillPath": "skills/dotnet-architect/SKILL.md",
+      "computedHash": "d6622d8e5fdf13226f2eb06868f7d78a43c79889c8812d0022e282a040e869bf"
+    }
+  }
+}

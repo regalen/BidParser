@@ -12,6 +12,7 @@ public sealed class AppDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<ParseJob> ParseJobs => Set<ParseJob>();
+    public DbSet<ParseMetric> ParseMetrics => Set<ParseMetric>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
@@ -75,6 +76,40 @@ public sealed class AppDbContext : DbContext
             entity.Property(job => job.TotalsMatch).HasColumnName("totals_match").IsRequired();
             entity.Property(job => job.CreatedAt).HasColumnName("created_at").IsRequired();
         });
+
+        modelBuilder.Entity<ParseMetric>(entity =>
+        {
+            entity.ToTable("parse_metrics");
+            entity.HasKey(m => m.Id);
+            entity.Property(m => m.Id).HasColumnName("id");
+
+            entity.Property(m => m.UserId).HasColumnName("user_id");
+            entity.Property(m => m.ParseJobId).HasColumnName("parse_job_id");
+
+            entity.HasOne(m => m.User).WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(m => m.ParseJob).WithMany().HasForeignKey(m => m.ParseJobId).OnDelete(DeleteBehavior.SetNull);
+
+            entity.Property(m => m.UserUsername).HasColumnName("user_username").HasMaxLength(128).IsRequired();
+            entity.Property(m => m.UserName).HasColumnName("user_name").HasMaxLength(255);
+
+            entity.Property(m => m.Vendor).HasColumnName("vendor").HasMaxLength(64).IsRequired();
+            entity.Property(m => m.ParserSlug).HasColumnName("parser_slug").HasMaxLength(128).IsRequired();
+
+            entity.Property(m => m.SourceFilename).HasColumnName("source_filename").HasColumnType("TEXT COLLATE NOCASE").HasMaxLength(255).IsRequired();
+            entity.Property(m => m.Currency).HasColumnName("currency").HasMaxLength(3).IsRequired();
+            entity.Property(m => m.QuotedTotal).HasColumnName("quoted_total").HasPrecision(14, 2);
+            entity.Property(m => m.ComputedTotal).HasColumnName("computed_total").HasPrecision(14, 2).IsRequired();
+            entity.Property(m => m.TotalsMatch).HasColumnName("totals_match").IsRequired();
+            entity.Property(m => m.FxRate).HasColumnName("fx_rate").HasPrecision(12, 4).IsRequired();
+            entity.Property(m => m.Margin).HasColumnName("margin").HasPrecision(12, 2).IsRequired();
+
+            entity.Property(m => m.CreatedAt).HasColumnName("created_at").IsRequired();
+
+            entity.HasIndex(m => m.CreatedAt).HasDatabaseName("ix_parse_metrics_created_at");
+            entity.HasIndex(m => new { m.Vendor, m.CreatedAt }).HasDatabaseName("ix_parse_metrics_vendor_created_at");
+            entity.HasIndex(m => new { m.ParserSlug, m.CreatedAt }).HasDatabaseName("ix_parse_metrics_parser_slug_created_at");
+            entity.HasIndex(m => new { m.UserId, m.CreatedAt }).HasDatabaseName("ix_parse_metrics_user_id_created_at");
+        });
     }
 
     private void StampTimestamps()
@@ -84,7 +119,7 @@ public sealed class AppDbContext : DbContext
         {
             if (entry.State == EntityState.Added)
             {
-                entry.Entity.CreatedAt = now;
+                if (entry.Entity.CreatedAt == default) entry.Entity.CreatedAt = now;
                 entry.Entity.UpdatedAt = now;
             }
             else if (entry.State == EntityState.Modified)
@@ -95,7 +130,15 @@ public sealed class AppDbContext : DbContext
 
         foreach (var entry in ChangeTracker.Entries<ParseJob>())
         {
-            if (entry.State == EntityState.Added)
+            if (entry.State == EntityState.Added && entry.Entity.CreatedAt == default)
+            {
+                entry.Entity.CreatedAt = now;
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<ParseMetric>())
+        {
+            if (entry.State == EntityState.Added && entry.Entity.CreatedAt == default)
             {
                 entry.Entity.CreatedAt = now;
             }

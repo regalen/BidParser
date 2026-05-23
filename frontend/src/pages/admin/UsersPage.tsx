@@ -1,14 +1,14 @@
 import { AlertCircle, Edit2, KeyRound, Plus, Shield, Trash2, User as UserIcon, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { api, ApiError } from '../api/client';
-import { useAuth } from '../auth/AuthContext';
-import { AppHeader } from '../components/AppHeader';
-import { Footer } from '../components/Footer';
-import { UserModal } from '../components/UserModal';
-import type { Role, User } from '../types';
+import { api, ApiError } from '../../api/client';
+import { useAuth } from '../../auth/AuthContext';
+import { AppHeader } from '../../components/AppHeader';
+import { Footer } from '../../components/Footer';
+import { UserModal } from '../../components/UserModal';
+import type { Role, User } from '../../types';
 
-export function SettingsPage() {
+export function UsersPage() {
   const { user } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [modalUser, setModalUser] = useState<User | null | undefined>(undefined);
@@ -34,7 +34,7 @@ export function SettingsPage() {
       await loadUsers();
     } catch (caught) {
       setError(
-        caught instanceof ApiError && typeof caught.detail === 'string' ? caught.detail : 'Could not save user.',
+        caught instanceof ApiError && typeof (caught as ApiError).detail === 'string' ? (caught as ApiError).detail as string : 'Could not save user.',
       );
     }
   }
@@ -51,7 +51,7 @@ export function SettingsPage() {
       await loadUsers();
     } catch (caught) {
       setError(
-        caught instanceof ApiError && typeof caught.detail === 'string' ? caught.detail : 'Could not delete user.',
+        caught instanceof ApiError && typeof (caught as ApiError).detail === 'string' ? (caught as ApiError).detail as string : 'Could not delete user.',
       );
     }
   }

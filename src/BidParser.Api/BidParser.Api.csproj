@@ -3,6 +3,7 @@
     <ProjectReference Include="..\BidParser.Domain\BidParser.Domain.csproj" />
     <ProjectReference Include="..\BidParser.Infrastructure\BidParser.Infrastructure.csproj" />
     <ProjectReference Include="..\BidParser.Parsing\BidParser.Parsing.csproj" />
+    <ProjectReference Include="..\BidParser.Output\BidParser.Output.csproj" />
   </ItemGroup>
 
   <ItemGroup>

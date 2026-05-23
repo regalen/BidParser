@@ -99,6 +99,10 @@ export const api = {
     return request<User[]>('/users');
   },
 
+  metricsSummary(params: URLSearchParams): Promise<any> {
+    return request<any>(`/metrics/summary?${params.toString()}`);
+  },
+
   createUser(payload: { username: string; name: string; role: 'admin' | 'user' }): Promise<User> {
     return request<User>('/users', {
       method: 'POST',

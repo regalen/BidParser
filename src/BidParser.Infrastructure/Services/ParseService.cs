@@ -67,11 +67,29 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
                 TotalsMatch = result.Validation.Matches
             };
 
+            var metric = new ParseMetric
+            {
+                UserId = user.Id,
+                UserUsername = user.Username,
+                UserName = user.Name,
+                Vendor = vendor,
+                ParserSlug = parser.Slug,
+                SourceFilename = displayFilename,
+                Currency = result.Metadata.Currency,
+                QuotedTotal = result.Validation.QuotedTotal,
+                ComputedTotal = result.Validation.ComputedTotal,
+                TotalsMatch = result.Validation.Matches,
+                FxRate = fxRateRounded,
+                Margin = marginRounded,
+                ParseJob = job,
+            };
+
             user.DefaultVendor = vendor;
             user.FxRate = fxRateRounded;
             user.Margin = marginRounded;
             db.Update(user);
             db.Add(job);
+            db.Add(metric);
             await db.SaveChangesAsync(ct);
 
             return new ParseServiceResult(

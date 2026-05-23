@@ -153,6 +153,7 @@ app.MapParsersEndpoints();
 app.MapUsersEndpoints();
 app.MapParseEndpoints();
 app.MapHistoryEndpoints();
+app.MapMetricsEndpoints();
 
 app.MapFallbackToFile("index.html");
 
