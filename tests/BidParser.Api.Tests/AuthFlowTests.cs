@@ -171,9 +171,11 @@ internal sealed class ApiTestFixture : IDisposable
         _tempDir = tempDir;
         _environment = environment;
         Factory = factory;
+        UploadDir = Path.Combine(tempDir, "files");
     }
 
     public WebApplicationFactory<Program> Factory { get; }
+    public string UploadDir { get; }
 
     public static async Task<string> DetailAsync(HttpResponseMessage response)
     {
@@ -204,6 +206,24 @@ internal sealed class ApiTestFixture : IDisposable
         login.EnsureSuccessStatusCode();
 
         var changed = await PostJsonWithCsrfAsync(client, "/api/auth/change-password", new { old_password = "changeme", new_password = "Admin123!" });
+        changed.EnsureSuccessStatusCode();
+    }
+
+    public static async Task UnlockUserAsync(HttpClient client)
+    {
+        var createUserRes = await PostJsonWithCsrfAsync(client, "/api/users", new { username = "user1", name = "User One", role = "user" });
+        if (!createUserRes.IsSuccessStatusCode)
+        {
+            // fallback if it was already created, or we need to login as admin to create
+            await UnlockAdminAsync(client);
+            createUserRes = await PostJsonWithCsrfAsync(client, "/api/users", new { username = "user1", name = "User One", role = "user" });
+            await PostJsonWithCsrfAsync(client, "/api/auth/logout", new { });
+        }
+        
+        var login = await PostJsonWithCsrfAsync(client, "/api/auth/login", new { username = "user1", password = "changeme" });
+        login.EnsureSuccessStatusCode();
+
+        var changed = await PostJsonWithCsrfAsync(client, "/api/auth/change-password", new { old_password = "changeme", new_password = "User123!" });
         changed.EnsureSuccessStatusCode();
     }
 
