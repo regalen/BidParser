@@ -103,6 +103,11 @@ export const api = {
     return request<any>(`/metrics/summary?${params.toString()}`);
   },
 
+  monitoringFailures(limit: number, offset: number): Promise<import('../types').FailedParseJobResponse> {
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    return request<import('../types').FailedParseJobResponse>(`/monitoring/failures?${params.toString()}`);
+  },
+
   createUser(payload: { username: string; name: string; role: 'admin' | 'user' }): Promise<User> {
     return request<User>('/users', {
       method: 'POST',

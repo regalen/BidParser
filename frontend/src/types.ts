@@ -42,3 +42,26 @@ export interface ApiErrorDetail {
   hint?: string;
   message?: string;
 }
+
+export interface FailedParseJob {
+  id: number;
+  created_at: string;
+  user_id: number | null;
+  username: string;
+  name: string | null;
+  vendor: string;
+  parser_slug: string;
+  parser_display_name: string;
+  source_filename: string;
+  category: string;
+  stage: string;
+  hint: string | null;
+  message: string | null;
+  error_detail: string | null;
+  source_available: boolean;
+}
+
+export interface FailedParseJobResponse {
+  items: FailedParseJob[];
+  total: number;
+}

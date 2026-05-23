@@ -5,6 +5,7 @@ import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { MetricsDashboard } from './pages/admin/MetricsDashboard';
+import { MonitoringPage } from './pages/admin/MonitoringPage';
 import { UsersPage } from './pages/admin/UsersPage';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -39,6 +40,7 @@ export function App() {
       <Route path="/settings" element={<Navigate to="/admin/users" replace />} />
       <Route path="/admin/users" element={<AdminRoute><UsersPage /></AdminRoute>} />
       <Route path="/admin/metrics" element={<AdminRoute><MetricsDashboard /></AdminRoute>} />
+      <Route path="/admin/monitoring" element={<AdminRoute><MonitoringPage /></AdminRoute>} />
       
       <Route path="*" element={<Navigate to={user ? (user.must_change_password ? '/change-password' : '/dashboard') : '/login'} replace />} />
     </Routes>
