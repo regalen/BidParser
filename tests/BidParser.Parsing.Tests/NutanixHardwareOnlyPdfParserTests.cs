@@ -49,6 +49,74 @@ public sealed class NutanixHardwareOnlyPdfParserTests
         leadItem.Cost.Should().Be(20017.57m, "Quote D has the reseller-facing price, while Quote C has 5903.72");
     }
 
+    [Fact]
+    public void Parses_multi_page_quote_d_powerhouse_museum()
+    {
+        // Quote D spans pages 4-5 of 7; the "Page 5 of 7" footer falls in the
+        // Term (Months) column range and previously caused FormatException: 'Page'.
+        var root = FindRepoRoot();
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == "nutanix_hardware_only_pdf");
+        const string file = "XQ-4175235-PowerHouse NX 2-1670234_Logicalis_25-05-Powerhouse Museum.pdf";
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", file));
+
+        result.Metadata.QuotedTotal.Should().Be(247510.94m);
+        result.Validation.Matches.Should().BeTrue();
+
+        // No page-footer contamination — "Page" must never appear as a VPN or term.
+        result.LineItems.Should().NotContain(item =>
+            item.Vpn.Equals("Page", StringComparison.OrdinalIgnoreCase),
+            "page footer text must not be mistaken for a Product Code");
+
+        // Two identical NX bundles (qty 3 each) + two Platform Integration rows.
+        var nx = result.LineItems.Where(i => i.Vpn == "NX-1175S-G10-6724P-CM").ToList();
+        nx.Should().HaveCount(2);
+        nx.Should().AllSatisfy(item =>
+        {
+            item.Msrp.Should().Be(38994.60m);
+            item.Cost.Should().Be(31195.67m);
+            item.Qty.Should().Be(3);
+            item.Term.Should().BeNull();
+        });
+
+        var platform = result.LineItems.Where(i => i.Vpn == "Platform Integration").ToList();
+        platform.Should().HaveCount(2);
+        platform.Should().AllSatisfy(item =>
+        {
+            item.Cost.Should().Be(18717.40m);
+            item.Qty.Should().Be(1);
+            item.Term.Should().Be(0);
+        });
+    }
+
+    [Fact]
+    public void Parses_multi_page_quote_d_worksafe_victoria()
+    {
+        // Quote D spans pages 7-10 of 12 with three page footers inside the table.
+        // Net Unit Price for NX-8150-G10-6728P-CM wraps: "USD" on the anchor row,
+        // "169,690.39" on the continuation row — previously silently produced Cost=0
+        // once the page-footer crash was removed.
+        var root = FindRepoRoot();
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == "nutanix_hardware_only_pdf");
+        const string file = "XQ-4175219-Worksafe TAC - NX - 29012026-1615307-Worksafe Victoria.pdf";
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", file));
+
+        result.Metadata.QuotedTotal.Should().Be(3601962.18m);
+        result.Validation.Matches.Should().BeTrue();
+
+        // Currency fusion must correctly recover the wrapped net price.
+        var nx6728 = result.LineItems.Where(i => i.Vpn == "NX-8150-G10-6728P-CM").ToList();
+        nx6728.Should().NotBeEmpty();
+        nx6728.Should().AllSatisfy(item =>
+            item.Cost.Should().NotBe(0m, "FuseCurrencyTokens must join the wrapped 'USD 169,690.39'"));
+        nx6728.Should().AllSatisfy(item => item.Cost.Should().Be(169690.39m));
+
+        // No page-footer contamination.
+        result.LineItems.Should().NotContain(item =>
+            item.Vpn.Equals("Page", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static string FindRepoRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

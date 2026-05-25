@@ -3,11 +3,10 @@ using BidParser.Domain.Constants;
 using BidParser.Domain.Models;
 using BidParser.Parsing.Cleaning;
 using BidParser.Parsing.Pdf;
-using System.Text.RegularExpressions;
 
 namespace BidParser.Parsing.Nutanix.RenewalPdf;
 
-public sealed partial class NutanixRenewalPdfParser : IParser
+public sealed class NutanixRenewalPdfParser : IParser
 {
     public string Slug => ParserSlugs.NutanixRenewalPdf;
     public string DisplayName => "Renewal (PDF)";
@@ -18,7 +17,7 @@ public sealed partial class NutanixRenewalPdfParser : IParser
     public ParseResult Parse(string path)
     {
         var words = PdfWordCollector.CollectWords(path);
-        var fused = FuseCurrencyTokens(words);
+        var fused = PdfTableHelpers.FuseCurrencyTokens(words);
         var header = FindHeader(fused);
         var columns = BuildColumns(fused, header);
         var rows = PdfTableHelpers.RowsBetween(fused, header.Top + 6, header.PageIndex, columns);
@@ -181,65 +180,4 @@ public sealed partial class NutanixRenewalPdfParser : IParser
         List<string> SerialParts,
         Dictionary<string, string> Cells);
 
-    private static IReadOnlyList<PdfWord> FuseCurrencyTokens(IReadOnlyList<PdfWord> words)
-    {
-        // Scan a small forward window because PdfPig's NearestNeighbourWordExtractor
-        // does not guarantee strict reading order — the amount paired with "USD" may
-        // not always be exactly words[i+1].
-        const int lookAhead = 6;
-        var consumed = new bool[words.Count];
-        var result = new List<PdfWord>(words.Count);
-
-        for (var i = 0; i < words.Count; i++)
-        {
-            if (consumed[i])
-            {
-                continue;
-            }
-
-            var current = words[i];
-            if (current.Text == "USD")
-            {
-                var matchIndex = -1;
-                for (var j = i + 1; j < words.Count && j <= i + lookAhead; j++)
-                {
-                    if (consumed[j])
-                    {
-                        continue;
-                    }
-
-                    var candidate = words[j];
-                    if (candidate.PageIndex == current.PageIndex
-                        && candidate.Top >= current.Top - 3.5
-                        && candidate.Top - current.Top <= 15.0
-                        && CurrencyAmount().IsMatch(candidate.Text))
-                    {
-                        matchIndex = j;
-                        break;
-                    }
-                }
-
-                if (matchIndex >= 0)
-                {
-                    var amount = words[matchIndex];
-                    // Anchor the fused word at the AMOUNT's coordinates so column
-                    // bucketing places it where the number visually sits.
-                    result.Add(new PdfWord(
-                        $"USD {amount.Text}",
-                        amount.X0, amount.X1,
-                        amount.Top, amount.Bottom,
-                        amount.PageIndex, amount.PageWidth));
-                    consumed[matchIndex] = true;
-                    continue;
-                }
-            }
-
-            result.Add(current);
-        }
-
-        return result;
-    }
-
-    [GeneratedRegex(@"^\d[\d,]*(?:\.\d+)?$")]
-    private static partial Regex CurrencyAmount();
 }

@@ -158,6 +158,69 @@ public static partial class PdfTableHelpers
             .ToDictionary(pair => pair.Name, pair => pair.Range);
     }
 
+    /// <summary>
+    /// Pre-fuses each "USD" token with its nearby numeric amount into a single synthetic
+    /// word anchored at the amount's coordinates. This ensures that amounts which wrap
+    /// onto the line below their "USD" prefix still land in the correct price column when
+    /// bucketed, and that DecimalCleaner never sees a bare "USD" token.
+    /// </summary>
+    public static IReadOnlyList<PdfWord> FuseCurrencyTokens(IReadOnlyList<PdfWord> words)
+    {
+        const int lookAhead = 6;
+        var consumed = new bool[words.Count];
+        var result = new List<PdfWord>(words.Count);
+
+        for (var i = 0; i < words.Count; i++)
+        {
+            if (consumed[i])
+            {
+                continue;
+            }
+
+            var current = words[i];
+            if (current.Text == "USD")
+            {
+                var matchIndex = -1;
+                for (var j = i + 1; j < words.Count && j <= i + lookAhead; j++)
+                {
+                    if (consumed[j])
+                    {
+                        continue;
+                    }
+
+                    var candidate = words[j];
+                    if (candidate.PageIndex == current.PageIndex
+                        && candidate.Top >= current.Top - 3.5
+                        && candidate.Top - current.Top <= 15.0
+                        && CurrencyAmount().IsMatch(candidate.Text))
+                    {
+                        matchIndex = j;
+                        break;
+                    }
+                }
+
+                if (matchIndex >= 0)
+                {
+                    var amount = words[matchIndex];
+                    result.Add(new PdfWord(
+                        $"USD {amount.Text}",
+                        amount.X0, amount.X1,
+                        amount.Top, amount.Bottom,
+                        amount.PageIndex, amount.PageWidth));
+                    consumed[matchIndex] = true;
+                    continue;
+                }
+            }
+
+            result.Add(current);
+        }
+
+        return result;
+    }
+
     [GeneratedRegex(@"(?:USD\s*)?[$]?\s*[-+]?\d[\d,]*(?:\.\d+)?")]
     private static partial Regex TotalPattern();
+
+    [GeneratedRegex(@"^\d[\d,]*(?:\.\d+)?$")]
+    private static partial Regex CurrencyAmount();
 }

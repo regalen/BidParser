@@ -16,7 +16,7 @@ public sealed class NutanixHardwareOnlyPdfParser : IParser
 
     public ParseResult Parse(string path)
     {
-        var words = PdfWordCollector.CollectWords(path);
+        var words = PdfTableHelpers.FuseCurrencyTokens(PdfWordCollector.CollectWords(path));
         var bannerIndex = FindQuoteDBanner(words);
         var header = FindHeader(words, bannerIndex);
         var columns = BuildColumns(words, header);
@@ -29,10 +29,20 @@ public sealed class NutanixHardwareOnlyPdfParser : IParser
         foreach (var row in rows)
         {
             var cells = row.Cells.ToDictionary(pair => pair.Key, pair => TextCleaner.Clean(pair.Value));
+
+            // Skip page-footer rows ("Page N of M") that appear between table rows
+            // when Quote D spans multiple pages.
+            if (IsPageFooterRow(cells)) continue;
+
             var productCode = Cell(cells, "Product Code");
+            // A row is a wrapped-code continuation if it has a Product Code but no Quantity
+            // and no Total Net Price.  Rows that carry only wrapped Net Unit Price (e.g.
+            // "USD 169,690.39" on a continuation line when the price didn't fit on the
+            // anchor row) must be treated as continuations even though they have a price
+            // column — only Quantity or Total Net Price reliably signals a new standalone item.
             var isWrappedCode = productCode.Length > 0
                 && current is not null
-                && !HasAny(cells, "Term (Months)", "List Unit Price", "Net Unit Price", "Quantity", "Total Net Price");
+                && !HasAny(cells, "Quantity", "Total Net Price");
 
             if (productCode.Length > 0 && !isWrappedCode)
             {
@@ -236,6 +246,36 @@ public sealed class NutanixHardwareOnlyPdfParser : IParser
         }
 
         return result.Trim();
+    }
+
+    /// <summary>
+    /// Returns true when all non-empty cell values are consistent with a "Page N of M"
+    /// footer (i.e. "Page", "of", or digit-only strings) AND both "Page" and "of" are
+    /// present. Requiring both guards against accidentally skipping a legitimate
+    /// continuation row whose only text happens to be the word "Page".
+    /// </summary>
+    /// <summary>
+    /// Returns true when all non-empty cell values are consistent with a "Page N of M"
+    /// footer (i.e. "Page", "of", or digit-only strings) AND both "Page" and "of" are
+    /// present. Cell values are split into individual tokens first because the PDF word
+    /// bucketing may join multiple footer words (e.g. "5 of 7") into a single cell value
+    /// when they share the same column x-range.
+    /// </summary>
+    private static bool IsPageFooterRow(IReadOnlyDictionary<string, string> cells)
+    {
+        var nonEmpty = cells.Values.Where(v => v.Length > 0).ToList();
+        if (nonEmpty.Count == 0) return false;
+
+        var tokens = nonEmpty
+            .SelectMany(v => v.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .ToList();
+
+        return tokens.Any(t => string.Equals(t, "Page", StringComparison.OrdinalIgnoreCase))
+            && tokens.Any(t => string.Equals(t, "of", StringComparison.OrdinalIgnoreCase))
+            && tokens.All(t =>
+                string.Equals(t, "Page", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(t, "of", StringComparison.OrdinalIgnoreCase)
+                || t.All(char.IsDigit));
     }
 
     private static bool HasAny(IReadOnlyDictionary<string, string> cells, params string[] keys)
