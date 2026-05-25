@@ -1,3 +1,4 @@
+using BidParser.Parsing.Nutanix.HardwareOnlyPdf;
 using BidParser.Parsing.Registry;
 using FluentAssertions;
 using Xunit;
@@ -6,6 +7,28 @@ namespace BidParser.Parsing.Tests;
 
 public sealed class NutanixHardwareOnlyPdfParserTests
 {
+    [Theory]
+    // "Page N of M" footers must be skipped, however the words bucket into cells.
+    [InlineData(true, "Page 5 of 7")]                       // whole footer in one cell
+    [InlineData(true, "Page 10 of 12")]                     // multi-digit page numbers
+    [InlineData(true, "Page 5", "of 7")]                    // split across adjacent columns
+    [InlineData(true, "Page 5 of 7", "29/01/2026")]         // footer decorated with a date
+    [InlineData(true, "Confidential", "Page 5 of 7")]       // footer decorated with a note
+    // Rows that merely look footer-ish must NOT be skipped.
+    [InlineData(false, "Page")]                             // bare "Page" continuation text
+    [InlineData(false, "Page 5 of")]                        // no trailing page count
+    [InlineData(false, "Bundle of 4 drives", "2")]          // "of" inside a description
+    [InlineData(false, "NX-1175S-G10-6517P-CM", "60", "USD 4,019.99", "1")] // real line item
+    [InlineData(false)]                                     // empty row
+    public void IsPageFooterRow_detects_page_footers(bool expected, params string[] cellValues)
+    {
+        var cells = cellValues
+            .Select((value, index) => (Key: $"c{index}", Value: value))
+            .ToDictionary(pair => pair.Key, pair => pair.Value);
+
+        NutanixHardwareOnlyPdfParser.IsPageFooterRow(cells).Should().Be(expected);
+    }
+
     [Fact]
     public void Extracts_expected_quote_d_line_items_and_totals()
     {

@@ -249,33 +249,39 @@ public sealed class NutanixHardwareOnlyPdfParser : IParser
     }
 
     /// <summary>
-    /// Returns true when all non-empty cell values are consistent with a "Page N of M"
-    /// footer (i.e. "Page", "of", or digit-only strings) AND both "Page" and "of" are
-    /// present. Requiring both guards against accidentally skipping a legitimate
-    /// continuation row whose only text happens to be the word "Page".
+    /// Returns true when the row carries a "Page N of M" footer, which can appear between
+    /// table rows when Quote D spans multiple pages. Cell values are split into tokens (PDF
+    /// bucketing may merge "Page 5 of 7" into one cell or spread it across adjacent columns)
+    /// and we look for the contiguous sequence Page, &lt;digits&gt;, of, &lt;digits&gt;.
+    /// Matching the full sequence — rather than requiring every token in the row to be
+    /// footer-like — means a footer decorated with a date or confidentiality note in another
+    /// column is still skipped, while a legitimate row that merely contains the word "Page"
+    /// is not.
     /// </summary>
-    /// <summary>
-    /// Returns true when all non-empty cell values are consistent with a "Page N of M"
-    /// footer (i.e. "Page", "of", or digit-only strings) AND both "Page" and "of" are
-    /// present. Cell values are split into individual tokens first because the PDF word
-    /// bucketing may join multiple footer words (e.g. "5 of 7") into a single cell value
-    /// when they share the same column x-range.
-    /// </summary>
-    private static bool IsPageFooterRow(IReadOnlyDictionary<string, string> cells)
+    internal static bool IsPageFooterRow(IReadOnlyDictionary<string, string> cells)
     {
-        var nonEmpty = cells.Values.Where(v => v.Length > 0).ToList();
-        if (nonEmpty.Count == 0) return false;
-
-        var tokens = nonEmpty
-            .SelectMany(v => v.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        var tokens = cells.Values
+            .Where(value => value.Length > 0)
+            .SelectMany(value => value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
             .ToList();
 
-        return tokens.Any(t => string.Equals(t, "Page", StringComparison.OrdinalIgnoreCase))
-            && tokens.Any(t => string.Equals(t, "of", StringComparison.OrdinalIgnoreCase))
-            && tokens.All(t =>
-                string.Equals(t, "Page", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(t, "of", StringComparison.OrdinalIgnoreCase)
-                || t.All(char.IsDigit));
+        for (var i = 0; i + 3 < tokens.Count; i++)
+        {
+            if (string.Equals(tokens[i], "Page", StringComparison.OrdinalIgnoreCase)
+                && IsAllDigits(tokens[i + 1])
+                && string.Equals(tokens[i + 2], "of", StringComparison.OrdinalIgnoreCase)
+                && IsAllDigits(tokens[i + 3]))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsAllDigits(string token)
+    {
+        return token.Length > 0 && token.All(char.IsDigit);
     }
 
     private static bool HasAny(IReadOnlyDictionary<string, string> cells, params string[] keys)
