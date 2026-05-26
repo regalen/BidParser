@@ -4,10 +4,11 @@ using BidParser.Infrastructure.Entities;
 using BidParser.Infrastructure.Persistence;
 using BidParser.Infrastructure.Storage;
 using BidParser.Output;
+using Microsoft.Extensions.Logging;
 
 namespace BidParser.Infrastructure.Services;
 
-public sealed class ParseService(IParserRegistry registry, FileStorage storage, AppDbContext db, FailedParseJobRecorder failureRecorder)
+public sealed class ParseService(IParserRegistry registry, FileStorage storage, AppDbContext db, FailedParseJobRecorder failureRecorder, ILogger<ParseService> logger)
 {
     private static readonly Dictionary<string, string> ExtensionToMime = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -106,9 +107,12 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
                         result.Validation.ComputedTotal, result.Validation.QuotedTotal,
                         ct);
                 }
-                catch
+                catch (Exception ex)
                 {
                     // Monitoring record failed — parse job is already committed, continue.
+                    logger.LogError(ex,
+                        "Failed to record validation_mismatch monitoring entry for parse job {ParseJobId} (user {UserId}, parser {ParserSlug})",
+                        job.Id, user.Id, parser.Slug);
                 }
             }
 
