@@ -8,6 +8,7 @@ import { Footer } from '../components/Footer';
 import { ParseSettingsCard } from '../components/ParseSettingsCard';
 import { RecentUploadsTable } from '../components/RecentUploadsTable';
 import { ToastStack, type ToastMessage } from '../components/Toast';
+import { ValidationWarningModal } from '../components/ValidationWarningModal';
 import type { ApiErrorDetail, HistoryRow, ParserInfo } from '../types';
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -30,6 +31,12 @@ export function DashboardPage() {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [mismatchPending, setMismatchPending] = useState<{
+    blob: Blob;
+    filename: string;
+    computedTotal: string;
+    quotedTotal: string;
+  } | null>(null);
 
   const loadHistory = useCallback(async () => {
     const response = await api.history(pageSize, page * pageSize, debouncedQuery);
@@ -124,18 +131,29 @@ export function DashboardPage() {
     try {
       const result = await api.parse(form);
       setUploadState('parsed');
-      downloadBlob(result.blob, result.filename);
-      pushToast({
-        tone: result.validation === 'match' ? 'success' : 'warning',
-        title: result.validation === 'match' ? 'Parsed workbook downloaded' : 'Parsed with a total mismatch',
-        detail: `Computed USD ${result.computedTotal || '-'} · Quoted USD ${result.quotedTotal || '-'}`,
-      });
       await refresh();
       await loadHistory();
-      window.setTimeout(() => {
-        setFile(null);
-        setUploadState('idle');
-      }, 1800);
+
+      if (result.validation !== 'match') {
+        // Hold the blob and let the user acknowledge the warning before downloading.
+        setMismatchPending({
+          blob: result.blob,
+          filename: result.filename,
+          computedTotal: result.computedTotal ?? '',
+          quotedTotal: result.quotedTotal ?? '',
+        });
+      } else {
+        downloadBlob(result.blob, result.filename);
+        pushToast({
+          tone: 'success',
+          title: 'Parsed workbook downloaded',
+          detail: `Computed USD ${result.computedTotal || '-'} · Quoted USD ${result.quotedTotal || '-'}`,
+        });
+        window.setTimeout(() => {
+          setFile(null);
+          setUploadState('idle');
+        }, 1800);
+      }
     } catch (caught) {
       setUploadState('idle');
       const message = errorMessage(caught);
@@ -163,6 +181,16 @@ export function DashboardPage() {
     } finally {
       setSavingDefaults(false);
     }
+  }
+
+  function acknowledgeMismatch() {
+    if (!mismatchPending) return;
+    downloadBlob(mismatchPending.blob, mismatchPending.filename);
+    setMismatchPending(null);
+    window.setTimeout(() => {
+      setFile(null);
+      setUploadState('idle');
+    }, 1800);
   }
 
   return (
@@ -210,6 +238,13 @@ export function DashboardPage() {
       </main>
       <Footer />
       <ToastStack toasts={toasts} dismiss={(id) => setToasts((items) => items.filter((item) => item.id !== id))} />
+      {mismatchPending && (
+        <ValidationWarningModal
+          computedTotal={mismatchPending.computedTotal}
+          quotedTotal={mismatchPending.quotedTotal}
+          onAcknowledge={acknowledgeMismatch}
+        />
+      )}
     </div>
   );
 }
