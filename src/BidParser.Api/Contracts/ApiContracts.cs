@@ -69,7 +69,10 @@ public sealed record FailedParseJobItem(
     string? Hint,
     string? Message,
     string ErrorDetail,
-    bool SourceAvailable
+    bool SourceAvailable,
+    // Populated only for validation_mismatch entries; null for exception categories.
+    string? ComputedTotal,
+    string? QuotedTotal
 );
 
 public sealed record FailedParseJobListResponse(

@@ -93,6 +93,25 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
             db.Add(metric);
             await db.SaveChangesAsync(ct);
 
+            if (!result.Validation.Matches)
+            {
+                // Record a monitoring entry so admins can review mismatches.
+                // This is best-effort: we swallow any recorder failure so the
+                // user's successful parse is unaffected.
+                try
+                {
+                    await failureRecorder.RecordMismatchAsync(
+                        user, vendor, parser.Slug, displayFilename, sourcePath,
+                        fxRateRounded, marginRounded,
+                        result.Validation.ComputedTotal, result.Validation.QuotedTotal,
+                        ct);
+                }
+                catch
+                {
+                    // Monitoring record failed — parse job is already committed, continue.
+                }
+            }
+
             return new ParseServiceResult(
                 job,
                 OutputNaming.OutputFilename(displayFilename),

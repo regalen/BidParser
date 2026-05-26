@@ -82,7 +82,7 @@ export interface MetricsSummaryResponse {
   time_series: MetricsTimeSeriesPoint[];
 }
 
-export type FailureCategory = 'magic_byte_mismatch' | 'parser_error' | 'unhandled_exception';
+export type FailureCategory = 'magic_byte_mismatch' | 'parser_error' | 'unhandled_exception' | 'validation_mismatch';
 
 export interface FailedParseJob {
   id: number;
@@ -100,6 +100,9 @@ export interface FailedParseJob {
   message: string | null;
   error_detail: string;
   source_available: boolean;
+  /** Populated only for validation_mismatch entries. */
+  computed_total: string | null;
+  quoted_total: string | null;
 }
 
 export interface FailedParseJobResponse {

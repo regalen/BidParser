@@ -139,6 +139,9 @@ public sealed class AppDbContext : DbContext
             entity.Property(f => f.Hint).HasColumnName("hint").HasMaxLength(512);
             entity.Property(f => f.Message).HasColumnName("message").HasMaxLength(1024);
 
+            entity.Property(f => f.ComputedTotal).HasColumnName("computed_total").HasPrecision(14, 2);
+            entity.Property(f => f.QuotedTotal).HasColumnName("quoted_total").HasPrecision(14, 2);
+
             entity.Property(f => f.ErrorDetail).HasColumnName("error_detail").HasColumnType("TEXT").IsRequired();
 
             entity.Property(f => f.FxRate).HasColumnName("fx_rate").HasPrecision(12, 4).IsRequired();

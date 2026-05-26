@@ -24,7 +24,12 @@ public sealed class FailedParseJob
     public string? Hint { get; set; }
     public string? Message { get; set; }
 
+    // Populated for ValidationMismatch only — null for exception categories.
+    public decimal? ComputedTotal { get; set; }
+    public decimal? QuotedTotal { get; set; }
+
     // ex.ToString() — type, message, stack trace, inner exceptions. TEXT, uncapped.
+    // For ValidationMismatch this holds a human-readable totals summary (no stack trace).
     public required string ErrorDetail { get; set; }
 
     public decimal FxRate { get; set; }
@@ -40,4 +45,5 @@ public enum FailureCategory
     MagicByteMismatch,
     ParserError,
     UnhandledException,
+    ValidationMismatch,
 }

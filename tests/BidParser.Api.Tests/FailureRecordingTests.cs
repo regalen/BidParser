@@ -146,6 +146,66 @@ public sealed class FailureRecordingTests
     }
 
     [Fact]
+    public async Task ValidationMismatchRecordsMonitoringEntry()
+    {
+        // A parser that returns a successful result but with mismatched totals.
+        var mismatchParser = new TestParser(
+            "test-mismatch", "TestVendor", "application/pdf",
+            _ => new ParseResult
+            {
+                Metadata = new QuoteMetadata
+                {
+                    QuoteNumber = "T-MISMATCH",
+                    Supplier = "Test",
+                    Currency = "USD",
+                    QuotedTotal = 9999.99m,
+                    SourceFilename = "mismatch.pdf",
+                    ParserSlug = "test-mismatch"
+                },
+                LineItems = new[]
+                {
+                    new LineItem { Vpn = "SKU-001", Cost = 100m, Qty = 1 }
+                },
+                Validation = new ValidationResult
+                {
+                    ComputedTotal = 100m,
+                    QuotedTotal = 9999.99m,
+                    Matches = false,
+                    Difference = 9899.99m
+                }
+            });
+
+        using var fixture = await CustomTestFixture.CreateAsync(new TestRegistry(mismatchParser));
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var response = await PostParseAsync(client, MinimalPdfBytes(), "mismatch.pdf", "application/pdf",
+            "TestVendor", "test-mismatch");
+
+        // Parse should succeed (200) despite the mismatch.
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Headers.GetValues("X-Validation").Should().ContainSingle().Which.Should().Be("mismatch");
+
+        using var scope = fixture.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        // Both a ParseJob (success) and a FailedParseJob (monitoring review) should exist.
+        (await db.ParseJobs.CountAsync()).Should().Be(1);
+        var monitoringEntry = await db.FailedParseJobs.SingleAsync();
+
+        monitoringEntry.Category.Should().Be(FailureCategory.ValidationMismatch);
+        monitoringEntry.ComputedTotal.Should().Be(100m);
+        monitoringEntry.QuotedTotal.Should().Be(9999.99m);
+        monitoringEntry.Stage.Should().BeNull();
+        monitoringEntry.Hint.Should().BeNull();
+        monitoringEntry.Message.Should().BeNull();
+        monitoringEntry.ErrorDetail.Should().Contain("100.00");
+        monitoringEntry.ErrorDetail.Should().Contain("9999.99");
+        monitoringEntry.SourceFilename.Should().Be("mismatch.pdf");
+        File.Exists(monitoringEntry.SourcePath).Should().BeTrue();
+    }
+
+    [Fact]
     public async Task UserDefaultsAreNotPersistedOnFailure()
     {
         var parser = new TestParser(

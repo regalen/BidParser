@@ -113,6 +113,45 @@ public sealed class MonitoringEndpointsTests
     }
 
     [Fact]
+    public async Task GetFailures_IncludesValidationMismatchWithTotals()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        using var scope = fixture.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var sourcePath = Path.Combine(fixture.UploadDir, "mismatch.pdf");
+        await File.WriteAllTextAsync(sourcePath, "test");
+
+        db.FailedParseJobs.Add(new FailedParseJob
+        {
+            UserUsername   = "admin",
+            Vendor         = "Nutanix",
+            ParserSlug     = "nutanix_software_only_pdf",
+            SourceFilename = "mismatch.pdf",
+            SourcePath     = sourcePath,
+            Category       = FailureCategory.ValidationMismatch,
+            ComputedTotal  = 100.00m,
+            QuotedTotal    = 9999.99m,
+            ErrorDetail    = "Computed total: 100.00 · Quoted total: 9999.99 · Difference: 9899.99",
+            FxRate         = 0.75m,
+            Margin         = 7.50m,
+        });
+        await db.SaveChangesAsync();
+
+        var res = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/monitoring/failures");
+        var item = res.GetProperty("items").EnumerateArray().Single();
+
+        item.GetProperty("category").GetString().Should().Be("validation_mismatch");
+        item.GetProperty("computed_total").GetString().Should().Be("100.00");
+        item.GetProperty("quoted_total").GetString().Should().Be("9999.99");
+        item.GetProperty("stage").GetString().Should().BeNullOrEmpty();
+        item.GetProperty("source_available").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
     public async Task GetSource_StreamsFile_AndReturns404IfMissing()
     {
         using var fixture = await ApiTestFixture.CreateAsync();

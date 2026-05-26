@@ -53,7 +53,9 @@ public static class MonitoringEndpoints
                 f.Hint,
                 f.Message,
                 f.ErrorDetail,
-                File.Exists(f.SourcePath)))
+                File.Exists(f.SourcePath),
+                f.ComputedTotal?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture),
+                f.QuotedTotal?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)))
             .ToList();
 
         return Results.Ok(new FailedParseJobListResponse(total, items));
@@ -85,9 +87,10 @@ public static class MonitoringEndpoints
 
     private static string CategoryToSnakeCase(FailureCategory category) => category switch
     {
-        FailureCategory.MagicByteMismatch => "magic_byte_mismatch",
-        FailureCategory.ParserError => "parser_error",
+        FailureCategory.MagicByteMismatch  => "magic_byte_mismatch",
+        FailureCategory.ParserError        => "parser_error",
         FailureCategory.UnhandledException => "unhandled_exception",
+        FailureCategory.ValidationMismatch => "validation_mismatch",
         _ => category.ToString().ToLowerInvariant()
     };
 }
