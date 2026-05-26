@@ -50,6 +50,64 @@ public sealed class NutanixRenewalPdfParserTests
                 ("RSW-NCI-PRO-PR", "25SW000430054,LIC-02537785", new DateOnly(2026, 10, 28), new DateOnly(2028, 12, 1), 955m, 755.64m, 400));
     }
 
+    [Fact]
+    public void Extracts_expected_line_items_and_totals_for_platform_column_variant()
+    {
+        // XQ-4029825 is a Renewal variant with an extra "Platform" column between No and
+        // Product Code. Hardware rows carry a platform value (e.g. NX-8035N-G8-HY) which
+        // must appear as Description "Platform: <value>"; software rows leave Description null.
+        // Product Code wraps across two lines (RSW-NCI- / ULT-PR) and must be joined without
+        // a separator. Totals must match: 5 rows, USD 392,190.58.
+        var root = FindRepoRoot();
+        var parser = new ParserRegistry().Parsers.Single(parser => parser.Slug == "nutanix_renewal_pdf");
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "XQ-4029825.pdf"));
+
+        result.Metadata.QuoteNumber.Should().Be("XQ-4029825");
+        result.Metadata.QuotedTotal.Should().Be(392190.58m);
+        result.Validation.ComputedTotal.Should().Be(392190.58m);
+        result.Validation.Matches.Should().BeTrue();
+        result.LineItems.Should().HaveCount(5);
+
+        // Software-only rows: no Platform value → Description null
+        result.LineItems[0].Vpn.Should().Be("RSW-NCI-ULT-PR");
+        result.LineItems[0].Description.Should().BeNull();
+        result.LineItems[0].SerialNumber.Should().Be("25SW000437991,LIC-02543011");
+        result.LineItems[0].StartDate.Should().Be(new DateOnly(2026, 8, 16));
+        result.LineItems[0].EndDate.Should().Be(new DateOnly(2029, 12, 31));
+        result.LineItems[0].Msrp.Should().Be(1943.00m);
+        result.LineItems[0].Cost.Should().Be(354.77m);
+        result.LineItems[0].Qty.Should().Be(448);
+
+        result.LineItems[1].Vpn.Should().Be("RSW-NCI-ULT-PR");
+        result.LineItems[1].Description.Should().BeNull();
+        result.LineItems[1].SerialNumber.Should().Be("25SW000437992,LIC-02543012");
+        result.LineItems[1].Cost.Should().Be(601.52m);
+        result.LineItems[1].Qty.Should().Be(192);
+
+        result.LineItems[2].Vpn.Should().Be("RSW-NCI-PRO-PR");
+        result.LineItems[2].Description.Should().BeNull();
+        result.LineItems[2].SerialNumber.Should().Be("22SW000262928,LIC-01461229");
+        result.LineItems[2].Cost.Should().Be(889.43m);
+        result.LineItems[2].Qty.Should().Be(128);
+
+        // Hardware rows: Platform present → Description = "Platform: NX-8035N-G8-HY"
+        result.LineItems[3].Vpn.Should().Be("RS-HW-PRD-MY");
+        result.LineItems[3].Description.Should().Be("Platform: NX-8035N-G8-HY");
+        result.LineItems[3].SerialNumber.Should().Be("22SH3G410326");
+        result.LineItems[3].StartDate.Should().Be(new DateOnly(2026, 11, 3));
+        result.LineItems[3].EndDate.Should().Be(new DateOnly(2029, 7, 31));
+        result.LineItems[3].Msrp.Should().Be(2676.24m);
+        result.LineItems[3].Cost.Should().Be(1957.37m);
+        result.LineItems[3].Qty.Should().Be(1);
+
+        result.LineItems[4].Vpn.Should().Be("RS-HW-PRD-MY");
+        result.LineItems[4].Description.Should().Be("Platform: NX-8035N-G8-HY");
+        result.LineItems[4].SerialNumber.Should().Be("22SH3G410327");
+        result.LineItems[4].Cost.Should().Be(1957.37m);
+        result.LineItems[4].Qty.Should().Be(1);
+    }
+
     private static string FindRepoRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

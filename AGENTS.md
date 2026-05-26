@@ -60,6 +60,7 @@ Sample → format mapping:
 | `XQ-4108785.xlsx`  | Hardware Only (XLSX)   |                                        |
 | `XQ-4128926.pdf`   | Renewal (PDF)          |                                        |
 | `XQ-4166696.pdf`   | Renewal (PDF)          | Wrapped currency amount (USD on separate line)  |
+| `XQ-4029825.pdf`   | Renewal (PDF)          | Platform-column variant: extra `Platform` column, wrapped Product Code, hardware rows emit `Description = "Platform: {value}"` |
 | `XQ-4157308.pdf`   | Software Only (PDF)    | Extended 9-column layout, 1 line item  |
 | `XQ-4165884.pdf`   | Software Only (PDF)    | Extended 9-column layout, wrapped SKUs |
 
@@ -248,7 +249,9 @@ Per-field handling:
 - **Sale Price** (`cost`): strip `USD` and commas from the source `Net Unit Price` column → `Decimal`.
 - **Quantity** (`qty`): source `Qty` column → `int`.
 
-The Renewal layout has no Term-Months sub-header to skip and no description wrap. The `Total Net Price` column wraps onto the next line because the column is narrow, but we don't extract that field — the validation comes from the `TOTAL:` line.
+The Renewal layout has no Term-Months sub-header to skip. The `Total Net Price` column wraps onto the next line because the column is narrow, but we don't extract that field — the validation comes from the `TOTAL:` line.
+
+**Platform-column variant** (`XQ-4029825`): an optional `Platform` column sits between `No` and `Product Code`. The parser detects it from the header band (searches for the word `"Platform"`) and adds it to the column-range map only when present — backward-compatible with the base samples. When a row carries a non-empty Platform value (itself potentially wrapping across two lines, joined without separator), `LineItem.Description` is set to `"Platform: {value}"` (e.g. `"Platform: NX-8035N-G8-HY"`); rows with no Platform value leave `Description` null. Product Code also wraps in this variant (e.g. `RSW-NCI-` / `ULT-PR`); fragments are joined without a separator via `JoinUnspaced`, same as Serial Number and Platform.
 
 **USD-prefix fusion:** before column bucketing, `NutanixRenewalPdfParser.FuseCurrencyTokens` walks the word stream and pairs each `"USD"` token with its nearby numeric amount (forward window of 6 words; spatial tolerance `Top ∈ [USD.Top − 3.5, USD.Top + 15.0]`, same page). The pair is collapsed into one synthetic `PdfWord` anchored at the *amount's* coordinates, so wider or wrapped amounts (e.g. `USD` left-aligned on one line, `1,121.00` right-aligned on the line below) always land in the correct price column. Without this, the `USD` prefix and the numeric token can straddle the column boundary and `DecimalCleaner.Parse` throws on a bare `'USD'`.
 
@@ -280,6 +283,18 @@ Expected output for `XQ-4166696.pdf` (wrapped-currency sample, hand-validated go
 | RSW-NCI-PRO-PR  | 25SW000430054,LIC-02537785  | 2026-10-28  | 2028-12-01  | 955        | 755.64     | 400      |
 
 Computed total = quoted total = `USD 375,636.00`.
+
+Expected output for `XQ-4029825.pdf` (Platform-column variant, hand-validated golden values):
+
+| Part Number     | Description               | Serial Number               | Start Date  | End Date    | List Price | Sale Price | Quantity |
+|-----------------|---------------------------|-----------------------------|-------------|-------------|------------|------------|----------|
+| RSW-NCI-ULT-PR  | _(empty)_                 | 25SW000437991,LIC-02543011  | 2026-08-16  | 2029-12-31  | 1943       | 354.77     | 448      |
+| RSW-NCI-ULT-PR  | _(empty)_                 | 25SW000437992,LIC-02543012  | 2026-08-16  | 2029-12-31  | 1943       | 601.52     | 192      |
+| RSW-NCI-PRO-PR  | _(empty)_                 | 22SW000262928,LIC-01461229  | 2026-11-03  | 2029-12-31  | 1440       | 889.43     | 128      |
+| RS-HW-PRD-MY    | Platform: NX-8035N-G8-HY | 22SH3G410326                | 2026-11-03  | 2029-07-31  | 2676.24    | 1957.37    | 1        |
+| RS-HW-PRD-MY    | Platform: NX-8035N-G8-HY | 22SH3G410327                | 2026-11-03  | 2029-07-31  | 2676.24    | 1957.37    | 1        |
+
+Computed total = quoted total = `USD 392,190.58`.
 
 ## Hardware Only (PDF) — extraction algorithm
 

@@ -76,3 +76,41 @@ This is a second example of a Renewal (PDF) quote, but with larger pricing amoun
 - Quoted Total: `USD 375,636.00`
 - Computed Total: `(54.64 * 80) + (661.61 * 80) + (40.20 * 400) + (755.64 * 400) = 4,371.20 + 52,928.80 + 16,080.00 + 302,256.00 = 375,636.00`
 - Matches: Yes
+
+## XQ-4029825.pdf Sample (Platform Column Variant)
+
+This is a third Renewal (PDF) variant that introduces an additional **`Platform`** column between `No` and `Product Code`. The column carries a hardware platform identifier (e.g. `NX-8035N-G8-HY`) on rows that correspond to physical hardware; software-subscription rows leave it blank.
+
+This variant also has two additional wrapping behaviours compared to the base sample:
+- **`Product Code` wraps** across two visual lines (e.g. `RSW-NCI-` on line 1, `ULT-PR` on line 2). Fragments must be joined without a separator, e.g. → `RSW-NCI-ULT-PR`.
+- **`Net Unit Price` wraps** as `USD` on line 1 and the amount on line 2. `FuseCurrencyTokens` handles this before column bucketing so the amount lands in the correct column.
+
+### Platform column handling
+
+The `Platform` column is detected from the header and added to the column-range map only when the header word `"Platform"` is present. This makes it backward-compatible: quotes without the column parse identically to before.
+
+When a row carries a non-empty Platform value (e.g. `NX-8035N-G8-HY`), the parser writes:
+
+```
+Description = "Platform: NX-8035N-G8-HY"
+```
+
+This lands in column E (`Description`) of the `ANZ-GENERIC_ForeignUplift.xlsx` output. Rows with no Platform value leave Description empty (null).
+
+The Platform value may itself wrap across two lines (e.g. `NX-8035N-` / `G8-HY`). Fragments are joined without a separator, exactly like `Product Code` and `Serial Number`.
+
+### Extracted Line Items
+
+| No | Platform | Product Code | Serial Number | Start Date | End Date | MSRP | Cost | Qty |
+|----|----------|--------------|---------------|------------|----------|------|------|-----|
+| 1  |          | RSW-NCI-ULT-PR | 25SW000437991,LIC-02543011 | 16/08/2026 | 31/12/2029 | 1,943.00 | 354.77 | 448 |
+| 2  |          | RSW-NCI-ULT-PR | 25SW000437992,LIC-02543012 | 16/08/2026 | 31/12/2029 | 1,943.00 | 601.52 | 192 |
+| 3  |          | RSW-NCI-PRO-PR | 22SW000262928,LIC-01461229 | 03/11/2026 | 31/12/2029 | 1,440.00 | 889.43 | 128 |
+| 4  | NX-8035N-G8-HY | RS-HW-PRD-MY | 22SH3G410326 | 03/11/2026 | 31/07/2029 | 2,676.24 | 1,957.37 | 1 |
+| 5  | NX-8035N-G8-HY | RS-HW-PRD-MY | 22SH3G410327 | 03/11/2026 | 31/07/2029 | 2,676.24 | 1,957.37 | 1 |
+
+### Validation
+
+- Quoted Total: `USD 392,190.58`
+- Computed Total: `(354.77×448) + (601.52×192) + (889.43×128) + (1,957.37×1) + (1,957.37×1) = 158,936.96 + 115,491.84 + 113,847.04 + 1,957.37 + 1,957.37 = 392,190.58`
+- Matches: Yes

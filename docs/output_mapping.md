@@ -51,7 +51,7 @@ The `*` in column B is required — our quoting system uses it as the loop senti
 | B | Vendor Name | hardcoded `"NUTANIX"` | All formats for now (only Nutanix is supported). |
 | C | IMTH SKU | _empty_ | Manual / future enrichment. |
 | D | Vendor Part Number | `vpn` | |
-| E | Description | `description` | Empty for Renewal (Renewal doesn't extract a description). |
+| E | Description | `description` | Empty for Renewal when no Platform value is present. For the Platform-column variant (e.g. `XQ-4029825`), hardware rows carry `"Platform: {value}"` here (e.g. `"Platform: NX-8035N-G8-HY"`); software rows remain empty. |
 | F | Qty. | `qty` | |
 | G | Unit Price | _empty_ | Manual / future enrichment. |
 | H | MSRP | _empty_ | **Always blank.** The parser's `msrp` value lands in column U only. |

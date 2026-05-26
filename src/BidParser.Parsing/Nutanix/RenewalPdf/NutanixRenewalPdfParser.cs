@@ -39,15 +39,17 @@ public sealed class NutanixRenewalPdfParser : IParser
                     items.Add(BuildItem(current));
                 }
 
-                current = new CurrentItem([Cell(cells, "Serial Number")], cells);
+                current = new CurrentItem(
+                    Parts(Cell(cells, "Platform")),
+                    Parts(Cell(cells, "Product Code")),
+                    Parts(Cell(cells, "Serial Number")),
+                    cells);
             }
             else if (current is not null && cells.Values.Any(value => value.Length > 0))
             {
-                var serial = Cell(cells, "Serial Number");
-                if (serial.Length > 0)
-                {
-                    current.SerialParts.Add(serial);
-                }
+                AddIfPresent(current.PlatformParts, Cell(cells, "Platform"));
+                AddIfPresent(current.ProductCodeParts, Cell(cells, "Product Code"));
+                AddIfPresent(current.SerialParts, Cell(cells, "Serial Number"));
 
                 foreach (var (key, value) in cells)
                 {
@@ -113,6 +115,7 @@ public sealed class NutanixRenewalPdfParser : IParser
             .Where(word => word.Text == "Total" && word.X0 > 500)
             .OrderBy(word => word.X0)
             .FirstOrDefault();
+        var platformWord = headerWords.FirstOrDefault(word => word.Text == "Platform");
 
         var headers = new List<(string Name, double X0)>
         {
@@ -132,6 +135,14 @@ public sealed class NutanixRenewalPdfParser : IParser
             ("Total Net Price", totalWord?.X0 ?? 522.0)
         };
 
+        // Platform column is optional — only present in the variant that includes it.
+        // When present it sits between No and Product Code; adding it narrows the No
+        // range so that the row number and the platform value land in separate buckets.
+        if (platformWord is not null)
+        {
+            headers.Add(("Platform", platformWord.X0));
+        }
+
         return PdfTableHelpers.ColumnRanges(headers, header.PageWidth);
     }
 
@@ -150,9 +161,11 @@ public sealed class NutanixRenewalPdfParser : IParser
     private static LineItem BuildItem(CurrentItem item)
     {
         var cells = item.Cells;
+        var platform = TextCleaner.JoinUnspaced(item.PlatformParts);
         return new LineItem
         {
-            Vpn = Cell(cells, "Product Code"),
+            Vpn = TextCleaner.JoinUnspaced(item.ProductCodeParts),
+            Description = platform.Length > 0 ? $"Platform: {platform}" : null,
             SerialNumber = TextCleaner.JoinUnspaced(item.SerialParts),
             StartDate = DateCleaner.ParseMmDdYyyy(Cell(cells, "Start Date")),
             EndDate = DateCleaner.ParseMmDdYyyy(Cell(cells, "End Date")),
@@ -176,7 +189,20 @@ public sealed class NutanixRenewalPdfParser : IParser
             .ToDictionary(pair => pair.Key, pair => pair.Value);
     }
 
+    private static List<string> Parts(string value) =>
+        value.Length > 0 ? [value] : [];
+
+    private static void AddIfPresent(List<string> parts, string value)
+    {
+        if (value.Length > 0)
+        {
+            parts.Add(value);
+        }
+    }
+
     private sealed record CurrentItem(
+        List<string> PlatformParts,
+        List<string> ProductCodeParts,
         List<string> SerialParts,
         Dictionary<string, string> Cells);
 
