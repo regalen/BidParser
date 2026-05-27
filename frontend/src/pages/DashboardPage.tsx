@@ -9,6 +9,7 @@ import { ParseSettingsCard } from '../components/ParseSettingsCard';
 import { RecentUploadsTable } from '../components/RecentUploadsTable';
 import { ToastStack, type ToastMessage } from '../components/Toast';
 import { ValidationWarningModal } from '../components/ValidationWarningModal';
+import { CRM_TEMPLATE_UPLIFT } from '../constants';
 import type { ApiErrorDetail, HistoryRow, ParserInfo } from '../types';
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -35,6 +36,7 @@ export function DashboardPage() {
   const [mismatchPending, setMismatchPending] = useState<{
     blob: Blob;
     filename: string;
+    currency: string;
     computedTotal: string;
     quotedTotal: string;
   } | null>(null);
@@ -100,7 +102,7 @@ export function DashboardPage() {
     if (!vendor || !parserSlug || !file || uploadState !== 'idle') return false;
     // Multi-template parsers (e.g. HP): Uplift needs margin; No Calculation needs neither
     if (selectedParser && selectedParser.available_templates.length > 1) {
-      return selectedTemplate !== 'Uplift' || Boolean(margin);
+      return selectedTemplate !== CRM_TEMPLATE_UPLIFT || Boolean(margin);
     }
     // Single-template parsers (e.g. Nutanix): needs both fxRate and margin
     return Boolean(fxRate && margin);
@@ -152,6 +154,7 @@ export function DashboardPage() {
         setMismatchPending({
           blob: result.blob,
           filename: result.filename,
+          currency: result.currency ?? '',
           computedTotal: result.computedTotal ?? '',
           quotedTotal: result.quotedTotal ?? '',
         });
@@ -160,7 +163,7 @@ export function DashboardPage() {
         pushToast({
           tone: 'success',
           title: 'Parsed workbook downloaded',
-          detail: `Computed USD ${result.computedTotal || '-'} · Quoted USD ${result.quotedTotal || '-'}`,
+          detail: `Computed ${result.currency} ${result.computedTotal || '-'} · Quoted ${result.currency} ${result.quotedTotal || '-'}`,
         });
         window.setTimeout(() => {
           setFile(null);
@@ -260,6 +263,7 @@ export function DashboardPage() {
       <ToastStack toasts={toasts} dismiss={(id) => setToasts((items) => items.filter((item) => item.id !== id))} />
       {mismatchPending && (
         <ValidationWarningModal
+          currency={mismatchPending.currency}
           computedTotal={mismatchPending.computedTotal}
           quotedTotal={mismatchPending.quotedTotal}
           onAcknowledge={acknowledgeMismatch}

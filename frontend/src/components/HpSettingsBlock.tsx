@@ -1,3 +1,5 @@
+import { CRM_TEMPLATE_UPLIFT } from '../constants';
+
 export function HpSettingsBlock({
   margin,
   onMargin,
@@ -15,7 +17,7 @@ export function HpSettingsBlock({
         <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Vendor-specific</span>
       </div>
 
-      {selectedTemplate === 'Uplift' && (
+      {selectedTemplate === CRM_TEMPLATE_UPLIFT && (
         <label className="flex flex-col gap-2">
           <span className="label">
             Margin <span className="font-medium normal-case tracking-normal text-slate-400">· %, 2 d.p.</span>

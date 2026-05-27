@@ -1,12 +1,13 @@
 import { AlertTriangle } from 'lucide-react';
 
 interface Props {
+  currency: string;
   computedTotal: string;
   quotedTotal: string;
   onAcknowledge: () => void;
 }
 
-export function ValidationWarningModal({ computedTotal, quotedTotal, onAcknowledge }: Props) {
+export function ValidationWarningModal({ currency, computedTotal, quotedTotal, onAcknowledge }: Props) {
   return (
     /* Backdrop */
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -35,8 +36,8 @@ export function ValidationWarningModal({ computedTotal, quotedTotal, onAcknowled
 
           {/* Totals detail */}
           <p className="mt-3 text-xs text-slate-500">
-            Computed&nbsp;USD&nbsp;<strong className="text-slate-700">{computedTotal || '—'}</strong>
-            &nbsp;·&nbsp;Quoted&nbsp;USD&nbsp;<strong className="text-slate-700">{quotedTotal || '—'}</strong>
+            Computed&nbsp;{currency}&nbsp;<strong className="text-slate-700">{computedTotal || '—'}</strong>
+            &nbsp;·&nbsp;Quoted&nbsp;{currency}&nbsp;<strong className="text-slate-700">{quotedTotal || '—'}</strong>
           </p>
         </div>
 

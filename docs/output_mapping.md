@@ -92,7 +92,7 @@ The output file is named `<input_basename>_parsed.xlsx` where `<input_basename>`
 **Writer:** `AnzGenericWriter.Write(items, outputPath, sheetName, includeMargin, margin, vendorName)`  
 **Sheet names:** `"No Calculation"` / `"Uplift"` (matching the template chosen)
 
-HP writes to the **local** columns of the 27-column layout. No FX rate, no foreign columns, no sentinel-zero substitution.
+HP writes to the **local** columns of the 27-column layout. No FX rate, no foreign columns.
 
 | Col | Header | HP value | Notes |
 |---|---|---|---|
@@ -102,7 +102,7 @@ HP writes to the **local** columns of the 27-column layout. No FX rate, no forei
 | E | Description | `description` | `"Product Description"` from the source row |
 | F | Qty. | `qty` | `Max Deal Qty` (Part Number/Bundle) or `Bundle Detail Qty` (Bundle Detail) |
 | H | MSRP | **blank** | HP has no MSRP source column |
-| I | Cost | `cost` | `Price` from the source row |
+| I | Cost | `cost` | Part Number / Bundle: `Price` from the source row. Bundle Detail: `0` (component price dropped — the Bundle parent holds the total), exported as the `0.000001` sentinel. |
 | K | Margin | `margin` (Uplift only) | Written only when `includeMargin = true`; blank for No Calculation |
 | W | Min Order Qty | `min_qty` | After `0 → 1` substitution |
 
@@ -112,6 +112,6 @@ All other columns: blank.
 
 **Key differences vs ForeignUplift:**
 - Item col A holds the `LineSequence` string (`"1.01"` etc.) rather than a running integer
-- No sentinel-zero (`0.000001`) substitution — zero prices are written as-is
+- Zero costs export as the `0.000001` sentinel in column I (every Bundle Detail, whose price is dropped onto its Bundle parent); non-zero Part Number / Bundle costs are written as-is
 - No term, date, serial number, or FX columns populated
 - `Matches = true` always (HP files have no quoted total to compare against)

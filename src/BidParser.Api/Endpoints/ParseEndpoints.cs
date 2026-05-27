@@ -139,6 +139,7 @@ public static class ParseEndpoints
             stopwatch.ElapsedMilliseconds);
 
         context.Response.Headers["X-Validation"] = result.Validation.Matches ? "match" : "mismatch";
+        context.Response.Headers["X-Currency"] = result.Currency;
         context.Response.Headers["X-Computed-Total"] =
             result.Validation.ComputedTotal.ToString("F2", CultureInfo.InvariantCulture);
 

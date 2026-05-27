@@ -60,13 +60,15 @@ Three distinct values: **`Part Number`**, **`Bundle`**, **`Bundle Detail`**.
 | **Line sequence** → Item col A | Increment top-level counter (`1`, `2`, …). For `Bundle`, also reset child counter. | `{parentSeq}.{childCounter:D2}` (`1.01`, `1.02`, …) |
 | **vpn** | `Product Number/ID`; if `Option Code` non-empty: `"Product Number/ID#Option Code"` | same rule |
 | **description** | `Product Description` | `Product Description` |
-| **cost** | `Price` (default 0 when blank) | `Price` |
+| **cost** | `Price` (default 0 when blank) | **0** — the component price is dropped (the Bundle parent line carries the total). Source `Price` is still kept in `Raw["Price"]`. |
 | **qty** | `Max Deal Qty` | `Bundle Detail Qty` |
 | **min_qty raw** | `Min Order Qty` | `Bundle Detail Qty` |
 | **min_qty final** | if raw == 0 → **1**; else raw value | same rule |
 | **msrp** | `null` (always blank) | `null` (always blank) |
 
 All three line types are kept as line items (none are skipped).
+
+**Bundle Detail pricing:** a Bundle Detail is a component breakdown of its Bundle. The Bundle line carries the deal price for the whole bundle, so each Bundle Detail's own `Price` is intentionally dropped (`cost = 0`) to avoid double-counting in the computed total. On export, `AnzGenericWriter` writes the `0.000001` sentinel in the Cost column for these zero-cost lines because the downstream import rejects a literal `0` (and rounds the sentinel back to `0`).
 
 ### Quote Number
 
@@ -102,12 +104,12 @@ First rows (illustrating all three line types and `#`-concatenated Option Code):
 | 2 | Part Number | 9D9L6A9 | 184.78 | 2012 | 1 |
 | 3 | Part Number | 9D9V7AA | 240.00 | 2012 | 1 |
 | 4 | Bundle | 55623728 | 2387.94 | 880 | 1 |
-| 4.01 | Bundle Detail | C89FGAV | 713.26 | 1 | 1 |
-| 4.02 | Bundle Detail | 8C9M7AV | 0.03 | 1 | 1 |
+| 4.01 | Bundle Detail | C89FGAV | 0 | 1 | 1 |
+| 4.02 | Bundle Detail | 8C9M7AV | 0 | 1 | 1 |
 | … | … | … | … | … | … |
-| 4.06 | Bundle Detail | **4SS11AV#ABG** | 0.00 | 1 | 1 |
+| 4.06 | Bundle Detail | **4SS11AV#ABG** | 0 | 1 | 1 |
 
-Computed total: `14822592.74` (no quoted total).
+Bundle Detail `cost` is `0` in the model (component price dropped — see above) and exports as the `0.000001` sentinel. Computed total: `14788828.99` (Part Number + Bundle lines only; no quoted total).
 
 ---
 
@@ -127,4 +129,4 @@ See `docs/output_mapping.md` — HP section. Both templates use the ANZ-GENERIC 
 | K | Margin | **blank** | margin % |
 | W | Min Order Qty | min_qty | min_qty |
 
-No FX rate, no foreign currency columns. No sentinel-zero price substitution.
+No FX rate, no foreign currency columns. Zero costs (every Bundle Detail, since its price is dropped) export as the `0.000001` sentinel in column I; non-zero Part Number / Bundle costs are written as-is.

@@ -50,7 +50,9 @@ public sealed class HpBidXlsxParserTests
 
         result.Validation.Matches.Should().BeTrue();
         result.Validation.QuotedTotal.Should().BeNull();
-        result.Validation.ComputedTotal.Should().Be(14822592.74m);
+        // Bundle Detail components contribute 0 (their price lives on the Bundle parent),
+        // so the computed total counts only Part Number and Bundle lines.
+        result.Validation.ComputedTotal.Should().Be(14788828.99m);
     }
 
     [Fact]
@@ -106,10 +108,12 @@ public sealed class HpBidXlsxParserTests
 
         var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals20260518T034809_HPI.xlsx"));
 
-        // The first child of Bundle 4
+        // The first child of Bundle 4. Bundle Detail components carry no price (the
+        // Bundle parent holds the total), so Cost is dropped to 0 — the writer then
+        // emits the 0.000001 sentinel on export.
         var child1 = result.LineItems.First(i => i.LineSequence == "4.01");
         child1.Vpn.Should().Be("C89FGAV");
-        child1.Cost.Should().Be(713.26m);
+        child1.Cost.Should().Be(0m);
         child1.Qty.Should().Be(1);
         child1.MinQty.Should().Be(1);
 

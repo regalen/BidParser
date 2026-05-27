@@ -56,6 +56,7 @@ export interface ParseResponse {
   blob: Blob;
   filename: string;
   validation: 'match' | 'mismatch';
+  currency: string;
   computedTotal: string;
   quotedTotal: string;
 }
@@ -157,6 +158,7 @@ export const api = {
       blob: await response.blob(),
       filename,
       validation: (response.headers.get('X-Validation') as 'match' | 'mismatch') ?? 'mismatch',
+      currency: response.headers.get('X-Currency') ?? '',
       computedTotal: response.headers.get('X-Computed-Total') ?? '',
       quotedTotal: response.headers.get('X-Quoted-Total') ?? '',
     };

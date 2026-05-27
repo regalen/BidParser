@@ -141,7 +141,8 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
                 job,
                 OutputNaming.OutputFilename(displayFilename),
                 outputPath,
-                result.Validation);
+                result.Validation,
+                result.Metadata.Currency);
         }
         catch (Exception ex)
         {
@@ -220,7 +221,8 @@ public sealed record ParseServiceResult(
     ParseJob Job,
     string OutputFilename,
     string OutputPath,
-    ValidationResult Validation);
+    ValidationResult Validation,
+    string Currency);
 
 public sealed class ParseValidationException : Exception
 {

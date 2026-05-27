@@ -79,6 +79,8 @@ public sealed class HpParseTests
         qtValues!.Should().ContainSingle().Which.Should().Be("");
         // Validation matches (no quoted total to compare)
         response.Headers.GetValues("X-Validation").Should().ContainSingle().Which.Should().Be("match");
+        // HP deals are always AUD
+        response.Headers.GetValues("X-Currency").Should().ContainSingle().Which.Should().Be("AUD");
     }
 
     [Fact]

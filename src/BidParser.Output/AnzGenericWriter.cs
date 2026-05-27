@@ -56,8 +56,9 @@ public static class AnzGenericWriter
 
             // Col H — MSRP: intentionally blank for HP
 
-            // Col I — Cost
-            sheet.Cell(rowNumber, 9).Value = item.Cost;
+            // Col I — Cost (0 → sentinel; Bundle Detail components carry no price and the
+            // downstream import rejects a literal 0, rounding the sentinel back to 0).
+            sheet.Cell(rowNumber, 9).Value = NonZeroPrice(item.Cost);
 
             // Col K — Margin (Uplift template only)
             if (includeMargin)
@@ -88,4 +89,7 @@ public static class AnzGenericWriter
         workbook.SaveAs(outputPath);
         return outputPath;
     }
+
+    // Downstream import treats a literal 0 as an invalid price; the sentinel rounds back to 0 on import.
+    private static decimal NonZeroPrice(decimal value) => value == 0m ? 0.000001m : value;
 }

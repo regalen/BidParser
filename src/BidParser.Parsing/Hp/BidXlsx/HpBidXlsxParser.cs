@@ -39,6 +39,7 @@ public sealed class HpBidXlsxParser : IParser
         var lastRow = sheet.LastRowUsed()?.RowNumber() ?? headerMap.RowNumber;
 
         var lineCounter = 0;
+        var bundleParentSeq = 0;
         var bundleChildCounter = 0;
 
         for (var row = headerMap.RowNumber + 1; row <= lastRow; row++)
@@ -57,23 +58,38 @@ public sealed class HpBidXlsxParser : IParser
             string lineSequence;
             int qty;
             int rawMinQty;
+            decimal cost;
 
             switch (lineType)
             {
                 case "Part Number":
                 case "Bundle":
                     lineCounter++;
-                    bundleChildCounter = 0;
                     lineSequence = lineCounter.ToString();
-                    qty = DecimalCleaner.ParseInt(Text(sheet, row, headerMap, "Max Deal Qty"));
-                    rawMinQty = DecimalCleaner.ParseInt(Text(sheet, row, headerMap, "Min Order Qty"));
+                    qty = Int(sheet, row, headerMap, "Max Deal Qty");
+                    rawMinQty = Int(sheet, row, headerMap, "Min Order Qty");
+                    cost = DecimalCleaner.Parse(Text(sheet, row, headerMap, "Price"), defaultZero: true);
+                    if (lineType == "Bundle")
+                    {
+                        // A Bundle opens a child group: subsequent Bundle Detail rows
+                        // sub-sequence under it (4.01, 4.02, …). A plain Part Number is
+                        // never a parent, so it leaves the child counter untouched.
+                        bundleParentSeq = lineCounter;
+                        bundleChildCounter = 0;
+                    }
                     break;
 
                 case "Bundle Detail":
                     bundleChildCounter++;
-                    lineSequence = $"{lineCounter}.{bundleChildCounter:D2}";
-                    qty = DecimalCleaner.ParseInt(Text(sheet, row, headerMap, "Bundle Detail Qty"));
-                    rawMinQty = DecimalCleaner.ParseInt(Text(sheet, row, headerMap, "Bundle Detail Qty"));
+                    lineSequence = $"{bundleParentSeq}.{bundleChildCounter:D2}";
+                    qty = Int(sheet, row, headerMap, "Bundle Detail Qty");
+                    rawMinQty = qty;
+                    // A Bundle Detail is a component of its Bundle; the Bundle line carries
+                    // the total price, so the component's own Price is dropped to avoid
+                    // double-counting. The writer emits the 0.000001 sentinel (the
+                    // downstream import rejects a literal 0). The source Price is still
+                    // captured in Raw["Price"].
+                    cost = 0m;
                     break;
 
                 default:
@@ -91,7 +107,7 @@ public sealed class HpBidXlsxParser : IParser
             {
                 Vpn = vpn,
                 Description = Text(sheet, row, headerMap, "Product Description"),
-                Cost = DecimalCleaner.Parse(Text(sheet, row, headerMap, "Price"), defaultZero: true),
+                Cost = cost,
                 Msrp = null,
                 Qty = qty,
                 MinQty = minQty,
@@ -142,6 +158,13 @@ public sealed class HpBidXlsxParser : IParser
     private static string Text(ClosedXML.Excel.IXLWorksheet sheet, int row, HeaderMap headerMap, string label)
     {
         return WorkbookReader.CellText(sheet.Cell(row, headerMap.Require(label)));
+    }
+
+    private static int Int(ClosedXML.Excel.IXLWorksheet sheet, int row, HeaderMap headerMap, string label)
+    {
+        // A blank qty cell defaults to 0 rather than throwing. For min_qty the 0→1 rule
+        // then promotes a blank Min Order Qty to 1, matching the "0 means 1" intent.
+        return DecimalCleaner.ParseOptionalInt(Text(sheet, row, headerMap, label)) ?? 0;
     }
 
     private static IReadOnlyDictionary<string, string> RawDict(
