@@ -7,7 +7,7 @@ namespace BidParser.Api.Endpoints;
 
 public static class MeEndpoints
 {
-    private static readonly HashSet<string> KnownVendors = new(StringComparer.Ordinal) { Vendors.Nutanix };
+    private static readonly HashSet<string> KnownVendors = new(StringComparer.Ordinal) { Vendors.Nutanix, Vendors.Hp };
 
     public static IEndpointRouteBuilder MapMeEndpoints(this IEndpointRouteBuilder app)
     {

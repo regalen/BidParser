@@ -83,3 +83,35 @@ The `*` in column B is required — our quoting system uses it as the loop senti
 The output file is named `<input_basename>_parsed.xlsx` where `<input_basename>` is the source filename without its extension. So:
 - `XQ-4076249.pdf` → `XQ-4076249_parsed.xlsx`
 - `XQ-4076249.xlsx` → `XQ-4076249_parsed.xlsx` (collides with the PDF in batch reviews; in production only one envelope is processed per parse).
+
+---
+
+## HP (ANZ-GENERIC — No Calculation / Uplift)
+
+**Template:** `ANZ-GENERIC_NoCalculation.xlsx` or `ANZ-GENERIC_Uplift.xlsx` (user-selected at parse time)  
+**Writer:** `AnzGenericWriter.Write(items, outputPath, sheetName, includeMargin, margin, vendorName)`  
+**Sheet names:** `"No Calculation"` / `"Uplift"` (matching the template chosen)
+
+HP writes to the **local** columns of the 27-column layout. No FX rate, no foreign columns, no sentinel-zero substitution.
+
+| Col | Header | HP value | Notes |
+|---|---|---|---|
+| A | Item | `LineSequence` | String: `"1"`, `"2"`, `"1.01"`, `"1.02"`, … |
+| B | Vendor Name | `"HP"` | Upper-case vendor label |
+| D | Vendor Part Number | `vpn` | `"Product Number/ID"` or `"Product Number/ID#Option Code"` |
+| E | Description | `description` | `"Product Description"` from the source row |
+| F | Qty. | `qty` | `Max Deal Qty` (Part Number/Bundle) or `Bundle Detail Qty` (Bundle Detail) |
+| H | MSRP | **blank** | HP has no MSRP source column |
+| I | Cost | `cost` | `Price` from the source row |
+| K | Margin | `margin` (Uplift only) | Written only when `includeMargin = true`; blank for No Calculation |
+| W | Min Order Qty | `min_qty` | After `0 → 1` substitution |
+
+All other columns: blank.
+
+**End-loop sentinel row:** after the last line item — col B = `"*"`, col D = `EndLoopWarning` constant.
+
+**Key differences vs ForeignUplift:**
+- Item col A holds the `LineSequence` string (`"1.01"` etc.) rather than a running integer
+- No sentinel-zero (`0.000001`) substitution — zero prices are written as-is
+- No term, date, serial number, or FX columns populated
+- `Matches = true` always (HP files have no quoted total to compare against)

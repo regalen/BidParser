@@ -9,12 +9,18 @@ public static class ParsersEndpoints
     {
         app.MapGet("/api/parsers", (IParserRegistry registry) =>
             Results.Ok(registry.Parsers
-                .Select(p => new ParserInfo(p.Slug, p.DisplayName, p.Vendor, p.AcceptedMime, p.CrmTemplate))
+                .Select(p => new ParserInfo(p.Slug, p.DisplayName, p.Vendor, p.AcceptedMime, p.CrmTemplate, p.AvailableTemplates.ToList()))
                 .ToList()))
             .RequireAuthorization(AuthPolicies.ActiveUser);
 
         return app;
     }
 
-    private sealed record ParserInfo(string Slug, string DisplayName, string Vendor, string AcceptedMime, string CrmTemplate);
+    private sealed record ParserInfo(
+        string Slug,
+        string DisplayName,
+        string Vendor,
+        string AcceptedMime,
+        string CrmTemplate,
+        IReadOnlyList<string> AvailableTemplates);
 }

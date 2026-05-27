@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react';
 import type { ParserInfo } from '../types';
 import { CrmTemplateCallout } from './CrmTemplateCallout';
 import { FileTypeSelect } from './FileTypeSelect';
+import { HpSettingsBlock } from './HpSettingsBlock';
 import { NutanixSettingsBlock } from './NutanixSettingsBlock';
 import { VendorSelect } from './VendorSelect';
 
@@ -12,6 +13,7 @@ export function ParseSettingsCard({
   parserSlug,
   fxRate,
   margin,
+  selectedTemplate,
   defaultsDirty,
   canSubmit,
   savingDefaults,
@@ -20,6 +22,7 @@ export function ParseSettingsCard({
   onParser,
   onFxRate,
   onMargin,
+  onTemplate,
   onSaveDefaults,
   onSubmit,
 }: {
@@ -28,6 +31,7 @@ export function ParseSettingsCard({
   parserSlug: string;
   fxRate: string;
   margin: string;
+  selectedTemplate: string;
   defaultsDirty: boolean;
   canSubmit: boolean;
   savingDefaults: boolean;
@@ -36,6 +40,7 @@ export function ParseSettingsCard({
   onParser: (value: string) => void;
   onFxRate: (value: string) => void;
   onMargin: (value: string) => void;
+  onTemplate: (value: string) => void;
   onSaveDefaults: () => void;
   onSubmit: () => void;
 }) {
@@ -43,6 +48,7 @@ export function ParseSettingsCard({
   const vendors = Array.from(new Set(parsers.map((parser) => parser.vendor)));
   const filtered = parsers.filter((parser) => parser.vendor === vendor);
   const showVendorSettings = Boolean(vendor && parserSlug);
+  const isMultiTemplate = (selectedParser?.available_templates?.length ?? 0) > 1;
 
   return (
     <aside className="card flex w-full flex-col gap-4 p-6 md:w-80 md:shrink-0">
@@ -51,15 +57,43 @@ export function ParseSettingsCard({
       <VendorSelect vendors={vendors} value={vendor} onChange={onVendor} />
       <FileTypeSelect parsers={filtered} value={parserSlug} disabled={!vendor} onChange={onParser} />
 
-      {showVendorSettings && (
+      {showVendorSettings && selectedParser && (
         <>
-          <NutanixSettingsBlock
-            fxRate={fxRate}
-            margin={margin}
-            onFxRate={onFxRate}
-            onMargin={onMargin}
-          />
-          <CrmTemplateCallout template={selectedParser?.crm_template ?? 'Foreign Uplift'} />
+          {isMultiTemplate ? (
+            // Multi-template vendor (HP): show a template dropdown + HP settings block
+            <>
+              <label className="flex flex-col gap-2">
+                <span className="label">CRM Import Template</span>
+                <select
+                  className="field"
+                  value={selectedTemplate}
+                  onChange={(e) => onTemplate(e.target.value)}
+                >
+                  {selectedParser.available_templates.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <HpSettingsBlock
+                margin={margin}
+                onMargin={onMargin}
+                selectedTemplate={selectedTemplate}
+              />
+            </>
+          ) : (
+            // Single-template vendor (Nutanix): unchanged behaviour
+            <>
+              <NutanixSettingsBlock
+                fxRate={fxRate}
+                margin={margin}
+                onFxRate={onFxRate}
+                onMargin={onMargin}
+              />
+              <CrmTemplateCallout template={selectedParser.crm_template} />
+            </>
+          )}
         </>
       )}
 

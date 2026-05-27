@@ -9,6 +9,7 @@ public interface IParser
     string Vendor { get; }
     string AcceptedMime { get; }
     string CrmTemplate { get; }
+    IReadOnlyList<string> AvailableTemplates => [CrmTemplate];
 
     ParseResult Parse(string path);
 

@@ -1,3 +1,4 @@
+using BidParser.Domain.Constants;
 using BidParser.Output;
 using BidParser.Parsing.Registry;
 using FluentAssertions;
@@ -28,6 +29,29 @@ public sealed class TemplateWriterTests
 
         WorkbookComparer.AssertEqual(actualPath, Path.Combine(root, "samples", "outputs", expectedName));
     }
+
+    // ── AnzGenericWriter (HP No Calculation / Uplift) ────────────────────────
+
+    [Theory]
+    [InlineData("Deals20260518T034809_HPI.xlsx", "Deals20260518T034809_HPI_NoCalculation_parsed.xlsx", false)]
+    [InlineData("Deals20260518T034809_HPI.xlsx", "Deals20260518T034809_HPI_Uplift_parsed.xlsx",         true)]
+    [InlineData("Deals20260518T043243_HPI.xlsx", "Deals20260518T043243_HPI_NoCalculation_parsed.xlsx", false)]
+    [InlineData("Deals20260518T043243_HPI.xlsx", "Deals20260518T043243_HPI_Uplift_parsed.xlsx",         true)]
+    public void AnzGenericWriterMatchesGoldenWorkbookCells(string inputName, string expectedName, bool includeMargin)
+    {
+        var root = FindRepoRoot();
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpBidXlsx);
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", inputName));
+        using var tempDirectory = new TempDirectory();
+        var actualPath = Path.Combine(tempDirectory.Path, expectedName);
+
+        var sheetName = includeMargin ? "Uplift" : "No Calculation";
+        AnzGenericWriter.Write(result.LineItems, actualPath, sheetName, includeMargin, margin: 5.00m, vendorName: "HP");
+
+        WorkbookComparer.AssertEqual(actualPath, Path.Combine(root, "samples", "outputs", expectedName));
+    }
+
+    // ── OutputNaming ─────────────────────────────────────────────────────────
 
     [Theory]
     [InlineData("XQ-4076249.pdf", "XQ-4076249_parsed.xlsx")]

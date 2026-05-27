@@ -18,6 +18,7 @@ export interface ParserInfo {
   vendor: string;
   accepted_mime: string;
   crm_template: string;
+  available_templates: string[];
 }
 
 export interface HistoryRow {

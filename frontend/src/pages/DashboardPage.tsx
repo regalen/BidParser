@@ -18,6 +18,7 @@ export function DashboardPage() {
   const [parsers, setParsers] = useState<ParserInfo[]>([]);
   const [vendor, setVendor] = useState('');
   const [parserSlug, setParserSlug] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState('');
   const [fxRate, setFxRate] = useState(user?.fx_rate ?? '');
   const [margin, setMargin] = useState(user?.margin ?? '');
   const [file, setFile] = useState<File | null>(null);
@@ -65,6 +66,7 @@ export function DashboardPage() {
         const preferredParsers = items.filter((item) => item.vendor === preferredVendor);
         if (preferredParsers.length === 1) {
           setParserSlug(preferredParsers[0].slug);
+          setSelectedTemplate(preferredParsers[0].available_templates[0] ?? '');
         }
       }
     });
@@ -92,9 +94,17 @@ export function DashboardPage() {
     return vendor !== (user?.default_vendor ?? '') || margin !== (user?.margin ?? '') || fxRate !== (user?.fx_rate ?? '');
   }, [vendor, margin, fxRate, user?.default_vendor, user?.margin, user?.fx_rate]);
 
+  const selectedParser = useMemo(() => parsers.find((p) => p.slug === parserSlug), [parsers, parserSlug]);
+
   const canSubmit = useMemo(() => {
-    return Boolean(vendor && parserSlug && fxRate && margin && file && uploadState === 'idle');
-  }, [vendor, parserSlug, fxRate, margin, file, uploadState]);
+    if (!vendor || !parserSlug || !file || uploadState !== 'idle') return false;
+    // Multi-template parsers (e.g. HP): Uplift needs margin; No Calculation needs neither
+    if (selectedParser && selectedParser.available_templates.length > 1) {
+      return selectedTemplate !== 'Uplift' || Boolean(margin);
+    }
+    // Single-template parsers (e.g. Nutanix): needs both fxRate and margin
+    return Boolean(fxRate && margin);
+  }, [vendor, parserSlug, fxRate, margin, selectedTemplate, file, uploadState, selectedParser]);
 
   function pushToast(toast: Omit<ToastMessage, 'id'>) {
     const id = Date.now();
@@ -127,6 +137,9 @@ export function DashboardPage() {
     form.set('parser_slug', parserSlug);
     form.set('fx_rate', fxRate);
     form.set('margin', margin);
+    if (selectedTemplate) {
+      form.set('crm_template', selectedTemplate);
+    }
 
     try {
       const result = await api.parse(form);
@@ -204,6 +217,7 @@ export function DashboardPage() {
             parserSlug={parserSlug}
             fxRate={fxRate}
             margin={margin}
+            selectedTemplate={selectedTemplate}
             defaultsDirty={defaultsDirty}
             canSubmit={canSubmit}
             savingDefaults={savingDefaults}
@@ -211,10 +225,16 @@ export function DashboardPage() {
             onVendor={(value) => {
               setVendor(value);
               setParserSlug('');
+              setSelectedTemplate('');
             }}
-            onParser={setParserSlug}
+            onParser={(slug) => {
+              setParserSlug(slug);
+              const p = parsers.find((x) => x.slug === slug);
+              setSelectedTemplate(p?.available_templates[0] ?? '');
+            }}
             onFxRate={setFxRate}
             onMargin={setMargin}
+            onTemplate={setSelectedTemplate}
             onSaveDefaults={saveDefaults}
             onSubmit={submit}
           />

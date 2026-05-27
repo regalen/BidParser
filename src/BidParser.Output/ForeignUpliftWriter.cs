@@ -8,37 +8,6 @@ public static class ForeignUpliftWriter
 {
     public const string EndLoopWarning = "DO NOT DELETE THIS LINE. Indicate * on column B to mark the end loop. Add / remove lines above as necessary.";
 
-    private static readonly string[] Headers =
-    [
-        "Item",
-        "Vendor Name",
-        "IMTH SKU\n(Optional)",
-        "Vendor Part Number",
-        "Description",
-        "Qty.",
-        "Unit Price",
-        "MSRP",
-        "Cost",
-        "Discount",
-        "Margin",
-        "Product Part Number \n(for Warranty/Renewal)",
-        "Serial Number",
-        "Warranty / Duration (months)",
-        "Vendor Ref",
-        "Start Date",
-        "End Date",
-        "Comments",
-        "Foreign Currency",
-        "Foreign Cost",
-        "Foreign MSRP",
-        "Foreign Exchange Rate",
-        "Min Order Qty",
-        "IM%",
-        "Diff%",
-        "On Cost %",
-        "Retail Bump %"
-    ];
-
     public static string WriteForeignUplift(
         IEnumerable<LineItem> lineItems,
         string outputPath,
@@ -52,9 +21,9 @@ public static class ForeignUpliftWriter
         var sheet = workbook.AddWorksheet(CrmTemplates.ForeignUplift);
 
         sheet.Cell(1, 12).Value = "(Optional for Software and/or Services)";
-        for (var index = 0; index < Headers.Length; index++)
+        for (var index = 0; index < TemplateLayout.Headers.Length; index++)
         {
-            sheet.Cell(2, index + 1).Value = Headers[index];
+            sheet.Cell(2, index + 1).Value = TemplateLayout.Headers[index];
         }
 
         var termAsComment = parserSlug is "nutanix_software_only_pdf" or "nutanix_software_only_xlsx";

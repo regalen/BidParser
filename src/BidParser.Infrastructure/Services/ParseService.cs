@@ -1,4 +1,5 @@
 using BidParser.Domain.Abstractions;
+using BidParser.Domain.Constants;
 using BidParser.Domain.Models;
 using BidParser.Infrastructure.Entities;
 using BidParser.Infrastructure.Persistence;
@@ -24,6 +25,7 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
         string parserSlug,
         decimal fxRate,
         decimal margin,
+        string? crmTemplate,
         long maxUploadBytes,
         CancellationToken ct = default)
     {
@@ -42,14 +44,33 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
 
             var result = parser.Parse(sourcePath);
 
-            ForeignUpliftWriter.WriteForeignUplift(
-                result.LineItems,
-                outputPath,
-                margin,
-                fxRate,
-                vendor.ToUpperInvariant(),
-                result.Metadata.Currency,
-                parser.Slug);
+            // Resolve the effective CRM template, validate it against what the parser supports.
+            var template = string.IsNullOrEmpty(crmTemplate) ? parser.CrmTemplate : crmTemplate;
+            if (!parser.AvailableTemplates.Contains(template))
+            {
+                throw new ParseValidationException(400, "Unknown CRM template for this parser.");
+            }
+
+            switch (template)
+            {
+                case CrmTemplates.ForeignUplift:
+                    ForeignUpliftWriter.WriteForeignUplift(
+                        result.LineItems, outputPath, margin, fxRate,
+                        vendor.ToUpperInvariant(), result.Metadata.Currency, parser.Slug);
+                    break;
+                case CrmTemplates.NoCalculation:
+                    AnzGenericWriter.Write(
+                        result.LineItems, outputPath, "No Calculation",
+                        includeMargin: false, margin, vendor.ToUpperInvariant());
+                    break;
+                case CrmTemplates.Uplift:
+                    AnzGenericWriter.Write(
+                        result.LineItems, outputPath, "Uplift",
+                        includeMargin: true, margin, vendor.ToUpperInvariant());
+                    break;
+                default:
+                    throw new ParseValidationException(400, "Unsupported CRM template.");
+            }
 
             var fxRateRounded = Math.Round(fxRate, 4, MidpointRounding.AwayFromZero);
             var marginRounded = Math.Round(margin, 2, MidpointRounding.AwayFromZero);

@@ -51,6 +51,7 @@ public static class ParseEndpoints
         var parserSlug = form["parser_slug"].FirstOrDefault()?.Trim();
         var fxRateStr = form["fx_rate"].FirstOrDefault()?.Trim();
         var marginStr = form["margin"].FirstOrDefault()?.Trim();
+        var crmTemplate = form["crm_template"].FirstOrDefault()?.Trim();
 
         if (file is null)
         {
@@ -67,12 +68,18 @@ public static class ParseEndpoints
             return Results.Json(new ApiError("parser_slug is required."), statusCode: 400);
         }
 
-        if (!decimal.TryParse(fxRateStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var fxRate))
+        // fx_rate and margin are optional; they default to 1 and 0 respectively.
+        // HP No Calculation needs neither; HP Uplift needs only margin.
+        var fxRate = 1m;
+        if (!string.IsNullOrEmpty(fxRateStr) &&
+            !decimal.TryParse(fxRateStr, NumberStyles.Any, CultureInfo.InvariantCulture, out fxRate))
         {
             return Results.Json(new ApiError("Invalid fx_rate."), statusCode: 400);
         }
 
-        if (!decimal.TryParse(marginStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var margin))
+        var margin = 0m;
+        if (!string.IsNullOrEmpty(marginStr) &&
+            !decimal.TryParse(marginStr, NumberStyles.Any, CultureInfo.InvariantCulture, out margin))
         {
             return Results.Json(new ApiError("Invalid margin."), statusCode: 400);
         }
@@ -97,7 +104,7 @@ public static class ParseEndpoints
         {
             result = await parseService.ParseAsync(
                 user, stream, displayFilename, vendor, parserSlug,
-                fxRate, margin, appOptions.MaxUploadBytes, ct);
+                fxRate, margin, crmTemplate, appOptions.MaxUploadBytes, ct);
         }
         catch (ParseValidationException ex)
         {
