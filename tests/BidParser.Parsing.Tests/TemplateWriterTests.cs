@@ -51,6 +51,23 @@ public sealed class TemplateWriterTests
         WorkbookComparer.AssertEqual(actualPath, Path.Combine(root, "samples", "outputs", expectedName));
     }
 
+    // ── AnzGenericWriter (Lenovo No Calculation) ─────────────────────────────
+
+    [Fact]
+    public void AnzGenericWriterMatchesGoldenWorkbookCells_Lenovo()
+    {
+        var root = FindRepoRoot();
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.LenovoBrdaDcgPdf);
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "BRDAS010260417V1.pdf"));
+        using var tempDirectory = new TempDirectory();
+        const string expectedName = "BRDAS010260417V1_parsed.xlsx";
+        var actualPath = Path.Combine(tempDirectory.Path, expectedName);
+
+        AnzGenericWriter.Write(result.LineItems, actualPath, "No Calculation", includeMargin: false, margin: 0m, vendorName: "Lenovo");
+
+        WorkbookComparer.AssertEqual(actualPath, Path.Combine(root, "samples", "outputs", expectedName));
+    }
+
     // ── OutputNaming ─────────────────────────────────────────────────────────
 
     [Theory]

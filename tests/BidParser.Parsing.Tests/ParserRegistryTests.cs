@@ -18,6 +18,7 @@ public sealed class ParserRegistryTests
                 "nutanix_renewal_pdf",
                 "nutanix_hardware_only_pdf",
                 "nutanix_hardware_only_xlsx",
-                "hp_bid_xlsx");
+                "hp_bid_xlsx",
+                "lenovo_brda_dcg_pdf");
     }
 }

@@ -77,6 +77,7 @@ export function ParseSettingsCard({
                 </select>
               </label>
               <HpSettingsBlock
+                vendorLabel={selectedParser.vendor}
                 margin={margin}
                 onMargin={onMargin}
                 selectedTemplate={selectedTemplate}
