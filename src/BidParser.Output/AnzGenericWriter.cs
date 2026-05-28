@@ -91,5 +91,5 @@ public static class AnzGenericWriter
     }
 
     // Downstream import treats a literal 0 as an invalid price; the sentinel rounds back to 0 on import.
-    private static decimal NonZeroPrice(decimal value) => value == 0m ? 0.000001m : value;
+    private static decimal NonZeroPrice(decimal value) => value == 0m ? TemplateLayout.ZeroPriceSentinel : value;
 }

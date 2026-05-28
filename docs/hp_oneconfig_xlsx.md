@@ -72,12 +72,12 @@ Writer: `PercentOffWithUpliftWriter`. Column mapping:
 | D | `Vendor Part Number` | `vpn` |
 | E | `Description` | `description` |
 | F | `Qty.` | `qty` |
-| H | `MSRP` | parent: real `msrp`; children: `0.000001` sentinel |
+| H | `MSRP` | parent: real `msrp`; children: `0.0001` sentinel |
 | I | `Cost` | blank (intentionally empty) |
 | K | `Margin` | user-supplied `margin` (always written) |
 | X | `IM%` | user-supplied `im_percent` (always written) |
 
-The `0.000001` sentinel replaces any zero MSRP because the downstream import rejects a literal `0`. Row L1 carries `(Optional for Software and/or Services)`. The last row is the standard end-loop sentinel (`B* = "*"`, `D* = DO NOT DELETE…`).
+The `0.0001` sentinel replaces any zero MSRP because the downstream import rejects a literal `0`. Row L1 carries `(Optional for Software and/or Services)`. The last row is the standard end-loop sentinel (`B* = "*"`, `D* = DO NOT DELETE…`).
 
 ## Parser constants
 

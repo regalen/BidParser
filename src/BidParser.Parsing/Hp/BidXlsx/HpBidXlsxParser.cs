@@ -86,7 +86,7 @@ public sealed class HpBidXlsxParser : IParser
                     rawMinQty = qty;
                     // A Bundle Detail is a component of its Bundle; the Bundle line carries
                     // the total price, so the component's own Price is dropped to avoid
-                    // double-counting. The writer emits the 0.000001 sentinel (the
+                    // double-counting. The writer emits the 0.0001 sentinel (the
                     // downstream import rejects a literal 0). The source Price is still
                     // captured in Raw["Price"].
                     cost = 0m;

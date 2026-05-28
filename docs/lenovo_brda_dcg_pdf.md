@@ -158,7 +158,7 @@ Lenovo BRDA DCG uses `AnzGenericWriter` (ANZ-GENERIC 27-column layout). AUD — 
 | E | Description | description |
 | F | Qty. | qty |
 | H | MSRP | blank |
-| I | Cost | cost (or `0.000001` sentinel for zero-cost rows) |
+| I | Cost | cost (or `0.0001` sentinel for zero-cost rows) |
 | W | Min Order Qty | blank |
 
 Call: `AnzGenericWriter.Write(items, outputPath, "No Calculation", includeMargin: false, margin: 0m, vendorName: "Lenovo")`

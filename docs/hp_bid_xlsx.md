@@ -68,7 +68,7 @@ Three distinct values: **`Part Number`**, **`Bundle`**, **`Bundle Detail`**.
 
 All three line types are kept as line items (none are skipped).
 
-**Bundle Detail pricing:** a Bundle Detail is a component breakdown of its Bundle. The Bundle line carries the deal price for the whole bundle, so each Bundle Detail's own `Price` is intentionally dropped (`cost = 0`) to avoid double-counting in the computed total. On export, `AnzGenericWriter` writes the `0.000001` sentinel in the Cost column for these zero-cost lines because the downstream import rejects a literal `0` (and rounds the sentinel back to `0`).
+**Bundle Detail pricing:** a Bundle Detail is a component breakdown of its Bundle. The Bundle line carries the deal price for the whole bundle, so each Bundle Detail's own `Price` is intentionally dropped (`cost = 0`) to avoid double-counting in the computed total. On export, `AnzGenericWriter` writes the `0.0001` sentinel in the Cost column for these zero-cost lines because the downstream import rejects a literal `0` (and rounds the sentinel back to `0`).
 
 ### Quote Number
 
@@ -109,7 +109,7 @@ First rows (illustrating all three line types and `#`-concatenated Option Code):
 | … | … | … | … | … | … |
 | 4.06 | Bundle Detail | **4SS11AV#ABG** | 0 | 1 | 1 |
 
-Bundle Detail `cost` is `0` in the model (component price dropped — see above) and exports as the `0.000001` sentinel. Computed total: `14788828.99` (Part Number + Bundle lines only; no quoted total).
+Bundle Detail `cost` is `0` in the model (component price dropped — see above) and exports as the `0.0001` sentinel. Computed total: `14788828.99` (Part Number + Bundle lines only; no quoted total).
 
 ---
 
@@ -129,4 +129,4 @@ See `docs/output_mapping.md` — HP section. Both templates use the ANZ-GENERIC 
 | K | Margin | **blank** | margin % |
 | W | Min Order Qty | min_qty | min_qty |
 
-No FX rate, no foreign currency columns. Zero costs (every Bundle Detail, since its price is dropped) export as the `0.000001` sentinel in column I; non-zero Part Number / Bundle costs are written as-is.
+No FX rate, no foreign currency columns. Zero costs (every Bundle Detail, since its price is dropped) export as the `0.0001` sentinel in column I; non-zero Part Number / Bundle costs are written as-is.

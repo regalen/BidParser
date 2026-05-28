@@ -123,7 +123,7 @@ public sealed class TemplateWriterTests
         sheet.Cell(3, 8).Value.GetNumber().Should().BeApproximately(6042.77, 0.001);
 
         // Row 4 = first child: MSRP col H should be the sentinel
-        sheet.Cell(4, 8).Value.GetNumber().Should().BeApproximately(0.000001, 0.0000001);
+        sheet.Cell(4, 8).Value.GetNumber().Should().BeApproximately(0.0001, 0.00001);
 
         // Col I (Cost) should be blank for all rows
         for (var row = 3; row <= 33; row++)

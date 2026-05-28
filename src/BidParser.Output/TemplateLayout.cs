@@ -2,6 +2,10 @@ namespace BidParser.Output;
 
 internal static class TemplateLayout
 {
+    // Zero-dollar lines export as this sentinel because the downstream import rejects a literal 0
+    // and rounds the sentinel back to 0. Applies to every writer's price columns.
+    internal const decimal ZeroPriceSentinel = 0.0001m;
+
     internal static readonly string[] Headers =
     [
         "Item",

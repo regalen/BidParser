@@ -42,7 +42,7 @@ public static class PercentOffWithUpliftWriter
             // Col F — Qty.
             sheet.Cell(rowNumber, 6).Value = item.Qty;
 
-            // Col H — MSRP: parent carries the real price; children use the 0.000001 sentinel.
+            // Col H — MSRP: parent carries the real price; children use the zero-price sentinel.
             // (Col I Cost is intentionally blank for this template.)
             sheet.Cell(rowNumber, 8).Value = NonZeroPrice(item.Msrp ?? 0m);
 
@@ -70,5 +70,5 @@ public static class PercentOffWithUpliftWriter
     }
 
     // Downstream import rejects a literal 0; the sentinel rounds back to 0 on import.
-    private static decimal NonZeroPrice(decimal value) => value == 0m ? 0.000001m : value;
+    private static decimal NonZeroPrice(decimal value) => value == 0m ? TemplateLayout.ZeroPriceSentinel : value;
 }

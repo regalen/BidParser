@@ -66,14 +66,14 @@ The `*` in column B is required — our quoting system uses it as the loop senti
 | Q | End Date | `end_date` | Same as Start Date. |
 | R | Comments | `term` (Software Only formats only) **or** `serial_number` (Renewal) | For `nutanix_software_only_pdf` and `nutanix_software_only_xlsx`, written as `"{term} Months"` when `term >= 1` (e.g. `60 Months`). For Renewal, `serial_number` is written verbatim (no `"License: "` prefix, no splitting). The two cases never collide because Renewal items don't carry a `term` and Software Only items don't carry a `serial_number`. Empty otherwise. |
 | S | Foreign Currency | hardcoded `"USD"` | All quotes parsed so far are USD-denominated. |
-| T | Foreign Cost | `cost` | A value of `0` is written as the sentinel `0.000001` (the downstream uplift app rejects literal `0` and rounds the sentinel back to `0`). See locked rule #2. |
-| U | Foreign MSRP | `msrp` | This is where the parser's MSRP value lives. A value of `0` is written as the sentinel `0.000001` (same reason as column T). |
+| T | Foreign Cost | `cost` | A value of `0` is written as the sentinel `0.0001` (the downstream uplift app rejects literal `0` and rounds the sentinel back to `0`). See locked rule #2. |
+| U | Foreign MSRP | `msrp` | This is where the parser's MSRP value lives. A value of `0` is written as the sentinel `0.0001` (same reason as column T). |
 | V | Foreign Exchange Rate | hardcoded `1.000` | Will become a UI-driven input later. |
 | W–AA | (other) | _empty_ | Manual / future enrichment. |
 
 **Locked output rules (decided iteratively with the user, in order)**
 1. Local `MSRP` (column H) is **never** populated. The parser's `msrp` value lives in `Foreign MSRP` (column U) only.
-2. Bundled-component rows (Hardware Only Quote D rows where the supplier left price cells blank) get `msrp = 0` and `cost = 0` at parse time. When writing to `Foreign Cost` (column T) and `Foreign MSRP` (column U), a value of `0` is replaced with the sentinel `0.000001` because the downstream uplift app treats literal `0` as an invalid price — it rounds the sentinel back to `0` on import. The substitution is per-column at write time only; the in-memory `LineItem.Cost` / `LineItem.Msrp` remain `0` and validation totals are unaffected.
+2. Bundled-component rows (Hardware Only Quote D rows where the supplier left price cells blank) get `msrp = 0` and `cost = 0` at parse time. When writing to `Foreign Cost` (column T) and `Foreign MSRP` (column U), a value of `0` is replaced with the sentinel `0.0001` because the downstream uplift app treats literal `0` as an invalid price — it rounds the sentinel back to `0` on import. The substitution is per-column at write time only; the in-memory `LineItem.Cost` / `LineItem.Msrp` remain `0` and validation totals are unaffected.
 3. `Warranty / Duration (months)` (column N) is **only written when `term >= 1`** *and* the parser is not a Software Only format. For Software Only (PDF + XLSX), N stays empty and the term lands in `Comments` (column R) as `"{term} Months"` instead (e.g. `60 Months`). A term of `0` or null is treated as "no term" and both cells are left empty.
 4. `Serial Number` column (M) is **never** populated. The supplier's serial-cell string (which may contain an embedded license number, e.g. `"24SW000351227,LIC-02472987"`) is written verbatim into `Comments` (column R) instead. No `"License: "` prefix, no splitting.
 5. Numbers are written as raw values — no forced decimal places. Excel will display `383` rather than `383.00` unless a cell format is applied; this is intentional.
@@ -102,7 +102,7 @@ HP writes to the **local** columns of the 27-column layout. No FX rate, no forei
 | E | Description | `description` | `"Product Description"` from the source row |
 | F | Qty. | `qty` | `Max Deal Qty` (Part Number/Bundle) or `Bundle Detail Qty` (Bundle Detail) |
 | H | MSRP | **blank** | HP has no MSRP source column |
-| I | Cost | `cost` | Part Number / Bundle: `Price` from the source row. Bundle Detail: `0` (component price dropped — the Bundle parent holds the total), exported as the `0.000001` sentinel. |
+| I | Cost | `cost` | Part Number / Bundle: `Price` from the source row. Bundle Detail: `0` (component price dropped — the Bundle parent holds the total), exported as the `0.0001` sentinel. |
 | K | Margin | `margin` (Uplift only) | Written only when `includeMargin = true`; blank for No Calculation |
 | W | Min Order Qty | `min_qty` | After `0 → 1` substitution |
 
@@ -112,7 +112,7 @@ All other columns: blank.
 
 **Key differences vs ForeignUplift:**
 - Item col A holds the `LineSequence` string (`"1.01"` etc.) rather than a running integer
-- Zero costs export as the `0.000001` sentinel in column I (every Bundle Detail, whose price is dropped onto its Bundle parent); non-zero Part Number / Bundle costs are written as-is
+- Zero costs export as the `0.0001` sentinel in column I (every Bundle Detail, whose price is dropped onto its Bundle parent); non-zero Part Number / Bundle costs are written as-is
 - No term, date, serial number, or FX columns populated
 - `Matches = true` always (HP files have no quoted total to compare against)
 
@@ -133,7 +133,7 @@ Used by **HP OneConfig (XLSX)** only. Unlike the No Calculation / Uplift writers
 | D | Vendor Part Number | `vpn` | Parent: `Config ID`; children: `Part Number` |
 | E | Description | `description` | Parent: `Config Name`; children: source `Description` |
 | F | Qty. | `qty` | Parent: always 1; children: source `Quantity` |
-| H | MSRP | parent: `msrp`; children: `0.000001` sentinel | Parent carries the real `Total Price`; children's source prices are intentionally dropped |
+| H | MSRP | parent: `msrp`; children: `0.0001` sentinel | Parent carries the real `Total Price`; children's source prices are intentionally dropped |
 | I | Cost | **blank** | Cost is unused for this template |
 | K | Margin | `margin` | User-supplied; always written |
 | X | IM% | `imPercent` | User-supplied; always written; required (parse fails with 400 if omitted) |

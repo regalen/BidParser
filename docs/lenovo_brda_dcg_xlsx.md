@@ -29,7 +29,7 @@ Iterate rows from `headerRow + 1`. Each row is classified by these rules, in ord
 | `Description` equals `Subtotal` | Skip — per-config subtotal row (the PN cell repeats the parent CTO code). |
 | `PN` equals `Feature Code` and `Description` equals `Description` | Skip — repeated child sub-header above each child block. |
 | `unit price` populated **and `> 0`** | **PARENT row**: new line item; `LineSequence = parentIndex.ToString()`; `Cost = unit price`. |
-| Otherwise (blank price or explicit `0.0`) | **CHILD row** under the most recent PARENT: `LineSequence = "{parent}.{NN:D2}"`; `Cost = 0` (the writer applies the `0.000001` sentinel). |
+| Otherwise (blank price or explicit `0.0`) | **CHILD row** under the most recent PARENT: `LineSequence = "{parent}.{NN:D2}"`; `Cost = 0` (the writer applies the `0.0001` sentinel). |
 
 **Critical:** an explicit `0.0` in the unit-price cell does **not** promote a row to PARENT. Some rows like `5374CM1 — software1 Configuration Instruction` carry an explicit `0.0` price but are configuration components of the parent CTO; they must remain children with the sentinel cost.
 

@@ -110,7 +110,7 @@ public sealed class HpBidXlsxParserTests
 
         // The first child of Bundle 4. Bundle Detail components carry no price (the
         // Bundle parent holds the total), so Cost is dropped to 0 — the writer then
-        // emits the 0.000001 sentinel on export.
+        // emits the 0.0001 sentinel on export.
         var child1 = result.LineItems.First(i => i.LineSequence == "4.01");
         child1.Vpn.Should().Be("C89FGAV");
         child1.Cost.Should().Be(0m);
