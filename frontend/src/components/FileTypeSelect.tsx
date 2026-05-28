@@ -6,6 +6,10 @@ const SAMPLE_FILES: Record<string, string> = {
   nutanix_renewal_pdf: 'XQ-4128926.pdf',
   nutanix_hardware_only_pdf: 'XQ-4108785.pdf',
   nutanix_hardware_only_xlsx: 'XQ-4108785.xlsx',
+  hp_bid_xlsx: 'Deals20260518T034809_HPI.xlsx',
+  hp_oneconfig_xlsx: '55648855.xlsx',
+  lenovo_brda_dcg_pdf: 'BRDAS010260417V1.pdf',
+  lenovo_brda_dcg_xlsx: 'BRDAD010458440.xls',
 };
 
 export function FileTypeSelect({
