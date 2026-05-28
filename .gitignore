@@ -22,3 +22,5 @@ data/
 Thumbs.db
 .vscode/
 .idea/
+.antigravitycli/
+.claude/
