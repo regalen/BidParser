@@ -147,6 +147,6 @@ public sealed class LenovoBrdaDcgXlsxParserTests
         parser.AvailableTemplates.Should().Equal(CrmTemplates.NoCalculation, CrmTemplates.Uplift);
         parser.AcceptedMime.Should().Be("application/vnd.ms-excel");
         parser.Vendor.Should().Be(Vendors.Lenovo);
-        parser.DisplayName.Should().Be("BRDA DCG (XLSX)");
+        parser.DisplayName.Should().Be("BRDA DCG (XLS)");
     }
 }

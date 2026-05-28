@@ -31,7 +31,7 @@ The backend has been re-platformed from Python/FastAPI to ASP.NET Core 10. The c
 - `docs/nutanix_hardware_only_pdf.md` — human-written extraction spec for the "Hardware Only (PDF)" format (Nutanix multi-quote PDF; we only parse Quote D, the reseller-facing breakdown).
 - `docs/nutanix_hardware_only_xlsx.md` — human-written extraction spec for the "Hardware Only (XLSX)" format (Nutanix multi-quote workbook; we only parse Quote D, the reseller-facing breakdown — same sub-quote as the PDF version).
 - `docs/hp_oneconfig_xlsx.md` — extraction spec for the HP OneConfig (XLSX) format. Single Config per file, parent VPN from `Config ID`, MSRP from `Total Price`, 30 children zeroed. Output template `% Off RRP with Uplift`; requires `margin` and `im_percent` per parse.
-- `docs/lenovo_brda_dcg_xlsx.md` — extraction spec for the Lenovo BRDA DCG (XLSX) format. Legacy `.xls` (OLE Compound Document) read via ExcelDataReader; PARENT/CHILD classified by whether the unit-price cell is `> 0` (an explicit `0.0` is a child, not a parent — `5374CM1` "Configuration Instruction" rows depend on this). LineSequence is integer for parents (`"1"`, `"2"`), `parent.NN` for children (`"1.01"`, `"1.02"`). Quoted total comes from the `Total:` row in the unit-price column; rounded to 2 dp to flatten the workbook's float artefact.
+- `docs/lenovo_brda_dcg_xlsx.md` — extraction spec for the Lenovo BRDA DCG (XLS) format. Legacy `.xls` (OLE Compound Document) read via ExcelDataReader; PARENT/CHILD classified by whether the unit-price cell is `> 0` (an explicit `0.0` is a child, not a parent — `5374CM1` "Configuration Instruction" rows depend on this). LineSequence is integer for parents (`"1"`, `"2"`), `parent.NN` for children (`"1.01"`, `"1.02"`). Quoted total comes from the `Total:` row in the unit-price column; rounded to 2 dp to flatten the workbook's float artefact.
 - `docs/lenovo_brda_dcg_pdf.md` — extraction spec for the Lenovo BRDA DCG (PDF) format. Two-section PDF: "PRODUCT AND SERVICE DETAILS" (CONFIGs + PAREENTs) and "CONFIGURATION DETAILS" (per-component children). Key quirks: X1+1-based column boundaries for Part Number and Description; floating-point 1 pt offset for No and Qty columns in section 2; pre-description buffering for parent rows whose description cluster precedes the VPN row in y-order.
 - `docs/output_mapping.md` — defines how parsed `LineItem` fields are written into the `ANZ-GENERIC_ForeignUplift.xlsx` template, the output filename convention, and the locked output rules (e.g. MSRP column H stays empty; `serial_number` lands in Comments not Serial Number; term written only when `>= 1`). Read this before generating any `*_parsed.xlsx` file.
 - `docs/design/` — Claude Design handoff bundle for the V4 side-panel UI. Read `docs/design/README.md` before implementing frontend work.
@@ -75,7 +75,7 @@ Sample → format mapping:
 | `Deals20260518T043243_HPI.xlsx` | HP Bid (XLSX) | 5 Part Number rows only; Part-Number-only file |
 | `55648855.xlsx`                  | HP OneConfig (XLSX) | 1 Config + 30 components; AUD 6,042.77 Total Price |
 | `BRDAS010260417V1.pdf` | Lenovo BRDA DCG (PDF) | 152 items: 2 configs, 13 parents, 137 children (self-component dedup); AUD 393,231.78 |
-| `BRDAD010458440.xls`   | Lenovo BRDA DCG (XLSX) | Legacy .xls binary; 62 items: 8 parents, 54 children; AUD 103,542.60 |
+| `BRDAD010458440.xls`   | Lenovo BRDA DCG (XLS) | Legacy .xls binary; 62 items: 8 parents, 54 children; AUD 103,542.60 |
 
 ## What is being built
 

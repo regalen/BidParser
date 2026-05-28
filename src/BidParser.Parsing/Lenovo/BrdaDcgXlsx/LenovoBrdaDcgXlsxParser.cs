@@ -18,7 +18,7 @@ public sealed partial class LenovoBrdaDcgXlsxParser : IParser
     }
 
     public string Slug => ParserSlugs.LenovoBrdaDcgXlsx;
-    public string DisplayName => "BRDA DCG (XLSX)";
+    public string DisplayName => "BRDA DCG (XLS)";
     public string Vendor => Vendors.Lenovo;
     public string AcceptedMime => "application/vnd.ms-excel";
     public string CrmTemplate => CrmTemplates.NoCalculation;
@@ -131,7 +131,7 @@ public sealed partial class LenovoBrdaDcgXlsxParser : IParser
             throw new ParseError(
                 "detect",
                 "Header row is missing one of: PN, Description, Requested Quantity, Adjusted Buy Price (×2).",
-                "Incomplete BRDA DCG (XLSX) header row.");
+                "Incomplete BRDA DCG (XLS) header row.");
         }
 
         return new ColumnMap(pn.Value, desc.Value, qty.Value, unit.Value, extended.Value);
@@ -249,7 +249,7 @@ public sealed partial class LenovoBrdaDcgXlsxParser : IParser
         {
             throw new ParseError(
                 "totals",
-                "Could not locate the 'Total:' row in the BRDA DCG (XLSX) workbook.",
+                "Could not locate the 'Total:' row in the BRDA DCG (XLS) workbook.",
                 "Missing 'Total:' row.");
         }
 

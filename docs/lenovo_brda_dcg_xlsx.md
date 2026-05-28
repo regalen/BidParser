@@ -1,4 +1,4 @@
-# Lenovo BRDA DCG (XLSX) — extraction spec
+# Lenovo BRDA DCG (XLS) — extraction spec
 
 Lenovo Bid Request Data Approval (BRDA) — Data Center Group — workbook variant. Lenovo ships this format as a **legacy `.xls`** (OLE Compound Document), so the parser reads via `ExcelDataReader.CreateBinaryReader`, not ClosedXML. `System.Text.Encoding.CodePages` is registered in the parser's static constructor — ExcelDataReader needs it for `.xls` string decoding.
 
