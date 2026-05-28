@@ -37,27 +37,28 @@ public sealed class MetricsBackfillTests
                 await migrator.MigrateAsync("20260519000002_SourceFilenameNoCase");
             }
 
-            // Seed User and pre-migration ParseJobs
+            // Seed User via raw SQL so the seed works against the partial schema (which
+            // doesn't yet have the im column that is added by a later migration).
+            int userId;
+            using (var seedConnection = new SqliteConnection(connectionString))
+            {
+                await seedConnection.OpenAsync();
+                await using var insertCmd = seedConnection.CreateCommand();
+                insertCmd.CommandText =
+                    "INSERT INTO users (username, name, password_hash, role, must_change_password, created_at, updated_at) " +
+                    "VALUES ('testuser', 'Test User', 'hash', 'user', 0, datetime('now'), datetime('now')); " +
+                    "SELECT last_insert_rowid();";
+                userId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
+            }
+
+            // Seed pre-migration ParseJobs using EF Core (ParseJob entity has no im column).
             using (var db = new AppDbContext(options))
             {
-                var user = new User
-                {
-                    Username = "testuser",
-                    Name = "Test User",
-                    PasswordHash = "hash",
-                    Role = UserRole.User,
-                    MustChangePassword = false,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                db.Users.Add(user);
-                await db.SaveChangesAsync();
-
                 var jobs = new[]
                 {
                     new ParseJob
                     {
-                        UserId = user.Id,
+                        UserId = userId,
                         Vendor = "Nutanix",
                         ParserSlug = "nutanix_software_only_pdf",
                         SourceFilename = "file1.pdf",
@@ -72,7 +73,7 @@ public sealed class MetricsBackfillTests
                     },
                     new ParseJob
                     {
-                        UserId = user.Id,
+                        UserId = userId,
                         Vendor = "Nutanix",
                         ParserSlug = "nutanix_renewal_pdf",
                         SourceFilename = "file2.pdf",

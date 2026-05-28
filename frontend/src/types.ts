@@ -9,6 +9,7 @@ export interface User {
   default_vendor: string | null;
   fx_rate: string | null;
   margin: string | null;
+  im_percent: string | null;
   created_at?: string | null;
 }
 

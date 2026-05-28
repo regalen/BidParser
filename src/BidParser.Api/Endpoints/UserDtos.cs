@@ -13,6 +13,7 @@ public sealed record UserPublic(
     string? DefaultVendor,
     [property: JsonConverter(typeof(FxRateConverter))] decimal? FxRate,
     [property: JsonConverter(typeof(MarginConverter))] decimal? Margin,
+    [property: JsonConverter(typeof(MarginConverter))] decimal? ImPercent,
     DateTime? CreatedAt)
 {
     public static UserPublic FromEntity(User user)
@@ -26,6 +27,7 @@ public sealed record UserPublic(
             user.DefaultVendor,
             user.FxRate,
             user.Margin,
+            user.ImPercent,
             user.CreatedAt);
     }
 }

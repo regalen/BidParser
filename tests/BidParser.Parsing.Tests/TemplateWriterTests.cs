@@ -1,6 +1,7 @@
 using BidParser.Domain.Constants;
 using BidParser.Output;
 using BidParser.Parsing.Registry;
+using ClosedXML.Excel;
 using FluentAssertions;
 using Xunit;
 
@@ -85,6 +86,62 @@ public sealed class TemplateWriterTests
         AnzGenericWriter.Write(result.LineItems, actualPath, sheetName, includeMargin, margin: 5.00m, vendorName: "LENOVO");
 
         WorkbookComparer.AssertEqual(actualPath, Path.Combine(root, "samples", "outputs", expectedName));
+    }
+
+    // ── PercentOffWithUpliftWriter (HP OneConfig XLSX) ───────────────────────
+
+    [Fact]
+    public void PercentOffWithUpliftWriter_MatchesGoldenWorkbookCells()
+    {
+        var root = FindRepoRoot();
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpOneConfigXlsx);
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "55648855.xlsx"));
+        using var tempDirectory = new TempDirectory();
+        const string expectedName = "55648855_parsed.xlsx";
+        var actualPath = Path.Combine(tempDirectory.Path, expectedName);
+
+        PercentOffWithUpliftWriter.Write(result.LineItems, actualPath, margin: 5m, im: 30m, vendorName: "HP");
+
+        WorkbookComparer.AssertEqual(actualPath, Path.Combine(root, "samples", "outputs", expectedName));
+    }
+
+    [Fact]
+    public void PercentOffWithUpliftWriter_ParentMsrpIsReal_ChildrenAreSentinel()
+    {
+        var root = FindRepoRoot();
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpOneConfigXlsx);
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "55648855.xlsx"));
+        using var tempDirectory = new TempDirectory();
+        var actualPath = Path.Combine(tempDirectory.Path, "55648855_parsed.xlsx");
+
+        PercentOffWithUpliftWriter.Write(result.LineItems, actualPath, margin: 5m, im: 30m, vendorName: "HP");
+
+        using var workbook = new XLWorkbook(actualPath);
+        var sheet = workbook.Worksheets.First();
+
+        // Row 3 = parent: MSRP col H should be the real price
+        sheet.Cell(3, 8).Value.GetNumber().Should().BeApproximately(6042.77, 0.001);
+
+        // Row 4 = first child: MSRP col H should be the sentinel
+        sheet.Cell(4, 8).Value.GetNumber().Should().BeApproximately(0.000001, 0.0000001);
+
+        // Col I (Cost) should be blank for all rows
+        for (var row = 3; row <= 33; row++)
+        {
+            sheet.Cell(row, 9).Value.IsBlank.Should().BeTrue($"Cost col I should be blank on row {row}");
+        }
+
+        // Col K (Margin) = 5 for all rows
+        for (var row = 3; row <= 33; row++)
+        {
+            sheet.Cell(row, 11).Value.GetNumber().Should().Be(5, $"Margin on row {row}");
+        }
+
+        // Col X (IM%) = 30 for all rows
+        for (var row = 3; row <= 33; row++)
+        {
+            sheet.Cell(row, 24).Value.GetNumber().Should().Be(30, $"IM% on row {row}");
+        }
     }
 
     // ── OutputNaming ─────────────────────────────────────────────────────────

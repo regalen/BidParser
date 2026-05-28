@@ -115,3 +115,34 @@ All other columns: blank.
 - Zero costs export as the `0.000001` sentinel in column I (every Bundle Detail, whose price is dropped onto its Bundle parent); non-zero Part Number / Bundle costs are written as-is
 - No term, date, serial number, or FX columns populated
 - `Matches = true` always (HP files have no quoted total to compare against)
+
+---
+
+## HP (ANZ-GENERIC — % Off RRP with Uplift)
+
+**Template:** `ANZ-GENERIC_PercentOffWithUplift.xlsx`
+**Writer:** `PercentOffWithUpliftWriter.Write(items, outputPath, margin, imPercent, vendorName)`
+**Sheet name:** `"% Off RRP with Uplift"`
+
+Used by **HP OneConfig (XLSX)** only. Unlike the No Calculation / Uplift writers, this template puts all pricing on the **MSRP** column (H) — column I (Cost) is intentionally blank. Margin (K) and IM% (X) are both required and always written.
+
+| Col | Header | OneConfig value | Notes |
+|---|---|---|---|
+| A | Item | `LineSequence` | `"1"` (parent), `"1.01"`, `"1.02"`, … (children) |
+| B | Vendor Name | `"HP"` | Upper-case vendor label |
+| D | Vendor Part Number | `vpn` | Parent: `Config ID`; children: `Part Number` |
+| E | Description | `description` | Parent: `Config Name`; children: source `Description` |
+| F | Qty. | `qty` | Parent: always 1; children: source `Quantity` |
+| H | MSRP | parent: `msrp`; children: `0.000001` sentinel | Parent carries the real `Total Price`; children's source prices are intentionally dropped |
+| I | Cost | **blank** | Cost is unused for this template |
+| K | Margin | `margin` | User-supplied; always written |
+| X | IM% | `imPercent` | User-supplied; always written; required (parse fails with 400 if omitted) |
+
+All other columns: blank.
+
+**End-loop sentinel row:** after the last line item — col B = `"*"`, col D = `EndLoopWarning` constant (shared with the other writers).
+
+**Key differences vs the other HP templates:**
+- Pricing lands on column H (MSRP), not column I (Cost)
+- Both `margin` and `im_percent` are mandatory parse parameters
+- `User.ImPercent` (`im` DB column) is persisted as a per-user default, serialised as `im_percent` in JSON

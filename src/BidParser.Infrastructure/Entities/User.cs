@@ -11,6 +11,7 @@ public sealed class User
     public string? DefaultVendor { get; set; }
     public decimal? FxRate { get; set; }
     public decimal? Margin { get; set; }
+    public decimal? ImPercent { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public ICollection<ParseJob> ParseJobs { get; } = new List<ParseJob>();

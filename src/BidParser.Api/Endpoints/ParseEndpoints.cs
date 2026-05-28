@@ -51,6 +51,7 @@ public static class ParseEndpoints
         var parserSlug = form["parser_slug"].FirstOrDefault()?.Trim();
         var fxRateStr = form["fx_rate"].FirstOrDefault()?.Trim();
         var marginStr = form["margin"].FirstOrDefault()?.Trim();
+        var imPercentStr = form["im_percent"].FirstOrDefault()?.Trim();
         var crmTemplate = form["crm_template"].FirstOrDefault()?.Trim();
 
         if (file is null)
@@ -68,20 +69,38 @@ public static class ParseEndpoints
             return Results.Json(new ApiError("parser_slug is required."), statusCode: 400);
         }
 
-        // fx_rate and margin are optional; they default to 1 and 0 respectively.
-        // HP No Calculation needs neither; HP Uplift needs only margin.
-        var fxRate = 1m;
-        if (!string.IsNullOrEmpty(fxRateStr) &&
-            !decimal.TryParse(fxRateStr, NumberStyles.Any, CultureInfo.InvariantCulture, out fxRate))
+        // fx_rate, margin, and im_percent are all optional at the wire level. They are
+        // passed as nullable decimals to ParseService so that omitting a value doesn't
+        // clobber the user's saved default. The writer-side defaults (fxRate=1, margin=0)
+        // are applied inside ParseService when null.
+        decimal? fxRate = null;
+        if (!string.IsNullOrEmpty(fxRateStr))
         {
-            return Results.Json(new ApiError("Invalid fx_rate."), statusCode: 400);
+            if (!decimal.TryParse(fxRateStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedFxRate))
+            {
+                return Results.Json(new ApiError("Invalid fx_rate."), statusCode: 400);
+            }
+            fxRate = parsedFxRate;
         }
 
-        var margin = 0m;
-        if (!string.IsNullOrEmpty(marginStr) &&
-            !decimal.TryParse(marginStr, NumberStyles.Any, CultureInfo.InvariantCulture, out margin))
+        decimal? margin = null;
+        if (!string.IsNullOrEmpty(marginStr))
         {
-            return Results.Json(new ApiError("Invalid margin."), statusCode: 400);
+            if (!decimal.TryParse(marginStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedMargin))
+            {
+                return Results.Json(new ApiError("Invalid margin."), statusCode: 400);
+            }
+            margin = parsedMargin;
+        }
+
+        decimal? imPercent = null;
+        if (!string.IsNullOrEmpty(imPercentStr))
+        {
+            if (!decimal.TryParse(imPercentStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedImPercent))
+            {
+                return Results.Json(new ApiError("Invalid im_percent."), statusCode: 400);
+            }
+            imPercent = parsedImPercent;
         }
 
         if (file.Length > appOptions.MaxUploadBytes)
@@ -104,7 +123,7 @@ public static class ParseEndpoints
         {
             result = await parseService.ParseAsync(
                 user, stream, displayFilename, vendor, parserSlug,
-                fxRate, margin, crmTemplate, appOptions.MaxUploadBytes, ct);
+                fxRate, margin, imPercent, crmTemplate, appOptions.MaxUploadBytes, ct);
         }
         catch (ParseValidationException ex)
         {

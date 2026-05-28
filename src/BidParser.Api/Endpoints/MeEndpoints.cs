@@ -75,15 +75,25 @@ public static class MeEndpoints
             user.Margin = decimal.Round(body.Value.Margin.Value, 2, MidpointRounding.AwayFromZero);
         }
 
+        if (body.Value.ImPercent is not null)
+        {
+            if (body.Value.ImPercent < 0)
+            {
+                return EndpointHelpers.ValidationProblem("Input should be greater than or equal to 0.");
+            }
+            user.ImPercent = decimal.Round(body.Value.ImPercent.Value, 2, MidpointRounding.AwayFromZero);
+        }
+
         await db.SaveChangesAsync(ct);
         loggerFactory.CreateLogger(nameof(MeEndpoints)).LogInformation(
-            "Settings update user={UserId} vendor_set={VendorSet} fx_set={FxSet} margin_set={MarginSet}",
+            "Settings update user={UserId} vendor_set={VendorSet} fx_set={FxSet} margin_set={MarginSet} im_percent_set={ImPercentSet}",
             user.Id,
             body.Value.DefaultVendor is not null,
             body.Value.FxRate is not null,
-            body.Value.Margin is not null);
+            body.Value.Margin is not null,
+            body.Value.ImPercent is not null);
         return Results.Ok(UserPublic.FromEntity(user));
     }
 
-    private sealed record SettingsUpdateRequest(string? DefaultVendor, decimal? FxRate, decimal? Margin);
+    private sealed record SettingsUpdateRequest(string? DefaultVendor, decimal? FxRate, decimal? Margin, decimal? ImPercent);
 }

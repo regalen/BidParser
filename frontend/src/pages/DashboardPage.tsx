@@ -9,7 +9,7 @@ import { ParseSettingsCard } from '../components/ParseSettingsCard';
 import { RecentUploadsTable } from '../components/RecentUploadsTable';
 import { ToastStack, type ToastMessage } from '../components/Toast';
 import { ValidationWarningModal } from '../components/ValidationWarningModal';
-import { CRM_TEMPLATE_UPLIFT } from '../constants';
+import { CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT, CRM_TEMPLATE_UPLIFT } from '../constants';
 import type { ApiErrorDetail, HistoryRow, ParserInfo } from '../types';
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -22,6 +22,7 @@ export function DashboardPage() {
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [fxRate, setFxRate] = useState(user?.fx_rate ?? '');
   const [margin, setMargin] = useState(user?.margin ?? '');
+  const [imPercent, setImPercent] = useState(user?.im_percent ?? '');
   const [file, setFile] = useState<File | null>(null);
   const [uploadState, setUploadState] = useState<UploadState>('idle');
   const [savingDefaults, setSavingDefaults] = useState(false);
@@ -90,23 +91,28 @@ export function DashboardPage() {
   useEffect(() => {
     setFxRate(user?.fx_rate ?? '');
     setMargin(user?.margin ?? '');
-  }, [user?.fx_rate, user?.margin]);
+    setImPercent(user?.im_percent ?? '');
+  }, [user?.fx_rate, user?.margin, user?.im_percent]);
 
   const defaultsDirty = useMemo(() => {
-    return vendor !== (user?.default_vendor ?? '') || margin !== (user?.margin ?? '') || fxRate !== (user?.fx_rate ?? '');
-  }, [vendor, margin, fxRate, user?.default_vendor, user?.margin, user?.fx_rate]);
+    return vendor !== (user?.default_vendor ?? '') || margin !== (user?.margin ?? '') || fxRate !== (user?.fx_rate ?? '') || imPercent !== (user?.im_percent ?? '');
+  }, [vendor, margin, fxRate, imPercent, user?.default_vendor, user?.margin, user?.fx_rate, user?.im_percent]);
 
   const selectedParser = useMemo(() => parsers.find((p) => p.slug === parserSlug), [parsers, parserSlug]);
 
   const canSubmit = useMemo(() => {
     if (!vendor || !parserSlug || !file || uploadState !== 'idle') return false;
-    // Multi-template parsers (e.g. HP): Uplift needs margin; No Calculation needs neither
+    // Multi-template HP (HP Bid XLSX): Uplift needs margin; No Calculation needs neither
     if (selectedParser && selectedParser.available_templates.length > 1) {
       return selectedTemplate !== CRM_TEMPLATE_UPLIFT || Boolean(margin);
     }
-    // Single-template parsers (e.g. Nutanix): needs both fxRate and margin
+    // Single-template HP (HP OneConfig XLSX): % Off RRP with Uplift needs both margin and im_percent
+    if (selectedTemplate === CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT) {
+      return Boolean(margin && imPercent);
+    }
+    // Single-template non-HP (Nutanix, Lenovo): needs both fxRate and margin
     return Boolean(fxRate && margin);
-  }, [vendor, parserSlug, fxRate, margin, selectedTemplate, file, uploadState, selectedParser]);
+  }, [vendor, parserSlug, fxRate, margin, imPercent, selectedTemplate, file, uploadState, selectedParser]);
 
   function pushToast(toast: Omit<ToastMessage, 'id'>) {
     const id = Date.now();
@@ -139,6 +145,9 @@ export function DashboardPage() {
     form.set('parser_slug', parserSlug);
     form.set('fx_rate', fxRate);
     form.set('margin', margin);
+    if (imPercent) {
+      form.set('im_percent', imPercent);
+    }
     if (selectedTemplate) {
       form.set('crm_template', selectedTemplate);
     }
@@ -181,10 +190,11 @@ export function DashboardPage() {
   async function saveDefaults() {
     setSavingDefaults(true);
     try {
-      const payload: { default_vendor?: string; fx_rate?: string; margin?: string } = {};
+      const payload: { default_vendor?: string; fx_rate?: string; margin?: string; im_percent?: string } = {};
       if (vendor) payload.default_vendor = vendor;
       if (fxRate) payload.fx_rate = fxRate;
       if (margin) payload.margin = margin;
+      if (imPercent) payload.im_percent = imPercent;
       await api.updateSettings(payload);
       await refresh();
       pushToast({
@@ -220,6 +230,7 @@ export function DashboardPage() {
             parserSlug={parserSlug}
             fxRate={fxRate}
             margin={margin}
+            imPercent={imPercent}
             selectedTemplate={selectedTemplate}
             defaultsDirty={defaultsDirty}
             canSubmit={canSubmit}
@@ -237,6 +248,7 @@ export function DashboardPage() {
             }}
             onFxRate={setFxRate}
             onMargin={setMargin}
+            onImPercent={setImPercent}
             onTemplate={setSelectedTemplate}
             onSaveDefaults={saveDefaults}
             onSubmit={submit}

@@ -24,8 +24,9 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
         string uploadFilename,
         string vendor,
         string parserSlug,
-        decimal fxRate,
-        decimal margin,
+        decimal? fxRate,
+        decimal? margin,
+        decimal? imPercent,
         string? crmTemplate,
         long maxUploadBytes,
         CancellationToken ct = default)
@@ -38,6 +39,13 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
         var outputPath = storage.NewOutputPath();
 
         await storage.SaveUploadAsync(fileStream, sourcePath, maxUploadBytes, ct);
+
+        // Effective values used by writers and persisted on the ParseJob/ParseMetric ledger.
+        // The User's defaults are only updated when the caller explicitly supplied a value
+        // (see User mutation block below), so omitting margin from an HP No Calculation parse
+        // doesn't clobber a saved value.
+        var effectiveFxRate = fxRate ?? 1m;
+        var effectiveMargin = margin ?? 0m;
 
         try
         {
@@ -56,25 +64,34 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
             {
                 case CrmTemplates.ForeignUplift:
                     ForeignUpliftWriter.WriteForeignUplift(
-                        result.LineItems, outputPath, margin, fxRate,
+                        result.LineItems, outputPath, effectiveMargin, effectiveFxRate,
                         vendor.ToUpperInvariant(), result.Metadata.Currency, parser.Slug);
                     break;
                 case CrmTemplates.NoCalculation:
                     AnzGenericWriter.Write(
                         result.LineItems, outputPath, "No Calculation",
-                        includeMargin: false, margin, vendor.ToUpperInvariant());
+                        includeMargin: false, effectiveMargin, vendor.ToUpperInvariant());
                     break;
                 case CrmTemplates.Uplift:
                     AnzGenericWriter.Write(
                         result.LineItems, outputPath, "Uplift",
-                        includeMargin: true, margin, vendor.ToUpperInvariant());
+                        includeMargin: true, effectiveMargin, vendor.ToUpperInvariant());
+                    break;
+                case CrmTemplates.PercentOffWithUplift:
+                    if (imPercent is null)
+                    {
+                        throw new ParseValidationException(400, "IM% is required for OneConfig (XLSX).");
+                    }
+                    PercentOffWithUpliftWriter.Write(
+                        result.LineItems, outputPath, effectiveMargin, imPercent.Value, vendor.ToUpperInvariant());
                     break;
                 default:
                     throw new ParseValidationException(400, "Unsupported CRM template.");
             }
 
-            var fxRateRounded = Math.Round(fxRate, 4, MidpointRounding.AwayFromZero);
-            var marginRounded = Math.Round(margin, 2, MidpointRounding.AwayFromZero);
+            var fxRateRounded = Math.Round(effectiveFxRate, 4, MidpointRounding.AwayFromZero);
+            var marginRounded = Math.Round(effectiveMargin, 2, MidpointRounding.AwayFromZero);
+            var imRounded = imPercent.HasValue ? Math.Round(imPercent.Value, 2, MidpointRounding.AwayFromZero) : (decimal?)null;
 
             var job = new ParseJob
             {
@@ -108,9 +125,21 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
                 ParseJob = job,
             };
 
+            // User defaults: vendor always updated; margin/fx_rate/im_percent only when
+            // the caller explicitly supplied a value, so unrelated parses don't clobber them.
             user.DefaultVendor = vendor;
-            user.FxRate = fxRateRounded;
-            user.Margin = marginRounded;
+            if (fxRate.HasValue)
+            {
+                user.FxRate = fxRateRounded;
+            }
+            if (margin.HasValue)
+            {
+                user.Margin = marginRounded;
+            }
+            if (imRounded.HasValue)
+            {
+                user.ImPercent = imRounded;
+            }
             db.Update(user);
             db.Add(job);
             db.Add(metric);
@@ -149,8 +178,8 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
         {
             storage.TryDelete(outputPath);
 
-            var fxRateRounded = Math.Round(fxRate, 4, MidpointRounding.AwayFromZero);
-            var marginRounded = Math.Round(margin, 2, MidpointRounding.AwayFromZero);
+            var fxRateRounded = Math.Round(effectiveFxRate, 4, MidpointRounding.AwayFromZero);
+            var marginRounded = Math.Round(effectiveMargin, 2, MidpointRounding.AwayFromZero);
 
             await failureRecorder.RecordAsync(
                 user, vendor, parser.Slug, displayFilename, sourcePath,

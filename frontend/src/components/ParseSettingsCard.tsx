@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react';
 
+import { VENDOR_HP } from '../constants';
 import type { ParserInfo } from '../types';
 import { CrmTemplateCallout } from './CrmTemplateCallout';
 import { FileTypeSelect } from './FileTypeSelect';
@@ -13,6 +14,7 @@ export function ParseSettingsCard({
   parserSlug,
   fxRate,
   margin,
+  imPercent,
   selectedTemplate,
   defaultsDirty,
   canSubmit,
@@ -22,6 +24,7 @@ export function ParseSettingsCard({
   onParser,
   onFxRate,
   onMargin,
+  onImPercent,
   onTemplate,
   onSaveDefaults,
   onSubmit,
@@ -31,6 +34,7 @@ export function ParseSettingsCard({
   parserSlug: string;
   fxRate: string;
   margin: string;
+  imPercent: string;
   selectedTemplate: string;
   defaultsDirty: boolean;
   canSubmit: boolean;
@@ -40,6 +44,7 @@ export function ParseSettingsCard({
   onParser: (value: string) => void;
   onFxRate: (value: string) => void;
   onMargin: (value: string) => void;
+  onImPercent: (value: string) => void;
   onTemplate: (value: string) => void;
   onSaveDefaults: () => void;
   onSubmit: () => void;
@@ -49,6 +54,7 @@ export function ParseSettingsCard({
   const filtered = parsers.filter((parser) => parser.vendor === vendor);
   const showVendorSettings = Boolean(vendor && parserSlug);
   const isMultiTemplate = (selectedParser?.available_templates?.length ?? 0) > 1;
+  const isHpVendor = selectedParser?.vendor === VENDOR_HP;
 
   return (
     <aside className="card flex w-full flex-col gap-4 p-6 md:w-80 md:shrink-0">
@@ -60,7 +66,7 @@ export function ParseSettingsCard({
       {showVendorSettings && selectedParser && (
         <>
           {isMultiTemplate ? (
-            // Multi-template vendor (HP): show a template dropdown + HP settings block
+            // Multi-template HP (HP Bid XLSX): template dropdown + HP settings block
             <>
               <label className="flex flex-col gap-2">
                 <span className="label">CRM Import Template</span>
@@ -80,11 +86,26 @@ export function ParseSettingsCard({
                 vendorLabel={selectedParser.vendor}
                 margin={margin}
                 onMargin={onMargin}
+                imPercent={imPercent}
+                onImPercent={onImPercent}
                 selectedTemplate={selectedTemplate}
               />
             </>
+          ) : isHpVendor ? (
+            // Single-template HP (HP OneConfig XLSX): HP settings block + static callout
+            <>
+              <HpSettingsBlock
+                vendorLabel={selectedParser.vendor}
+                margin={margin}
+                onMargin={onMargin}
+                imPercent={imPercent}
+                onImPercent={onImPercent}
+                selectedTemplate={selectedParser.crm_template}
+              />
+              <CrmTemplateCallout template={selectedParser.crm_template} />
+            </>
           ) : (
-            // Single-template vendor (Nutanix): unchanged behaviour
+            // Single-template non-HP (Nutanix, Lenovo): Nutanix settings block + static callout
             <>
               <NutanixSettingsBlock
                 fxRate={fxRate}

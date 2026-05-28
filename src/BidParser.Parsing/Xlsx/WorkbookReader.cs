@@ -12,6 +12,20 @@ public static class WorkbookReader
         return UsedCells(sheet).FirstOrDefault(cell => CellText(cell) == expected);
     }
 
+    public static IXLCell? FindCellAfter(IXLWorksheet sheet, string expected, int afterRow)
+    {
+        return UsedCells(sheet)
+            .Where(cell => cell.Address.RowNumber > afterRow)
+            .FirstOrDefault(cell => CellText(cell) == expected);
+    }
+
+    public static IXLCell? FindCellAfterInColumn(IXLWorksheet sheet, string expected, int afterRow, int column)
+    {
+        return UsedCells(sheet)
+            .Where(cell => cell.Address.RowNumber > afterRow && cell.Address.ColumnNumber == column)
+            .FirstOrDefault(cell => CellText(cell) == expected);
+    }
+
     public static IXLCell? FindCellStarting(IXLWorksheet sheet, string prefix)
     {
         return UsedCells(sheet).FirstOrDefault(cell => CellText(cell).StartsWith(prefix, StringComparison.Ordinal));

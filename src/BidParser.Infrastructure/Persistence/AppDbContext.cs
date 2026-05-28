@@ -46,6 +46,7 @@ public sealed class AppDbContext : DbContext
             entity.Property(user => user.DefaultVendor).HasColumnName("default_vendor").HasMaxLength(64);
             entity.Property(user => user.FxRate).HasColumnName("fx_rate").HasPrecision(12, 4);
             entity.Property(user => user.Margin).HasColumnName("margin").HasPrecision(12, 2);
+            entity.Property(user => user.ImPercent).HasColumnName("im").HasPrecision(12, 2);
             entity.Property(user => user.CreatedAt).HasColumnName("created_at").IsRequired();
             entity.Property(user => user.UpdatedAt).HasColumnName("updated_at").IsRequired();
 
