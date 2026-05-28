@@ -32,7 +32,7 @@ export function NutanixSettingsBlock({
 
       <label className="flex flex-col gap-2">
         <span className="label">
-          Margin <span className="font-medium normal-case tracking-normal text-slate-400">· %, 2 d.p.</span>
+          Uplift <span className="font-medium normal-case tracking-normal text-slate-400">· %, 2 d.p.</span>
         </span>
         <div className="relative">
           <input

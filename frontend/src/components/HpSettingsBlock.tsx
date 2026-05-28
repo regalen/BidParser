@@ -29,7 +29,7 @@ export function HpSettingsBlock({
       {showMargin && (
         <label className="flex flex-col gap-2">
           <span className="label">
-            Margin <span className="font-medium normal-case tracking-normal text-slate-400">· %, 2 d.p.</span>
+            Uplift <span className="font-medium normal-case tracking-normal text-slate-400">· %, 2 d.p.</span>
           </span>
           <div className="relative">
             <input
@@ -47,7 +47,7 @@ export function HpSettingsBlock({
       {showImPercent && (
         <label className="flex flex-col gap-2">
           <span className="label">
-            IM % <span className="font-medium normal-case tracking-normal text-slate-400">· %, 2 d.p.</span>
+            Discount Off MSRP <span className="font-medium normal-case tracking-normal text-slate-400">· %, 2 d.p.</span>
           </span>
           <div className="relative">
             <input
