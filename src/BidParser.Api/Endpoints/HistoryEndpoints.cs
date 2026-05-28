@@ -1,9 +1,7 @@
 using System.Globalization;
 using System.Security.Claims;
-using System.Text.Json.Serialization;
 using BidParser.Api.Auth;
 using BidParser.Api.Contracts;
-using BidParser.Api.Serialization;
 using BidParser.Domain.Abstractions;
 using BidParser.Infrastructure.Entities;
 using BidParser.Infrastructure.Persistence;
@@ -65,8 +63,7 @@ public static class HistoryEndpoints
             j.Vendor,
             j.ParserSlug,
             parserLookup.TryGetValue(j.ParserSlug, out var name) ? name : j.ParserSlug,
-            j.FxRate,
-            j.Margin,
+            j.CrmTemplate,
             RelativeWhen(j.CreatedAt),
             j.TotalsMatch)).ToList();
 
@@ -194,18 +191,7 @@ public static class HistoryEndpoints
         string Vendor,
         string ParserSlug,
         string FileTypeDisplay,
-        [property: JsonConverter(typeof(HistoryFxRateConverter))] decimal FxRate,
-        [property: JsonConverter(typeof(HistoryMarginConverter))] decimal Margin,
+        string CrmTemplate,
         string When,
         bool TotalsMatch);
-
-    private sealed class HistoryFxRateConverter : JsonStringDecimalConverter
-    {
-        public HistoryFxRateConverter() : base(4) { }
-    }
-
-    private sealed class HistoryMarginConverter : JsonStringDecimalConverter
-    {
-        public HistoryMarginConverter() : base(2) { }
-    }
 }

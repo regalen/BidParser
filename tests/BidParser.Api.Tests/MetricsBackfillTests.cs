@@ -51,44 +51,26 @@ public sealed class MetricsBackfillTests
                 userId = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
             }
 
-            // Seed pre-migration ParseJobs using EF Core (ParseJob entity has no im column).
-            using (var db = new AppDbContext(options))
+            // Seed pre-migration ParseJobs via raw SQL: the live ParseJob entity carries
+            // columns (e.g. crm_template) that don't yet exist in the partial schema.
+            using (var seedConnection = new SqliteConnection(connectionString))
             {
-                var jobs = new[]
-                {
-                    new ParseJob
-                    {
-                        UserId = userId,
-                        Vendor = "Nutanix",
-                        ParserSlug = "nutanix_software_only_pdf",
-                        SourceFilename = "file1.pdf",
-                        SourcePath = "/data/files/file1.pdf",
-                        OutputPath = "/data/files/out1.xlsx",
-                        FxRate = 1.0m,
-                        Margin = 10m,
-                        ComputedTotal = 100m,
-                        QuotedTotal = 100m,
-                        TotalsMatch = true,
-                        CreatedAt = DateTime.UtcNow.AddDays(-2)
-                    },
-                    new ParseJob
-                    {
-                        UserId = userId,
-                        Vendor = "Nutanix",
-                        ParserSlug = "nutanix_renewal_pdf",
-                        SourceFilename = "file2.pdf",
-                        SourcePath = "/data/files/file2.pdf",
-                        OutputPath = "/data/files/out2.xlsx",
-                        FxRate = 1.5m,
-                        Margin = 20m,
-                        ComputedTotal = 200m,
-                        QuotedTotal = 250m,
-                        TotalsMatch = false,
-                        CreatedAt = DateTime.UtcNow.AddDays(-1)
-                    }
-                };
-                db.ParseJobs.AddRange(jobs);
-                await db.SaveChangesAsync();
+                await seedConnection.OpenAsync();
+                await using var insertCmd = seedConnection.CreateCommand();
+                insertCmd.CommandText = """
+                    INSERT INTO parse_jobs
+                        (user_id, vendor, parser_slug, source_filename, source_path, output_path,
+                         fx_rate, margin, computed_total, quoted_total, totals_match, created_at)
+                    VALUES
+                        (@uid, 'Nutanix', 'nutanix_software_only_pdf', 'file1.pdf',
+                         '/data/files/file1.pdf', '/data/files/out1.xlsx',
+                         1.0, 10, 100, 100, 1, datetime('now', '-2 days')),
+                        (@uid, 'Nutanix', 'nutanix_renewal_pdf', 'file2.pdf',
+                         '/data/files/file2.pdf', '/data/files/out2.xlsx',
+                         1.5, 20, 200, 250, 0, datetime('now', '-1 days'));
+                    """;
+                insertCmd.Parameters.AddWithValue("@uid", userId);
+                await insertCmd.ExecuteNonQueryAsync();
             }
 
             // Now apply the new migration

@@ -72,12 +72,11 @@ export function RecentUploadsTable({
           )}
         </div>
       </div>
-      <div className="hidden grid-cols-[minmax(180px,2fr)_0.9fr_1.2fr_0.8fr_0.7fr_0.7fr_84px] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 md:grid">
+      <div className="hidden grid-cols-[minmax(180px,2fr)_0.9fr_1.2fr_1.1fr_0.7fr_84px] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 md:grid">
         <span className="label-faint">File name</span>
         <span className="label-faint">Vendor</span>
         <span className="label-faint">File type</span>
-        <span className="label-faint text-right">FX rate</span>
-        <span className="label-faint text-right">Margin</span>
+        <span className="label-faint">CRM template</span>
         <span className="label-faint text-right">When</span>
         <span className="label-faint text-right">Files</span>
       </div>
@@ -150,7 +149,7 @@ function UploadRow({ row, last }: { row: HistoryRow; last: boolean }) {
   return (
     <div
       className={
-        'grid gap-3 px-4 py-3 text-[13px] md:grid-cols-[minmax(180px,2fr)_0.9fr_1.2fr_0.8fr_0.7fr_0.7fr_84px] md:items-center ' +
+        'grid gap-3 px-4 py-3 text-[13px] md:grid-cols-[minmax(180px,2fr)_0.9fr_1.2fr_1.1fr_0.7fr_84px] md:items-center ' +
         (last ? '' : 'border-b border-slate-100')
       }
     >
@@ -162,8 +161,7 @@ function UploadRow({ row, last }: { row: HistoryRow; last: boolean }) {
       </div>
       <span className="font-semibold text-slate-700">{row.vendor}</span>
       <span className="text-slate-600">{row.file_type_display}</span>
-      <span className="text-left tabular-nums text-slate-600 md:text-right">{formatDecimal(row.fx_rate, 4)}</span>
-      <span className="text-left tabular-nums text-slate-600 md:text-right">{formatDecimal(row.margin, 2)}%</span>
+      <span className="truncate text-slate-600" title={row.crm_template}>{row.crm_template}</span>
       <span className="label-faint text-left md:text-right">{row.when}</span>
       <div className="flex justify-start gap-1 md:justify-end">
         <a
@@ -187,12 +185,6 @@ function UploadRow({ row, last }: { row: HistoryRow; last: boolean }) {
 
 function extension(name: string) {
   return name.split('.').pop()?.toUpperCase() ?? 'FILE';
-}
-
-function formatDecimal(value: string, places: number) {
-  const number = Number(value);
-  if (Number.isNaN(number)) return value;
-  return number.toFixed(places);
 }
 
 function visiblePages(page: number, pageCount: number) {

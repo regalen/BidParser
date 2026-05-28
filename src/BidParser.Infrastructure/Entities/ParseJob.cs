@@ -6,6 +6,7 @@ public sealed class ParseJob
     public int UserId { get; set; }
     public required string Vendor { get; set; }
     public required string ParserSlug { get; set; }
+    public required string CrmTemplate { get; set; }
     public required string SourceFilename { get; set; }
     public required string SourcePath { get; set; }
     public required string OutputPath { get; set; }

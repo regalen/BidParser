@@ -51,7 +51,8 @@ public sealed class MigrationTests
                 "20260523045730_AddParseMetricsLedger",
                 "20260523052812_AddFailedParseJobs",
                 "20260526000000_AddValidationMismatchToFailedParseJobs",
-                "20260528000001_AddUserIm");
+                "20260528000001_AddUserIm",
+                "20260528120000_AddParseJobCrmTemplate");
 
             var userTableSql = await ReadScalarAsync(dbPath, "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users';");
             userTableSql.Should().Contain("TEXT COLLATE NOCASE");

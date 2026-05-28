@@ -34,8 +34,7 @@ public sealed class HistoryTests
         row.GetProperty("vendor").GetString().Should().Be("Nutanix");
         row.GetProperty("parser_slug").GetString().Should().Be("nutanix_software_only_pdf");
         row.GetProperty("file_type_display").GetString().Should().Be("Software Only (PDF)");
-        row.GetProperty("fx_rate").GetString().Should().Be("0.7400");
-        row.GetProperty("margin").GetString().Should().Be("7.50");
+        row.GetProperty("crm_template").GetString().Should().Be("Foreign Uplift");
         row.GetProperty("totals_match").GetBoolean().Should().BeTrue();
     }
 
@@ -153,6 +152,7 @@ public sealed class HistoryTests
                 UserId = admin.Id,
                 Vendor = "Nutanix",
                 ParserSlug = "nutanix_software_only_pdf",
+                CrmTemplate = "Foreign Uplift",
                 SourceFilename = $"when_test_{secondsAgo}.pdf",
                 SourcePath = "/fake/source.pdf",
                 OutputPath = "/fake/output.xlsx",
@@ -268,6 +268,7 @@ public sealed class HistoryTests
             UserId = admin.Id,
             Vendor = "Nutanix",
             ParserSlug = "nutanix_software_only_pdf",
+            CrmTemplate = "Foreign Uplift",
             SourceFilename = "old_quote.pdf",
             SourcePath = sourceFile,
             OutputPath = outputFile,
@@ -291,6 +292,7 @@ public sealed class HistoryTests
             UserId = admin.Id,
             Vendor = "Nutanix",
             ParserSlug = "nutanix_software_only_pdf",
+            CrmTemplate = "Foreign Uplift",
             SourceFilename = "fresh_quote.pdf",
             SourcePath = "/fake/fresh_source.pdf",
             OutputPath = "/fake/fresh_output.xlsx",

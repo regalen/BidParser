@@ -68,6 +68,7 @@ public sealed class AppDbContext : DbContext
                 .HasDatabaseName("ix_parse_jobs_user_id_created_at");
             entity.Property(job => job.Vendor).HasColumnName("vendor").HasMaxLength(64).IsRequired();
             entity.Property(job => job.ParserSlug).HasColumnName("parser_slug").HasMaxLength(128).IsRequired();
+            entity.Property(job => job.CrmTemplate).HasColumnName("crm_template").HasMaxLength(64).IsRequired();
             entity.Property(job => job.SourceFilename).HasColumnName("source_filename").HasColumnType("TEXT COLLATE NOCASE").HasMaxLength(255).IsRequired();
             entity.Property(job => job.SourcePath).HasColumnName("source_path").HasMaxLength(1024).IsRequired();
             entity.Property(job => job.OutputPath).HasColumnName("output_path").HasMaxLength(1024).IsRequired();

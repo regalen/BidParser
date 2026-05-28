@@ -28,8 +28,7 @@ export interface HistoryRow {
   vendor: string;
   parser_slug: string;
   file_type_display: string;
-  fx_rate: string;
-  margin: string;
+  crm_template: string;
   when: string;
   totals_match: boolean;
 }
