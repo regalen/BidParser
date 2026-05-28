@@ -16,9 +16,7 @@ export function ParseSettingsCard({
   margin,
   imPercent,
   selectedTemplate,
-  defaultsDirty,
   canSubmit,
-  savingDefaults,
   parsing,
   onVendor,
   onParser,
@@ -26,7 +24,6 @@ export function ParseSettingsCard({
   onMargin,
   onImPercent,
   onTemplate,
-  onSaveDefaults,
   onSubmit,
 }: {
   parsers: ParserInfo[];
@@ -36,9 +33,7 @@ export function ParseSettingsCard({
   margin: string;
   imPercent: string;
   selectedTemplate: string;
-  defaultsDirty: boolean;
   canSubmit: boolean;
-  savingDefaults: boolean;
   parsing: boolean;
   onVendor: (value: string) => void;
   onParser: (value: string) => void;
@@ -46,7 +41,6 @@ export function ParseSettingsCard({
   onMargin: (value: string) => void;
   onImPercent: (value: string) => void;
   onTemplate: (value: string) => void;
-  onSaveDefaults: () => void;
   onSubmit: () => void;
 }) {
   const selectedParser = parsers.find((parser) => parser.slug === parserSlug);
@@ -120,16 +114,6 @@ export function ParseSettingsCard({
       )}
 
       <div className="mt-2 border-t border-slate-200" />
-      <button type="button" className="button" disabled={!defaultsDirty || savingDefaults} onClick={onSaveDefaults}>
-        {savingDefaults ? (
-          <>
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            Saving
-          </>
-        ) : (
-          'Save defaults'
-        )}
-      </button>
       <button type="button" className="button button-primary" disabled={!canSubmit || parsing} onClick={onSubmit}>
         {parsing ? (
           <>

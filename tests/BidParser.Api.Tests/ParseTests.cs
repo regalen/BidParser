@@ -255,8 +255,11 @@ public sealed class ParseTests
     }
 
     [Fact]
-    public async Task ParseUpdatesUserDefaults()
+    public async Task ParseUpdatesDefaultVendorButNotNumerics()
     {
+        // Parse persists last-used vendor on the User row, but fx_rate / margin /
+        // im_percent are intentionally NOT persisted — the dashboard re-prompts
+        // the user every parse so a stale numeric never gets silently re-applied.
         using var fixture = await ApiTestFixture.CreateAsync();
         using var client = fixture.Factory.CreateClient();
         await ApiTestFixture.UnlockAdminAsync(client);
@@ -270,8 +273,8 @@ public sealed class ParseTests
 
         var me = await client.GetFromJsonAsync<JsonElement>("/api/me");
         me.GetProperty("default_vendor").GetString().Should().Be("Nutanix");
-        me.GetProperty("fx_rate").GetString().Should().Be("0.6543");
-        me.GetProperty("margin").GetString().Should().Be("8.75");
+        me.GetProperty("fx_rate").ValueKind.Should().Be(JsonValueKind.Null);
+        me.GetProperty("margin").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
     [Fact]

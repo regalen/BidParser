@@ -20,12 +20,14 @@ export function DashboardPage() {
   const [vendor, setVendor] = useState('');
   const [parserSlug, setParserSlug] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
-  const [fxRate, setFxRate] = useState(user?.fx_rate ?? '');
-  const [margin, setMargin] = useState(user?.margin ?? '');
-  const [imPercent, setImPercent] = useState(user?.im_percent ?? '');
+  // Uplift, Exchange rate, and Discount Off MSRP are intentionally NOT pre-filled
+  // from saved user defaults — the user must enter them every parse so they
+  // never get a stale value silently applied.
+  const [fxRate, setFxRate] = useState('');
+  const [margin, setMargin] = useState('');
+  const [imPercent, setImPercent] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [uploadState, setUploadState] = useState<UploadState>('idle');
-  const [savingDefaults, setSavingDefaults] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -87,16 +89,6 @@ export function DashboardPage() {
   useEffect(() => {
     setPage(0);
   }, [debouncedQuery]);
-
-  useEffect(() => {
-    setFxRate(user?.fx_rate ?? '');
-    setMargin(user?.margin ?? '');
-    setImPercent(user?.im_percent ?? '');
-  }, [user?.fx_rate, user?.margin, user?.im_percent]);
-
-  const defaultsDirty = useMemo(() => {
-    return vendor !== (user?.default_vendor ?? '') || margin !== (user?.margin ?? '') || fxRate !== (user?.fx_rate ?? '') || imPercent !== (user?.im_percent ?? '');
-  }, [vendor, margin, fxRate, imPercent, user?.default_vendor, user?.margin, user?.fx_rate, user?.im_percent]);
 
   const selectedParser = useMemo(() => parsers.find((p) => p.slug === parserSlug), [parsers, parserSlug]);
 
@@ -187,28 +179,6 @@ export function DashboardPage() {
     }
   }
 
-  async function saveDefaults() {
-    setSavingDefaults(true);
-    try {
-      const payload: { default_vendor?: string; fx_rate?: string; margin?: string; im_percent?: string } = {};
-      if (vendor) payload.default_vendor = vendor;
-      if (fxRate) payload.fx_rate = fxRate;
-      if (margin) payload.margin = margin;
-      if (imPercent) payload.im_percent = imPercent;
-      await api.updateSettings(payload);
-      await refresh();
-      pushToast({
-        tone: 'success',
-        title: 'Defaults saved',
-        detail: 'Your saved defaults will be pre-filled next time.',
-      });
-    } catch (caught) {
-      pushToast({ tone: 'error', title: 'Could not save defaults', detail: errorMessage(caught) });
-    } finally {
-      setSavingDefaults(false);
-    }
-  }
-
   function acknowledgeMismatch() {
     if (!mismatchPending) return;
     downloadBlob(mismatchPending.blob, mismatchPending.filename);
@@ -232,9 +202,7 @@ export function DashboardPage() {
             margin={margin}
             imPercent={imPercent}
             selectedTemplate={selectedTemplate}
-            defaultsDirty={defaultsDirty}
             canSubmit={canSubmit}
-            savingDefaults={savingDefaults}
             parsing={uploadState === 'parsing'}
             onVendor={(value) => {
               setVendor(value);
@@ -250,7 +218,6 @@ export function DashboardPage() {
             onMargin={setMargin}
             onImPercent={setImPercent}
             onTemplate={setSelectedTemplate}
-            onSaveDefaults={saveDefaults}
             onSubmit={submit}
           />
           <section className="flex min-w-0 flex-1 flex-col">

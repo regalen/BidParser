@@ -91,7 +91,6 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
 
             var fxRateRounded = Math.Round(effectiveFxRate, 4, MidpointRounding.AwayFromZero);
             var marginRounded = Math.Round(effectiveMargin, 2, MidpointRounding.AwayFromZero);
-            var imRounded = imPercent.HasValue ? Math.Round(imPercent.Value, 2, MidpointRounding.AwayFromZero) : (decimal?)null;
 
             var job = new ParseJob
             {
@@ -126,21 +125,10 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
                 ParseJob = job,
             };
 
-            // User defaults: vendor always updated; margin/fx_rate/im_percent only when
-            // the caller explicitly supplied a value, so unrelated parses don't clobber them.
+            // User defaults: only the last-used vendor is remembered. fx_rate / margin /
+            // im_percent are intentionally NOT persisted — the user must enter them
+            // every parse so a stale value never gets silently applied.
             user.DefaultVendor = vendor;
-            if (fxRate.HasValue)
-            {
-                user.FxRate = fxRateRounded;
-            }
-            if (margin.HasValue)
-            {
-                user.Margin = marginRounded;
-            }
-            if (imRounded.HasValue)
-            {
-                user.ImPercent = imRounded;
-            }
             db.Update(user);
             db.Add(job);
             db.Add(metric);
