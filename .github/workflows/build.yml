@@ -44,6 +44,15 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      # The docker/* actions (build-push-action@v6, login-action@v3,
+      # metadata-action@v5, setup-buildx-action@v3) still ship with the
+      # Node 20 runtime as of 2026-05. Node 20 is being deprecated on
+      # GitHub-hosted runners (forced to Node 24 on 2026-06-02, removed
+      # on 2026-09-16). Force them onto Node 24 now so the workflow
+      # doesn't trip the deprecation warning. Remove this flag once the
+      # docker org ships majors that run natively on Node 24.
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
     steps:
       - name: Checkout
