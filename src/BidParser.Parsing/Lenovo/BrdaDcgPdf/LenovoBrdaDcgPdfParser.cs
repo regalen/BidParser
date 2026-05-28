@@ -13,7 +13,7 @@ public sealed class LenovoBrdaDcgPdfParser : IParser
     public string Vendor => Vendors.Lenovo;
     public string AcceptedMime => "application/pdf";
     public string CrmTemplate => CrmTemplates.NoCalculation;
-    public IReadOnlyList<string> AvailableTemplates => [CrmTemplates.NoCalculation];
+    public IReadOnlyList<string> AvailableTemplates => [CrmTemplates.NoCalculation, CrmTemplates.Uplift];
 
     public double Detect(string path)
     {
@@ -408,6 +408,14 @@ public sealed class LenovoBrdaDcgPdfParser : IParser
                 var childIdx = 0;
                 foreach (var child in childList)
                 {
+                    // Skip the redundant "self" component: when a child's VPN matches its parent's VPN,
+                    // the row is the parent unit re-listed inside its own component breakdown. Including
+                    // it produces duplicate lines (e.g. 2 and 2.01 with the same VPN).
+                    if (string.Equals(child.Vpn, entry.Vpn, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
                     childIdx++;
                     items.Add(new LineItem
                     {

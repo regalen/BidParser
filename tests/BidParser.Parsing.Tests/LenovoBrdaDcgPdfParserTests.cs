@@ -51,8 +51,8 @@ public sealed class LenovoBrdaDcgPdfParserTests
     {
         var result = ParseSample();
 
-        // 2 CONFIGs + 13 PAREENTs + 150 children
-        result.LineItems.Should().HaveCount(165);
+        // 2 CONFIGs + 13 PARENTs + 137 children (parent-VPN self-components deduped)
+        result.LineItems.Should().HaveCount(152);
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public sealed class LenovoBrdaDcgPdfParserTests
         var result = ParseSample();
 
         var children = result.LineItems.Where(i => i.LineSequence!.Contains('.')).ToList();
-        children.Should().HaveCount(150);
+        children.Should().HaveCount(137);
         children.Should().AllSatisfy(c =>
         {
             c.Cost.Should().Be(0m);
@@ -152,18 +152,30 @@ public sealed class LenovoBrdaDcgPdfParserTests
     {
         var items = ParseSample().LineItems;
 
-        // Parent 2 (7DG9CTO1WW for config 1) should have 57 children (2.01–2.57)
+        // Parent 2 (7DG9CTO1WW for config 1) has 56 children after deduping the
+        // redundant self-component row (the original PDF lists the server VPN itself
+        // as the first component of its own configuration).
         var children = items.Where(i => i.LineSequence!.StartsWith("2.")).ToList();
-        children.Should().HaveCount(57);
+        children.Should().HaveCount(56);
     }
 
     [Fact]
-    public void Config1_server_first_child_is_the_server_itself()
+    public void Parent_vpn_is_never_repeated_as_one_of_its_children()
     {
         var items = ParseSample().LineItems;
 
-        var firstChild = items.Single(i => i.LineSequence == "2.01");
-        firstChild.Vpn.Should().Be("7DG9CTO1WW");
+        var parents = items.Where(i => !i.LineSequence!.Contains('.') && i.Cost == 0).ToList();
+        foreach (var parent in parents)
+        {
+            var prefix = parent.LineSequence + ".";
+            var childrenVpns = items
+                .Where(i => i.LineSequence!.StartsWith(prefix))
+                .Select(i => i.Vpn)
+                .ToList();
+
+            childrenVpns.Should().NotContain(parent.Vpn,
+                $"parent {parent.LineSequence} ({parent.Vpn}) should not list itself as a child component");
+        }
     }
 
     [Fact]
@@ -171,14 +183,15 @@ public sealed class LenovoBrdaDcgPdfParserTests
     {
         var items = ParseSample().LineItems;
 
-        // XClarity Pro parent (5641PX3) in config 1 has 3 children
+        // XClarity Pro parent (5641PX3) in config 1 has 2 children after deduping the
+        // redundant self-component row.
         var parent = items.Single(i => i.LineSequence == "3");
         parent.Vpn.Should().Be("5641PX3");
         parent.Qty.Should().Be(8);
 
         var children = items.Where(i => i.LineSequence!.StartsWith("3.")).ToList();
-        children.Should().HaveCount(3);
-        children.Select(c => c.Vpn).Should().Contain("5641PX3");
+        children.Should().HaveCount(2);
+        children.Select(c => c.Vpn).Should().NotContain("5641PX3");
     }
 
     // ── Config 2 spot checks ─────────────────────────────────────────────────
@@ -193,7 +206,7 @@ public sealed class LenovoBrdaDcgPdfParserTests
         parent.Qty.Should().Be(2);
 
         var children = items.Where(i => i.LineSequence!.StartsWith("9.")).ToList();
-        children.Should().HaveCount(57);
+        children.Should().HaveCount(56);
     }
 
     // ── Parser registry ──────────────────────────────────────────────────────
@@ -213,8 +226,7 @@ public sealed class LenovoBrdaDcgPdfParserTests
         parser.Slug.Should().Be("lenovo_brda_dcg_pdf");
         parser.Vendor.Should().Be("Lenovo");
         parser.AcceptedMime.Should().Be("application/pdf");
-        parser.AvailableTemplates.Should().ContainSingle()
-            .Which.Should().Be("No Calculation");
+        parser.AvailableTemplates.Should().Equal("No Calculation", "Uplift");
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

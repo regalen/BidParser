@@ -14,7 +14,8 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
     private static readonly Dictionary<string, string> ExtensionToMime = new(StringComparer.OrdinalIgnoreCase)
     {
         [".pdf"] = "application/pdf",
-        [".xlsx"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        [".xlsx"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        [".xls"] = "application/vnd.ms-excel"
     };
 
     public async Task<ParseServiceResult> ParseAsync(
@@ -180,7 +181,7 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
         var ext = Path.GetExtension(filename).ToLowerInvariant();
         if (!ExtensionToMime.TryGetValue(ext, out var extensionMime))
         {
-            throw new ParseValidationException(415, "Only PDF and XLSX files are supported.");
+            throw new ParseValidationException(415, "Only PDF, XLS, and XLSX files are supported.");
         }
 
         if (extensionMime != parserAcceptedMime)
@@ -191,7 +192,7 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
 
     private static async Task ValidateMagicBytesAsync(string path, string parserAcceptedMime, CancellationToken ct)
     {
-        var header = new byte[4];
+        var header = new byte[8];
         await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
         var bytesRead = await stream.ReadAsync(header, ct);
 
@@ -207,6 +208,16 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
                 && header[1] == 0x4B
                 && header[2] == 0x03
                 && header[3] == 0x04,
+            // OLE Compound Document signature (legacy .xls)
+            "application/vnd.ms-excel" => bytesRead >= 8
+                && header[0] == 0xD0
+                && header[1] == 0xCF
+                && header[2] == 0x11
+                && header[3] == 0xE0
+                && header[4] == 0xA1
+                && header[5] == 0xB1
+                && header[6] == 0x1A
+                && header[7] == 0xE1,
             _ => false
         };
 

@@ -68,6 +68,25 @@ public sealed class TemplateWriterTests
         WorkbookComparer.AssertEqual(actualPath, Path.Combine(root, "samples", "outputs", expectedName));
     }
 
+    // ── AnzGenericWriter (Lenovo BRDA DCG XLSX, both templates) ──────────────
+
+    [Theory]
+    [InlineData("BRDAD010458440_NoCalculation_parsed.xlsx", false)]
+    [InlineData("BRDAD010458440_Uplift_parsed.xlsx",        true)]
+    public void AnzGenericWriterMatchesGoldenWorkbookCells_LenovoXlsx(string expectedName, bool includeMargin)
+    {
+        var root = FindRepoRoot();
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.LenovoBrdaDcgXlsx);
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "BRDAD010458440.xls"));
+        using var tempDirectory = new TempDirectory();
+        var actualPath = Path.Combine(tempDirectory.Path, expectedName);
+
+        var sheetName = includeMargin ? "Uplift" : "No Calculation";
+        AnzGenericWriter.Write(result.LineItems, actualPath, sheetName, includeMargin, margin: 5.00m, vendorName: "LENOVO");
+
+        WorkbookComparer.AssertEqual(actualPath, Path.Combine(root, "samples", "outputs", expectedName));
+    }
+
     // ── OutputNaming ─────────────────────────────────────────────────────────
 
     [Theory]

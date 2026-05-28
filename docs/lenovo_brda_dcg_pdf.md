@@ -14,7 +14,7 @@ Lenovo BRDA (Business Ready Deal Architecture) DCG (Data Centre Group) quote PDF
 
 | File | Quote Number | Items | Notes |
 |---|---|---|---|
-| `BRDAS010260417V1.pdf` | BRDAS010260417V1 | 165 | 2 configs, 13 parents, 150 children |
+| `BRDAS010260417V1.pdf` | BRDAS010260417V1 | 152 | 2 configs, 13 parents, 137 children (parent-VPN self-components deduped) |
 
 ### Structure
 
@@ -115,7 +115,12 @@ Scan for `"Quote"` followed by a word starting `"No"` on the same y-band (≤ 5 
 
 ## Golden expected output
 
-### `BRDAS010260417V1.pdf` (2 configs, 165 items total)
+### `BRDAS010260417V1.pdf` (2 configs, 152 items total)
+
+In Lenovo BRDA DCG section 2, the first component of every PARENT is the parent's
+own VPN — a redundant self-component row. The parser drops any child whose VPN
+matches its parent's VPN, so the assembled output below does NOT include those
+duplicates.
 
 **Config 1: SIDX02Q2PL** (AUD 356,882.96 × 1)
 
@@ -123,10 +128,9 @@ Scan for `"Quote"` followed by a word starting `"No"` on the same y-band (≤ 5 
 |---|---|---|---|---|
 | 1 | SIDX02Q2PL | 1 | 356,882.96 | SIDX02Q2PL |
 | 2 | 7DG9CTO1WW | 8 | — | ThinkSystem SR630 V4-3yr Base Warranty-Compute Server |
-| 2.01 | 7DG9CTO1WW | 8 | — | (first component) |
-| 2.02–2.57 | … | … | — | 56 more components |
+| 2.01–2.56 | … | … | — | 56 components (self-component 7DG9CTO1WW deduped) |
 | 3 | 5641PX3 | 8 | — | XClarity Pro, Per Endpoint w/3 Yr SW S&S |
-| 3.01–3.03 | … | … | — | 3 components |
+| 3.01–3.02 | … | … | — | 2 components (self-component 5641PX3 deduped) |
 | 4–7 | … | … | — | XClarity Controller, NBD Resp, Installation, Keep Your Drive |
 
 **Config 2: SIDX02Q2PM** (AUD 36,348.82 × 1)
@@ -135,7 +139,7 @@ Scan for `"Quote"` followed by a word starting `"No"` on the same y-band (≤ 5 
 |---|---|---|---|
 | 8 | SIDX02Q2PM | 1 | 36,348.82 |
 | 9 | 7DG9CTO1WW | 2 | — |
-| 9.01–9.57 | … | … | — |
+| 9.01–9.56 | … | … | — |
 | 10–15 | … | … | — |
 
 Quoted total: `AUD 393,231.78`. Computed total: `AUD 393,231.78`. Validation matches: `true`.
