@@ -108,6 +108,45 @@ public sealed class NutanixRenewalPdfParserTests
         result.LineItems[4].Qty.Should().Be(1);
     }
 
+    [Fact]
+    public void Extracts_expected_line_items_for_platform_column_variant_with_reversed_net_header()
+    {
+        // XQ-4183034 is a Platform-column variant where the "Net Unit Price" header renders
+        // with "Net" to the RIGHT of "Unit" and "Price" (reversed from XQ-4029825). The
+        // original code used the "Net" word X0 as the column boundary, which placed it at
+        // 471.7 — right of the actual amount data at 460.4, causing a FormatException.
+        var root = FindRepoRoot();
+        var parser = new ParserRegistry().Parsers.Single(parser => parser.Slug == "nutanix_renewal_pdf");
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "XQ-4183034.pdf"));
+
+        result.Metadata.QuoteNumber.Should().Be("XQ-4183034");
+        result.Metadata.QuotedTotal.Should().Be(122442.85m);
+        result.Validation.ComputedTotal.Should().Be(122442.85m);
+        result.Validation.Matches.Should().BeTrue();
+        result.LineItems.Should().HaveCount(13);
+
+        // Software rows: no Platform value → Description null
+        result.LineItems[0].Vpn.Should().Be("RSW-NCI-PRO-PR");
+        result.LineItems[0].Description.Should().BeNull();
+        result.LineItems[0].SerialNumber.Should().Be("25SW000398208,LIC-02510506");
+        result.LineItems[0].StartDate.Should().Be(new DateOnly(2026, 5, 31));
+        result.LineItems[0].EndDate.Should().Be(new DateOnly(2027, 12, 31));
+        result.LineItems[0].Msrp.Should().Be(723.00m);
+        result.LineItems[0].Cost.Should().Be(326.31m);
+        result.LineItems[0].Qty.Should().Be(128);
+
+        // Hardware rows: Platform present → Description populated; Msrp == Cost (0% discount)
+        result.LineItems[4].Vpn.Should().Be("RS-HW-PRD-ST");
+        result.LineItems[4].Description.Should().Be("Platform: NX-1175S-G7-HY");
+        result.LineItems[4].SerialNumber.Should().Be("21SM5E080333");
+        result.LineItems[4].StartDate.Should().Be(new DateOnly(2026, 5, 31));
+        result.LineItems[4].EndDate.Should().Be(new DateOnly(2027, 6, 30));
+        result.LineItems[4].Msrp.Should().Be(257.19m);
+        result.LineItems[4].Cost.Should().Be(257.19m);
+        result.LineItems[4].Qty.Should().Be(1);
+    }
+
     private static string FindRepoRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

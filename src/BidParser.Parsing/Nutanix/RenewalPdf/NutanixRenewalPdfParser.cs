@@ -107,15 +107,24 @@ public sealed class NutanixRenewalPdfParser : IParser
     {
         var headerWords = HeaderWords(words, header);
         var discountWord = headerWords.FirstOrDefault(word => word.Text == "Discount");
-        var netWord = headerWords
-            .Where(word => word.Text == "Net" && word.X0 > 430)
-            .OrderBy(word => word.X0)
-            .FirstOrDefault();
         var totalWord = headerWords
             .Where(word => word.Text == "Total" && word.X0 > 500)
             .OrderBy(word => word.X0)
             .FirstOrDefault();
         var platformWord = headerWords.FirstOrDefault(word => word.Text == "Platform");
+        var qtyX0 = RequiredX0(headerWords, "Qty");
+
+        // The "Net Unit Price" header cluster (Net / Unit / Price) can render in different
+        // left-to-right orders across PDF variants. Take the minimum X0 of the cluster and
+        // subtract 8 so the column boundary sits left of wherever the data actually lands —
+        // the same pattern used for "Term Adjusted List Unit Price" above.
+        var netUnitPriceX0 = headerWords
+            .Where(word => word.Text is "Net" or "Unit" or "Price"
+                && word.X0 > (discountWord?.X0 ?? 395.0)
+                && word.X0 < qtyX0)
+            .Select(word => word.X0)
+            .DefaultIfEmpty(456.0)
+            .Min() - 8;
 
         var headers = new List<(string Name, double X0)>
         {
@@ -130,8 +139,8 @@ public sealed class NutanixRenewalPdfParser : IParser
                 .DefaultIfEmpty(348.0)
                 .Min() - 8),
             ("Total Discount", discountWord?.X0 ?? 395.0),
-            ("Net Unit Price", netWord?.X0 ?? 448.0),
-            ("Qty", RequiredX0(headerWords, "Qty")),
+            ("Net Unit Price", netUnitPriceX0),
+            ("Qty", qtyX0),
             ("Total Net Price", totalWord?.X0 ?? 522.0)
         };
 
