@@ -3,6 +3,7 @@ using System;
 using BidParser.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -15,102 +16,109 @@ namespace BidParser.Infrastructure.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.0");
+            modelBuilder
+                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+
+            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
             modelBuilder.Entity("BidParser.Infrastructure.Entities.FailedParseJob", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("int")
                         .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasMaxLength(32)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(32)")
                         .HasColumnName("category");
 
                     b.Property<decimal?>("ComputedTotal")
                         .HasPrecision(14, 2)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("decimal(14,2)")
                         .HasColumnName("computed_total");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_at");
 
                     b.Property<string>("ErrorDetail")
                         .IsRequired()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("error_detail");
 
                     b.Property<decimal>("FxRate")
                         .HasPrecision(12, 4)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("decimal(12,4)")
                         .HasColumnName("fx_rate");
 
                     b.Property<string>("Hint")
                         .HasMaxLength(512)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(512)")
                         .HasColumnName("hint");
 
                     b.Property<decimal>("Margin")
                         .HasPrecision(12, 2)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("decimal(12,2)")
                         .HasColumnName("margin");
 
                     b.Property<string>("Message")
                         .HasMaxLength(1024)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(1024)")
                         .HasColumnName("message");
-
-                    b.Property<decimal?>("QuotedTotal")
-                        .HasPrecision(14, 2)
-                        .HasColumnType("TEXT")
-                        .HasColumnName("quoted_total");
 
                     b.Property<string>("ParserSlug")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(128)")
                         .HasColumnName("parser_slug");
+
+                    b.Property<decimal?>("QuotedTotal")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("decimal(14,2)")
+                        .HasColumnName("quoted_total");
 
                     b.Property<string>("SourceFilename")
                         .IsRequired()
                         .HasMaxLength(255)
-                        .HasColumnType("TEXT COLLATE NOCASE")
-                        .HasColumnName("source_filename");
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("source_filename")
+                        .UseCollation("SQL_Latin1_General_CP1_CI_AS");
 
                     b.Property<string>("SourcePath")
                         .IsRequired()
                         .HasMaxLength(1024)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(1024)")
                         .HasColumnName("source_path");
 
                     b.Property<string>("Stage")
                         .HasMaxLength(128)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(128)")
                         .HasColumnName("stage");
 
                     b.Property<int?>("UserId")
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("int")
                         .HasColumnName("user_id");
 
                     b.Property<string>("UserName")
                         .HasMaxLength(255)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(255)")
                         .HasColumnName("user_name");
 
                     b.Property<string>("UserUsername")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(128)")
                         .HasColumnName("user_username");
 
                     b.Property<string>("Vendor")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(64)")
                         .HasColumnName("vendor");
 
                     b.HasKey("Id");
@@ -134,75 +142,78 @@ namespace BidParser.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("int")
                         .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("ComputedTotal")
                         .HasPrecision(14, 2)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("decimal(14,2)")
                         .HasColumnName("computed_total");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_at");
 
                     b.Property<string>("CrmTemplate")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(64)")
                         .HasColumnName("crm_template");
 
                     b.Property<decimal>("FxRate")
                         .HasPrecision(12, 4)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("decimal(12,4)")
                         .HasColumnName("fx_rate");
 
                     b.Property<decimal>("Margin")
                         .HasPrecision(12, 2)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("decimal(12,2)")
                         .HasColumnName("margin");
 
                     b.Property<string>("OutputPath")
                         .IsRequired()
                         .HasMaxLength(1024)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(1024)")
                         .HasColumnName("output_path");
 
                     b.Property<string>("ParserSlug")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(128)")
                         .HasColumnName("parser_slug");
 
                     b.Property<decimal?>("QuotedTotal")
                         .HasPrecision(14, 2)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("decimal(14,2)")
                         .HasColumnName("quoted_total");
 
                     b.Property<string>("SourceFilename")
                         .IsRequired()
                         .HasMaxLength(255)
-                        .HasColumnType("TEXT COLLATE NOCASE")
-                        .HasColumnName("source_filename");
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("source_filename")
+                        .UseCollation("SQL_Latin1_General_CP1_CI_AS");
 
                     b.Property<string>("SourcePath")
                         .IsRequired()
                         .HasMaxLength(1024)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(1024)")
                         .HasColumnName("source_path");
 
                     b.Property<bool>("TotalsMatch")
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("bit")
                         .HasColumnName("totals_match");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("int")
                         .HasColumnName("user_id");
 
                     b.Property<string>("Vendor")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(64)")
                         .HasColumnName("vendor");
 
                     b.HasKey("Id");
@@ -221,78 +232,81 @@ namespace BidParser.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("int")
                         .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("ComputedTotal")
                         .HasPrecision(14, 2)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("decimal(14,2)")
                         .HasColumnName("computed_total");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_at");
 
                     b.Property<string>("Currency")
                         .IsRequired()
                         .HasMaxLength(3)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(3)")
                         .HasColumnName("currency");
 
                     b.Property<decimal>("FxRate")
                         .HasPrecision(12, 4)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("decimal(12,4)")
                         .HasColumnName("fx_rate");
 
                     b.Property<decimal>("Margin")
                         .HasPrecision(12, 2)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("decimal(12,2)")
                         .HasColumnName("margin");
 
                     b.Property<int?>("ParseJobId")
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("int")
                         .HasColumnName("parse_job_id");
 
                     b.Property<string>("ParserSlug")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(128)")
                         .HasColumnName("parser_slug");
 
                     b.Property<decimal?>("QuotedTotal")
                         .HasPrecision(14, 2)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("decimal(14,2)")
                         .HasColumnName("quoted_total");
 
                     b.Property<string>("SourceFilename")
                         .IsRequired()
                         .HasMaxLength(255)
-                        .HasColumnType("TEXT COLLATE NOCASE")
-                        .HasColumnName("source_filename");
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("source_filename")
+                        .UseCollation("SQL_Latin1_General_CP1_CI_AS");
 
                     b.Property<bool>("TotalsMatch")
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("bit")
                         .HasColumnName("totals_match");
 
                     b.Property<int?>("UserId")
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("int")
                         .HasColumnName("user_id");
 
                     b.Property<string>("UserName")
                         .HasMaxLength(255)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(255)")
                         .HasColumnName("user_name");
 
                     b.Property<string>("UserUsername")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(128)")
                         .HasColumnName("user_username");
 
                     b.Property<string>("Vendor")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(64)")
                         .HasColumnName("vendor");
 
                     b.HasKey("Id");
@@ -318,63 +332,66 @@ namespace BidParser.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("int")
                         .HasColumnName("id");
 
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("datetime2")
                         .HasColumnName("created_at");
 
                     b.Property<string>("DefaultVendor")
                         .HasMaxLength(64)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(64)")
                         .HasColumnName("default_vendor");
 
                     b.Property<decimal?>("FxRate")
                         .HasPrecision(12, 4)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("decimal(12,4)")
                         .HasColumnName("fx_rate");
 
                     b.Property<decimal?>("ImPercent")
                         .HasPrecision(12, 2)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("decimal(12,2)")
                         .HasColumnName("im");
 
                     b.Property<decimal?>("Margin")
                         .HasPrecision(12, 2)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("decimal(12,2)")
                         .HasColumnName("margin");
 
                     b.Property<bool>("MustChangePassword")
-                        .HasColumnType("INTEGER")
+                        .HasColumnType("bit")
                         .HasColumnName("must_change_password");
 
                     b.Property<string>("Name")
                         .HasMaxLength(255)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(255)")
                         .HasColumnName("name");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(255)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(255)")
                         .HasColumnName("password_hash");
 
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(16)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(16)")
                         .HasColumnName("role");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("datetime2")
                         .HasColumnName("updated_at");
 
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("TEXT COLLATE NOCASE")
-                        .HasColumnName("username");
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("username")
+                        .UseCollation("SQL_Latin1_General_CP1_CI_AS");
 
                     b.HasKey("Id");
 

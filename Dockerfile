@@ -35,7 +35,6 @@ COPY --from=frontend-build /build/dist ./wwwroot
 
 VOLUME /data
 
-ENV DATABASE_URL=sqlite:////data/db.sqlite
 ENV UPLOAD_DIR=/data/files
 ENV PORT=3447
 ENV ASPNETCORE_URLS=http://0.0.0.0:3447

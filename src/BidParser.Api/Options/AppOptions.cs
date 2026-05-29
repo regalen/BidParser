@@ -6,7 +6,7 @@ namespace BidParser.Api.Options;
 
 public sealed class AppOptions
 {
-    public string DatabaseUrl { get; init; } = DefaultDatabaseUrl();
+    public string ConnectionString { get; init; } = DefaultConnectionString();
     public string UploadDir { get; init; } = Path.Combine(DefaultDataDir(), "files");
     public string SessionSecret { get; init; } = "dev-only-change-me";
     public int SessionLifetimeHours { get; init; } = 12;
@@ -19,7 +19,7 @@ public sealed class AppOptions
 
     public long MaxUploadBytes => (long)MaxUploadMb * 1024 * 1024;
     public string DataProtectionKeysDir => Path.Combine(DataDir, "dp-keys");
-    private string DataDir => Path.GetDirectoryName(Path.GetFullPath(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(ToSqliteConnectionString()).DataSource)) ?? DefaultDataDir();
+    private string DataDir => Path.GetDirectoryName(Path.GetFullPath(UploadDir)) ?? DefaultDataDir();
 
     public IReadOnlyList<IPAddress> ForwardedAllowIpAddresses =>
         ForwardedAllowIps
@@ -44,7 +44,7 @@ public sealed class AppOptions
 
         return new AppOptions
         {
-            DatabaseUrl = ReadString(configuration, "DATABASE_URL", DefaultDatabaseUrl()),
+            ConnectionString = ReadString(configuration, "DB_CONNECTION_STRING", DefaultConnectionString()),
             UploadDir = ReadString(configuration, "UPLOAD_DIR", Path.Combine(DefaultDataDir(), "files")),
             SessionSecret = ReadString(configuration, "SESSION_SECRET", "dev-only-change-me"),
             SessionLifetimeHours = ReadInt(configuration, "SESSION_LIFETIME_HOURS", 12),
@@ -57,30 +57,10 @@ public sealed class AppOptions
         };
     }
 
-    public string ToSqliteConnectionString()
-    {
-        const string sqlitePrefix = "sqlite:///";
-        if (DatabaseUrl.StartsWith(sqlitePrefix, StringComparison.OrdinalIgnoreCase))
-        {
-            return $"Data Source={DatabaseUrl[sqlitePrefix.Length..]}";
-        }
-
-        return DatabaseUrl.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase)
-            ? DatabaseUrl
-            : $"Data Source={DatabaseUrl}";
-    }
-
     public void EnsureDirectories()
     {
         Directory.CreateDirectory(UploadDir);
         Directory.CreateDirectory(DataProtectionKeysDir);
-
-        var dataSource = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(ToSqliteConnectionString()).DataSource;
-        var directory = Path.GetDirectoryName(Path.GetFullPath(dataSource));
-        if (!string.IsNullOrWhiteSpace(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
     }
 
     private static string ReadString(IConfiguration configuration, string key, string fallback)
@@ -94,9 +74,9 @@ public sealed class AppOptions
         return int.TryParse(configuration[key], out var value) ? value : fallback;
     }
 
-    private static string DefaultDatabaseUrl()
+    private static string DefaultConnectionString()
     {
-        return $"sqlite:///{Path.Combine(DefaultDataDir(), "db.sqlite")}";
+        return "Server=localhost,1433;Database=bidparser;User Id=sa;Password=Dev_Password_123;Encrypt=True;TrustServerCertificate=True";
     }
 
     private static string DefaultDataDir()

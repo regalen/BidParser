@@ -21,9 +21,10 @@ public sealed class HealthTests : IClassFixture<WebApplicationFactory<Program>>
         Directory.CreateDirectory(tempDir);
         try
         {
+            var connectionString = await MsSqlTestContainer.GetConnectionStringAsync($"test_{Guid.NewGuid():N}");
             using var environment = new ScopedEnvironment(new Dictionary<string, string>
             {
-                ["DATABASE_URL"] = $"sqlite:///{Path.Combine(tempDir, "db.sqlite")}",
+                ["DB_CONNECTION_STRING"] = connectionString,
                 ["UPLOAD_DIR"] = Path.Combine(tempDir, "files")
             });
             using var client = _factory.CreateClient();
@@ -45,9 +46,10 @@ public sealed class HealthTests : IClassFixture<WebApplicationFactory<Program>>
         Directory.CreateDirectory(tempDir);
         try
         {
+            var connectionString = await MsSqlTestContainer.GetConnectionStringAsync($"test_{Guid.NewGuid():N}");
             using var environment = new ScopedEnvironment(new Dictionary<string, string>
             {
-                ["DATABASE_URL"] = $"sqlite:///{Path.Combine(tempDir, "db.sqlite")}",
+                ["DB_CONNECTION_STRING"] = connectionString,
                 ["UPLOAD_DIR"] = Path.Combine(tempDir, "files"),
                 ["FORWARDED_ALLOW_IPS"] = "127.0.0.1"
             });

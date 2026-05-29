@@ -88,20 +88,13 @@ public static class MetricsEndpoints
             .OrderByDescending(x => x.Count)
             .ToList();
 
-        var timeSeriesQuery = db.Database.SqlQuery<TimeSeriesRow>(
-            $@"
-            SELECT date(created_at, 'localtime') as Date, COUNT(*) as Count
-            FROM parse_metrics
-            WHERE created_at >= {fromUtc} AND created_at < {toUtc}
-              AND ({vendor} IS NULL OR vendor = {vendor})
-              AND ({userId} IS NULL OR user_id = {userId})
-              AND ({parserSlug} IS NULL OR parser_slug = {parserSlug})
-            GROUP BY date(created_at, 'localtime')
-            ORDER BY date(created_at, 'localtime') ASC
-            ");
-
-        var timeSeriesDb = await timeSeriesQuery.ToListAsync(cancellationToken);
-        var timeSeries = timeSeriesDb.Select(ts => new MetricsTimeSeries(ts.Date, ts.Count)).ToList();
+        var createdAts = await query.Select(m => m.CreatedAt).ToListAsync(cancellationToken);
+        var tz = TimeZoneInfo.Local;
+        var timeSeries = createdAts
+            .GroupBy(utc => TimeZoneInfo.ConvertTimeFromUtc(utc, tz).Date)
+            .Select(g => new MetricsTimeSeries(g.Key.ToString("yyyy-MM-dd"), g.Count()))
+            .OrderBy(ts => ts.Date)
+            .ToList();
 
         return Results.Ok(new MetricsSummaryResponse(
             new MetricsDateRange(fromDate.ToString("yyyy-MM-dd"), toDate.ToString("yyyy-MM-dd")),
@@ -201,5 +194,4 @@ public static class MetricsEndpoints
         return Results.File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"utilisation_{fromStr}_{toStr}.xlsx");
     }
 
-    private sealed record TimeSeriesRow(string Date, int Count);
 }

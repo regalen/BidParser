@@ -34,7 +34,7 @@ public sealed class AppDbContext : DbContext
             entity.ToTable("users");
             entity.HasKey(user => user.Id);
             entity.Property(user => user.Id).HasColumnName("id");
-            entity.Property(user => user.Username).HasColumnName("username").HasColumnType("TEXT COLLATE NOCASE").HasMaxLength(128).IsRequired();
+            entity.Property(user => user.Username).HasColumnName("username").UseCollation("SQL_Latin1_General_CP1_CI_AS").HasMaxLength(128).IsRequired();
             entity.HasIndex(user => user.Username).IsUnique().HasDatabaseName("ix_users_username");
             entity.Property(user => user.Name).HasColumnName("name").HasMaxLength(255);
             entity.Property(user => user.PasswordHash).HasColumnName("password_hash").HasMaxLength(255).IsRequired();
@@ -69,7 +69,7 @@ public sealed class AppDbContext : DbContext
             entity.Property(job => job.Vendor).HasColumnName("vendor").HasMaxLength(64).IsRequired();
             entity.Property(job => job.ParserSlug).HasColumnName("parser_slug").HasMaxLength(128).IsRequired();
             entity.Property(job => job.CrmTemplate).HasColumnName("crm_template").HasMaxLength(64).IsRequired();
-            entity.Property(job => job.SourceFilename).HasColumnName("source_filename").HasColumnType("TEXT COLLATE NOCASE").HasMaxLength(255).IsRequired();
+            entity.Property(job => job.SourceFilename).HasColumnName("source_filename").UseCollation("SQL_Latin1_General_CP1_CI_AS").HasMaxLength(255).IsRequired();
             entity.Property(job => job.SourcePath).HasColumnName("source_path").HasMaxLength(1024).IsRequired();
             entity.Property(job => job.OutputPath).HasColumnName("output_path").HasMaxLength(1024).IsRequired();
             entity.Property(job => job.FxRate).HasColumnName("fx_rate").HasPrecision(12, 4).IsRequired();
@@ -98,7 +98,7 @@ public sealed class AppDbContext : DbContext
             entity.Property(m => m.Vendor).HasColumnName("vendor").HasMaxLength(64).IsRequired();
             entity.Property(m => m.ParserSlug).HasColumnName("parser_slug").HasMaxLength(128).IsRequired();
 
-            entity.Property(m => m.SourceFilename).HasColumnName("source_filename").HasColumnType("TEXT COLLATE NOCASE").HasMaxLength(255).IsRequired();
+            entity.Property(m => m.SourceFilename).HasColumnName("source_filename").UseCollation("SQL_Latin1_General_CP1_CI_AS").HasMaxLength(255).IsRequired();
             entity.Property(m => m.Currency).HasColumnName("currency").HasMaxLength(3).IsRequired();
             entity.Property(m => m.QuotedTotal).HasColumnName("quoted_total").HasPrecision(14, 2);
             entity.Property(m => m.ComputedTotal).HasColumnName("computed_total").HasPrecision(14, 2).IsRequired();
@@ -129,7 +129,7 @@ public sealed class AppDbContext : DbContext
             entity.Property(f => f.Vendor).HasColumnName("vendor").HasMaxLength(64).IsRequired();
             entity.Property(f => f.ParserSlug).HasColumnName("parser_slug").HasMaxLength(128).IsRequired();
 
-            entity.Property(f => f.SourceFilename).HasColumnName("source_filename").HasColumnType("TEXT COLLATE NOCASE").HasMaxLength(255).IsRequired();
+            entity.Property(f => f.SourceFilename).HasColumnName("source_filename").UseCollation("SQL_Latin1_General_CP1_CI_AS").HasMaxLength(255).IsRequired();
             entity.Property(f => f.SourcePath).HasColumnName("source_path").HasMaxLength(1024).IsRequired();
 
             entity.Property(f => f.Category).HasColumnName("category").HasMaxLength(32).IsRequired()
@@ -144,7 +144,7 @@ public sealed class AppDbContext : DbContext
             entity.Property(f => f.ComputedTotal).HasColumnName("computed_total").HasPrecision(14, 2);
             entity.Property(f => f.QuotedTotal).HasColumnName("quoted_total").HasPrecision(14, 2);
 
-            entity.Property(f => f.ErrorDetail).HasColumnName("error_detail").HasColumnType("TEXT").IsRequired();
+            entity.Property(f => f.ErrorDetail).HasColumnName("error_detail").IsRequired();
 
             entity.Property(f => f.FxRate).HasColumnName("fx_rate").HasPrecision(12, 4).IsRequired();
             entity.Property(f => f.Margin).HasColumnName("margin").HasPrecision(12, 2).IsRequired();

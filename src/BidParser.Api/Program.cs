@@ -35,12 +35,9 @@ builder.Services.Configure<JsonOptions>(options =>
 {
     options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
 });
-builder.Services.AddSingleton<SqlitePragmaConnectionInterceptor>();
-builder.Services.AddDbContextPool<AppDbContext>((serviceProvider, options) =>
-{
-    options.UseSqlite(appOptions.ToSqliteConnectionString());
-    options.AddInterceptors(serviceProvider.GetRequiredService<SqlitePragmaConnectionInterceptor>());
-});
+builder.Services.AddDbContextPool<AppDbContext>(options =>
+    options.UseSqlServer(appOptions.ConnectionString,
+        sql => sql.EnableRetryOnFailure()));
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(appOptions.DataProtectionKeysDir))
     .SetApplicationName(appOptions.SessionSecret);

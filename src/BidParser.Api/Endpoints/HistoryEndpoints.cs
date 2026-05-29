@@ -163,6 +163,7 @@ public static class HistoryEndpoints
     private static string EscapeLikePattern(string value) =>
         value
             .Replace("\\", "\\\\")
+            .Replace("[", "\\[")
             .Replace("%", "\\%")
             .Replace("_", "\\_");
 

@@ -241,9 +241,10 @@ internal sealed class ApiTestFixture : IDisposable
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"bidparser-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
+        var connectionString = await MsSqlTestContainer.GetConnectionStringAsync($"test_{Guid.NewGuid():N}");
         var environment = new ScopedEnvironment(new Dictionary<string, string>
         {
-            ["DATABASE_URL"] = $"sqlite:///{Path.Combine(tempDir, "db.sqlite")}",
+            ["DB_CONNECTION_STRING"] = connectionString,
             ["UPLOAD_DIR"] = Path.Combine(tempDir, "files"),
             ["SESSION_SECRET"] = $"test-secret-{Guid.NewGuid():N}",
             ["ADMIN_USERNAME"] = "admin",

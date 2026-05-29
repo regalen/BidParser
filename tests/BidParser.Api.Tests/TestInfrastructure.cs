@@ -32,9 +32,12 @@ internal sealed class CustomTestFixture : IDisposable
         var tempDir = Path.Combine(Path.GetTempPath(), $"bidparser-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
 
+        var dbName = $"test_{Guid.NewGuid():N}";
+        var connectionString = await MsSqlTestContainer.GetConnectionStringAsync(dbName);
+
         var envValues = new Dictionary<string, string>
         {
-            ["DATABASE_URL"] = $"sqlite:///{Path.Combine(tempDir, "db.sqlite")}",
+            ["DB_CONNECTION_STRING"] = connectionString,
             ["UPLOAD_DIR"] = Path.Combine(tempDir, "files"),
             ["SESSION_SECRET"] = $"test-{Guid.NewGuid():N}",
             ["ADMIN_USERNAME"] = "admin",

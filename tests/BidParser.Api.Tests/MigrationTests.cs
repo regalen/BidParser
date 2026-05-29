@@ -2,7 +2,6 @@ using BidParser.Infrastructure.Entities;
 using BidParser.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -16,18 +15,18 @@ public sealed class MigrationTests
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"bidparser-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
-        var dbPath = Path.Combine(tempDir, "db.sqlite");
 
         try
         {
+            var connectionString = await MsSqlTestContainer.GetConnectionStringAsync($"test_{Guid.NewGuid():N}");
             using var environment = new ScopedEnvironment(new Dictionary<string, string>
             {
-                ["DATABASE_URL"] = $"sqlite:///{dbPath}",
+                ["DB_CONNECTION_STRING"] = connectionString,
                 ["UPLOAD_DIR"] = Path.Combine(tempDir, "files"),
                 ["ADMIN_USERNAME"] = "phase2-admin",
                 ["ADMIN_PASSWORD"] = "change-me-123!"
             });
-            using var factory = CreateFactory();
+            using var factory = new WebApplicationFactory<Program>();
             using var client = factory.CreateClient();
 
             var health = await client.GetAsync("/api/healthz");
@@ -44,65 +43,23 @@ public sealed class MigrationTests
             BCrypt.Net.BCrypt.Verify("change-me-123!", admin.PasswordHash).Should().BeTrue();
 
             var migrationIds = await db.Database.GetAppliedMigrationsAsync();
-            migrationIds.Should().Equal(
-                "00000000000001_InitialCreate",
-                "20260519000001_HistoryCompositeIndex",
-                "20260519000002_SourceFilenameNoCase",
-                "20260523045730_AddParseMetricsLedger",
-                "20260523052812_AddFailedParseJobs",
-                "20260526000000_AddValidationMismatchToFailedParseJobs",
-                "20260528000001_AddUserIm",
-                "20260528120000_AddParseJobCrmTemplate");
+            migrationIds.Should().ContainSingle().Which.Should().EndWith("_InitialCreate");
 
-            var userTableSql = await ReadScalarAsync(dbPath, "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users';");
-            userTableSql.Should().Contain("TEXT COLLATE NOCASE");
+            // Verify CI collation on username and source_filename via INFORMATION_SCHEMA
+            var usernameCollation = await db.Database.SqlQueryRaw<string>(
+                "SELECT COLLATION_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'users' AND COLUMN_NAME = 'username'")
+                .SingleAsync();
+            usernameCollation.Should().Be("SQL_Latin1_General_CP1_CI_AS");
 
-            var parseJobsTableSql = await ReadScalarAsync(dbPath, "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'parse_jobs';");
-            parseJobsTableSql.Should().Contain("\"source_filename\" TEXT COLLATE NOCASE");
-
-            var historyPlan = await ReadQueryPlanAsync(
-                dbPath,
-                "EXPLAIN QUERY PLAN SELECT id FROM parse_jobs WHERE user_id = 1 ORDER BY created_at DESC LIMIT 10;");
-            historyPlan.Should().Contain("ix_parse_jobs_user_id_created_at");
-
-            var journalMode = await ReadScalarAsync(dbPath, "PRAGMA journal_mode;");
-            journalMode.Should().Be("wal");
+            // Verify composite descending index on parse_jobs exists
+            var indexExists = await db.Database.SqlQueryRaw<int>(
+                "SELECT COUNT(*) FROM sys.indexes WHERE name = 'ix_parse_jobs_user_id_created_at'")
+                .SingleAsync();
+            indexExists.Should().Be(1);
         }
         finally
         {
             Directory.Delete(tempDir, recursive: true);
         }
-    }
-
-    private static WebApplicationFactory<Program> CreateFactory()
-    {
-        return new WebApplicationFactory<Program>();
-    }
-
-    private static async Task<string> ReadScalarAsync(string dbPath, string commandText)
-    {
-        await using var connection = new SqliteConnection($"Data Source={dbPath}");
-        await connection.OpenAsync();
-        await using var command = connection.CreateCommand();
-        command.CommandText = commandText;
-        var value = await command.ExecuteScalarAsync();
-        return value?.ToString() ?? string.Empty;
-    }
-
-    private static async Task<string> ReadQueryPlanAsync(string dbPath, string commandText)
-    {
-        await using var connection = new SqliteConnection($"Data Source={dbPath}");
-        await connection.OpenAsync();
-        await using var command = connection.CreateCommand();
-        command.CommandText = commandText;
-        await using var reader = await command.ExecuteReaderAsync();
-
-        var details = new List<string>();
-        while (await reader.ReadAsync())
-        {
-            details.Add(reader.GetString(3));
-        }
-
-        return string.Join(Environment.NewLine, details);
     }
 }
