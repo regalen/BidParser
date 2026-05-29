@@ -89,7 +89,7 @@ public sealed class AppDbContext : DbContext
             entity.Property(m => m.UserId).HasColumnName("user_id");
             entity.Property(m => m.ParseJobId).HasColumnName("parse_job_id");
 
-            entity.HasOne(m => m.User).WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(m => m.User).WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.ClientSetNull);
             entity.HasOne(m => m.ParseJob).WithMany().HasForeignKey(m => m.ParseJobId).OnDelete(DeleteBehavior.SetNull);
 
             entity.Property(m => m.UserUsername).HasColumnName("user_username").HasMaxLength(128).IsRequired();

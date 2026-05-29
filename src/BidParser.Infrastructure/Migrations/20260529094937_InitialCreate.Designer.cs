@@ -436,7 +436,7 @@ namespace BidParser.Infrastructure.Migrations
                     b.HasOne("BidParser.Infrastructure.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.ClientSetNull);
 
                     b.Navigation("ParseJob");
 
