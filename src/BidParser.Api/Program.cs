@@ -138,7 +138,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
 
-app.MapGet("/api/healthz", () => Results.Ok(new { status = "ok" }));
+app.MapGet("/api/healthz", () => Results.Ok(new OkResponse()));
 if (app.Environment.IsEnvironment("Testing"))
 {
     app.MapGet("/api/test/connection", (HttpContext context) => Results.Ok(new

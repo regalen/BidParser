@@ -39,7 +39,7 @@ public sealed class NutanixSoftwareOnlyXlsxParser : IParser
 
         for (var row = headerMap.RowNumber + 1; row <= lastRow; row++)
         {
-            var totalText = FindTotalTextInRow(row, lastColumn);
+            var totalText = WorkbookReader.FindTotalTextInRow(sheet, row, lastColumn);
             if (totalText.Length > 0)
             {
                 quotedTotal = WorkbookReader.ParseTotalText(totalText);
@@ -68,7 +68,7 @@ public sealed class NutanixSoftwareOnlyXlsxParser : IParser
                     Qty = termValue ?? 0,
                     Cost = 0m,
                     Msrp = 0m,
-                    Raw = RawDict(sheet, row, headerMap)
+                    Raw = WorkbookReader.BuildRawDict(sheet, row, headerMap)
                 });
                 continue;
             }
@@ -82,7 +82,7 @@ public sealed class NutanixSoftwareOnlyXlsxParser : IParser
                 Cost = DecimalCleaner.Parse(Text(sheet, row, headerMap, "Sale Price"), defaultZero: true),
                 Qty = DecimalCleaner.ParseInt(Text(sheet, row, headerMap, "Quantity")),
                 StartDate = ReadOptionalDate(sheet, row, headerMap, "Selected Start Date"),
-                Raw = RawDict(sheet, row, headerMap)
+                Raw = WorkbookReader.BuildRawDict(sheet, row, headerMap)
             });
         }
 
@@ -104,19 +104,6 @@ public sealed class NutanixSoftwareOnlyXlsxParser : IParser
             Validation = validation
         };
 
-        string FindTotalTextInRow(int row, int columnCount)
-        {
-            for (var column = 1; column <= columnCount; column++)
-            {
-                var text = WorkbookReader.CellText(sheet.Cell(row, column));
-                if (text.StartsWith("TOTAL ", StringComparison.Ordinal))
-                {
-                    return text;
-                }
-            }
-
-            return string.Empty;
-        }
     }
 
     private static decimal? FindTotalAfterHeader(
@@ -170,14 +157,4 @@ public sealed class NutanixSoftwareOnlyXlsxParser : IParser
             : null;
     }
 
-    private static IReadOnlyDictionary<string, string> RawDict(
-        ClosedXML.Excel.IXLWorksheet sheet,
-        int row,
-        HeaderMap headerMap)
-    {
-        return headerMap.Columns
-            .Select(pair => (pair.Key, Value: WorkbookReader.CellText(sheet.Cell(row, pair.Value))))
-            .Where(pair => pair.Value.Length > 0)
-            .ToDictionary(pair => pair.Key, pair => pair.Value);
-    }
 }

@@ -1,9 +1,11 @@
 export function NutanixSettingsBlock({
+  vendorLabel,
   fxRate,
   margin,
   onFxRate,
   onMargin,
 }: {
+  vendorLabel: string;
   fxRate: string;
   margin: string;
   onFxRate: (value: string) => void;
@@ -13,7 +15,7 @@ export function NutanixSettingsBlock({
     <>
       <div className="mt-1 border-t border-dashed border-slate-200" />
       <div className="flex items-baseline justify-between">
-        <span className="label">Nutanix settings</span>
+        <span className="label">{vendorLabel} settings</span>
         <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Vendor-specific</span>
       </div>
 

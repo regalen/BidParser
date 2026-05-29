@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, Download, FileDown, Search, X } from 'lucide
 import { useEffect, useRef } from 'react';
 
 import type { HistoryRow } from '../types';
+import { relativeTime } from '../utils/relativeTime';
 
 const MAX_PAGE_SIZE = 10;
 
@@ -162,7 +163,7 @@ function UploadRow({ row, last }: { row: HistoryRow; last: boolean }) {
       <span className="font-semibold text-slate-700">{row.vendor}</span>
       <span className="text-slate-600">{row.file_type_display}</span>
       <span className="truncate text-slate-600" title={row.crm_template}>{row.crm_template}</span>
-      <span className="label-faint text-left md:text-right">{row.when}</span>
+      <span className="label-faint text-left md:text-right">{relativeTime(row.when)}</span>
       <div className="flex justify-start gap-1 md:justify-end">
         <a
           className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"

@@ -8,6 +8,12 @@ import { Footer } from '../../components/Footer';
 import { UserModal } from '../../components/UserModal';
 import type { Role, User } from '../../types';
 
+function apiErrorMessage(caught: unknown, fallback: string): string {
+  return caught instanceof ApiError && typeof (caught as ApiError).detail === 'string'
+    ? ((caught as ApiError).detail as string)
+    : fallback;
+}
+
 export function UsersPage() {
   const { user } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
@@ -33,9 +39,7 @@ export function UsersPage() {
       setModalUser(undefined);
       await loadUsers();
     } catch (caught) {
-      setError(
-        caught instanceof ApiError && typeof (caught as ApiError).detail === 'string' ? (caught as ApiError).detail as string : 'Could not save user.',
-      );
+      setError(apiErrorMessage(caught, 'Could not save user.'));
     }
   }
 
@@ -50,9 +54,7 @@ export function UsersPage() {
       await api.deleteUser(target.id);
       await loadUsers();
     } catch (caught) {
-      setError(
-        caught instanceof ApiError && typeof (caught as ApiError).detail === 'string' ? (caught as ApiError).detail as string : 'Could not delete user.',
-      );
+      setError(apiErrorMessage(caught, 'Could not delete user.'));
     }
   }
 

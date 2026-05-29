@@ -71,7 +71,7 @@ public sealed class HpOneConfigXlsxParser : IParser
             Qty = 1,
             Msrp = msrp,
             Cost = 0m,
-            Raw = RawDict(sheet, configDataRow, configHeaderMap)
+            Raw = WorkbookReader.BuildRawDict(sheet, configDataRow, configHeaderMap)
         });
 
         // Child (component) rows
@@ -103,7 +103,7 @@ public sealed class HpOneConfigXlsxParser : IParser
                 Qty = qty,
                 Msrp = 0m,
                 Cost = 0m,
-                Raw = RawDict(sheet, row, componentsHeaderMap)
+                Raw = WorkbookReader.BuildRawDict(sheet, row, componentsHeaderMap)
             });
         }
 
@@ -131,11 +131,4 @@ public sealed class HpOneConfigXlsxParser : IParser
         };
     }
 
-    private static IReadOnlyDictionary<string, string> RawDict(IXLWorksheet sheet, int row, HeaderMap headerMap)
-    {
-        return headerMap.Columns
-            .Select(pair => (pair.Key, Value: WorkbookReader.CellText(sheet.Cell(row, pair.Value))))
-            .Where(pair => pair.Value.Length > 0)
-            .ToDictionary(pair => pair.Key, pair => pair.Value);
-    }
 }

@@ -29,10 +29,9 @@ public static class AuthEndpoints
         AuthRateLimiter rateLimiter,
         AppOptions options,
         IDataProtectionProvider dataProtectionProvider,
-        ILoggerFactory loggerFactory,
+        ILogger<Program> logger,
         CancellationToken ct)
     {
-        var logger = loggerFactory.CreateLogger(nameof(AuthEndpoints));
         var body = await EndpointHelpers.ReadJsonBodyAsync<LoginRequest>(request, ct);
         if (!body.IsSuccess || body.Value is null || string.IsNullOrWhiteSpace(body.Value.Username) || string.IsNullOrEmpty(body.Value.Password))
         {
@@ -73,10 +72,10 @@ public static class AuthEndpoints
         return Results.Ok(new LoginResponse(UserPublic.FromEntity(user)));
     }
 
-    private static IResult Logout(HttpContext context, HttpResponse response, ILoggerFactory loggerFactory)
+    private static IResult Logout(HttpContext context, HttpResponse response, ILogger<Program> logger)
     {
         response.Cookies.Delete(SessionCookieAuthHandler.CookieName, new CookieOptions { Path = "/" });
-        loggerFactory.CreateLogger(nameof(AuthEndpoints)).LogInformation(
+        logger.LogInformation(
             "Logout user={UserId}",
             context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown");
         return Results.Ok(new OkResponse());
@@ -88,10 +87,9 @@ public static class AuthEndpoints
         AppDbContext db,
         AuthRateLimiter rateLimiter,
         AppOptions options,
-        ILoggerFactory loggerFactory,
+        ILogger<Program> logger,
         CancellationToken ct)
     {
-        var logger = loggerFactory.CreateLogger(nameof(AuthEndpoints));
         var body = await EndpointHelpers.ReadJsonBodyAsync<ChangePasswordRequest>(request, ct);
         if (!body.IsSuccess || body.Value is null)
         {
@@ -141,16 +139,8 @@ public static class AuthEndpoints
         return new RateLimitExceededResult(result.RetryAfterSeconds ?? 1);
     }
 
-    private static string ClientIp(HttpContext context)
-    {
-        var forwarded = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
-        if (!string.IsNullOrWhiteSpace(forwarded))
-        {
-            return forwarded.Split(',', 2)[0].Trim();
-        }
-
-        return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-    }
+    private static string ClientIp(HttpContext context) =>
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
     private static bool IsSecure(HttpRequest request)
     {

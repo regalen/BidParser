@@ -23,7 +23,7 @@ public static class HistoryEndpoints
         HttpContext context,
         AppDbContext db,
         IParserRegistry registry,
-        ILoggerFactory loggerFactory,
+        ILogger<Program> logger,
         int limit = 10,
         int offset = 0,
         string? q = null,
@@ -64,10 +64,10 @@ public static class HistoryEndpoints
             j.ParserSlug,
             parserLookup.TryGetValue(j.ParserSlug, out var name) ? name : j.ParserSlug,
             j.CrmTemplate,
-            RelativeWhen(j.CreatedAt),
+            DateTime.SpecifyKind(j.CreatedAt, DateTimeKind.Utc).ToString("O"),
             j.TotalsMatch)).ToList();
 
-        loggerFactory.CreateLogger(nameof(HistoryEndpoints)).LogInformation(
+        logger.LogInformation(
             "History list user={UserId} limit={Limit} offset={Offset} has_query={HasQuery} total={Total}",
             user.Id,
             limit,
@@ -81,7 +81,7 @@ public static class HistoryEndpoints
         int id,
         HttpContext context,
         AppDbContext db,
-        ILoggerFactory loggerFactory,
+        ILogger<Program> logger,
         CancellationToken ct)
     {
         var job = await GetJobForUserAsync(id, context, db, ct);
@@ -97,7 +97,7 @@ public static class HistoryEndpoints
 
         context.Response.Headers["Content-Disposition"] =
             $"attachment; filename=\"{job.SourceFilename}\"";
-        loggerFactory.CreateLogger(nameof(HistoryEndpoints)).LogInformation(
+        logger.LogInformation(
             "History download {Kind} job={JobId} user={UserId}",
             "source",
             job.Id,
@@ -111,7 +111,7 @@ public static class HistoryEndpoints
         int id,
         HttpContext context,
         AppDbContext db,
-        ILoggerFactory loggerFactory,
+        ILogger<Program> logger,
         CancellationToken ct)
     {
         var job = await GetJobForUserAsync(id, context, db, ct);
@@ -128,7 +128,7 @@ public static class HistoryEndpoints
         var downloadName = $"{Path.GetFileNameWithoutExtension(job.SourceFilename)}_parsed.xlsx";
         context.Response.Headers["Content-Disposition"] =
             $"attachment; filename=\"{downloadName}\"";
-        loggerFactory.CreateLogger(nameof(HistoryEndpoints)).LogInformation(
+        logger.LogInformation(
             "History download {Kind} job={JobId} user={UserId}",
             "output",
             job.Id,
@@ -165,21 +165,6 @@ public static class HistoryEndpoints
             .Replace("\\", "\\\\")
             .Replace("%", "\\%")
             .Replace("_", "\\_");
-
-    // Verbatim port of Python's _relative_when(). Strings must match exactly.
-    internal static string RelativeWhen(DateTime value)
-    {
-        var seconds = (int)(DateTime.UtcNow - value).TotalSeconds;
-        if (seconds < 60) return "just now";
-        var minutes = seconds / 60;
-        if (minutes < 60) return $"{minutes}m ago";
-        var hours = minutes / 60;
-        if (hours < 24) return $"{hours}h ago";
-        var days = hours / 24;
-        if (days == 1) return "Yesterday";
-        if (days < 7) return $"{days} days ago";
-        return value.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
-    }
 
     private sealed record HistoryResponse(
         IReadOnlyList<HistoryRow> Rows,

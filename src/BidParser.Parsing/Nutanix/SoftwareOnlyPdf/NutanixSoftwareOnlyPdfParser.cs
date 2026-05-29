@@ -30,15 +30,15 @@ public sealed partial class NutanixSoftwareOnlyPdfParser : IParser
         foreach (var row in rows)
         {
             var cells = row.Cells.ToDictionary(pair => pair.Key, pair => TextCleaner.Clean(pair.Value));
-            var productCode = Cell(cells, "Product Code");
-            var product = Cell(cells, "Product");
+            var productCode = PdfTableHelpers.Cell(cells,"Product Code");
+            var product = PdfTableHelpers.Cell(cells,"Product");
 
             // Anchor signal is restricted to Quantity (and Term as a backup) because the supplier
             // template puts the "USD" label and the Quantity on the anchor row while the numeric
             // List/Net/Total values land one visual line below (continuation row). Treating List
             // or Net values as an anchor cue would mis-classify continuation rows as new items
             // whenever the Product Code wraps onto multiple lines.
-            var hasAnchorSignal = HasAny(cells, "Quantity", "Term (Months)");
+            var hasAnchorSignal = PdfTableHelpers.HasAny(cells, "Quantity", "Term (Months)");
 
             // Page-footer skip. The supplier template prints "Page X of Y" between body rows
             // on every page; without skipping, its words land in column cells and pollute the
@@ -58,7 +58,7 @@ public sealed partial class NutanixSoftwareOnlyPdfParser : IParser
                     current = null;
                 }
 
-                var termValue = DecimalCleaner.ParseOptionalInt(Cell(cells, "Term (Months)"));
+                var termValue = DecimalCleaner.ParseOptionalInt(PdfTableHelpers.Cell(cells,"Term (Months)"));
                 items.Add(new LineItem
                 {
                     Vpn = "Term-Months",
@@ -67,7 +67,7 @@ public sealed partial class NutanixSoftwareOnlyPdfParser : IParser
                     Qty = termValue ?? 0,
                     Cost = 0m,
                     Msrp = 0m,
-                    Raw = RawDict(cells)
+                    Raw = PdfTableHelpers.RawDict(cells)
                 });
                 continue;
             }
@@ -154,12 +154,12 @@ public sealed partial class NutanixSoftwareOnlyPdfParser : IParser
         {
             Vpn = TextCleaner.JoinUnspaced(item.CodeParts),
             Description = TextCleaner.JoinSpaced(item.DescriptionParts),
-            Term = DecimalCleaner.ParseOptionalInt(Cell(cells, "Term (Months)")),
-            Msrp = DecimalCleaner.Parse(Cell(cells, "List Unit Price"), defaultZero: true),
-            Cost = DecimalCleaner.Parse(Cell(cells, "Net Unit Price"), defaultZero: true),
-            Qty = DecimalCleaner.ParseInt(Cell(cells, "Quantity")),
-            StartDate = ParseStartDate(Cell(cells, "Selected Start Date")),
-            Raw = RawDict(cells)
+            Term = DecimalCleaner.ParseOptionalInt(PdfTableHelpers.Cell(cells,"Term (Months)")),
+            Msrp = DecimalCleaner.Parse(PdfTableHelpers.Cell(cells,"List Unit Price"), defaultZero: true),
+            Cost = DecimalCleaner.Parse(PdfTableHelpers.Cell(cells,"Net Unit Price"), defaultZero: true),
+            Qty = DecimalCleaner.ParseInt(PdfTableHelpers.Cell(cells,"Quantity")),
+            StartDate = ParseStartDate(PdfTableHelpers.Cell(cells,"Selected Start Date")),
+            Raw = PdfTableHelpers.RawDict(cells)
         };
     }
 
@@ -347,24 +347,6 @@ public sealed partial class NutanixSoftwareOnlyPdfParser : IParser
         "Total Net Price" => 25.0,
         _ => 0.0
     };
-
-    private static bool HasAny(IReadOnlyDictionary<string, string> cells, params string[] keys)
-    {
-        return keys.Any(key => Cell(cells, key).Length > 0);
-    }
-
-    private static string Cell(IReadOnlyDictionary<string, string> cells, string key)
-    {
-        return cells.TryGetValue(key, out var value) ? TextCleaner.Clean(value) : string.Empty;
-    }
-
-    private static IReadOnlyDictionary<string, string> RawDict(IReadOnlyDictionary<string, string> cells)
-    {
-        return cells
-            .Select(pair => (pair.Key, Value: TextCleaner.Clean(pair.Value)))
-            .Where(pair => pair.Value.Length > 0)
-            .ToDictionary(pair => pair.Key, pair => pair.Value);
-    }
 
     [GeneratedRegex(@"^[A-Z0-9-]+$")]
     private static partial Regex ProductCodePattern();

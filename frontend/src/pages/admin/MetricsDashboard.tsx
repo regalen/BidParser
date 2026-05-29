@@ -75,7 +75,7 @@ export function MetricsDashboard() {
       <main className="mx-auto w-full max-w-6xl flex-1 px-8 py-8">
         <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Utilisation Dashboard</h2>
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Utilisation Dashboard</h1>
             <p className="mt-1 text-sm text-slate-500">Track parsing activity and success rates</p>
           </div>
 

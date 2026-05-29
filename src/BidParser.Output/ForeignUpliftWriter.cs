@@ -6,8 +6,6 @@ namespace BidParser.Output;
 
 public static class ForeignUpliftWriter
 {
-    public const string EndLoopWarning = "DO NOT DELETE THIS LINE. Indicate * on column B to mark the end loop. Add / remove lines above as necessary.";
-
     public static string WriteForeignUplift(
         IEnumerable<LineItem> lineItems,
         string outputPath,
@@ -20,11 +18,7 @@ public static class ForeignUpliftWriter
         using var workbook = new XLWorkbook();
         var sheet = workbook.AddWorksheet(CrmTemplates.ForeignUplift);
 
-        sheet.Cell(1, 12).Value = "(Optional for Software and/or Services)";
-        for (var index = 0; index < TemplateLayout.Headers.Length; index++)
-        {
-            sheet.Cell(2, index + 1).Value = TemplateLayout.Headers[index];
-        }
+        TemplateLayout.WriteHeaders(sheet);
 
         var termAsComment = parserSlug is "nutanix_software_only_pdf" or "nutanix_software_only_xlsx";
 
@@ -41,7 +35,7 @@ public static class ForeignUpliftWriter
             }
 
             sheet.Cell(rowNumber, 6).Value = item.Qty;
-            SetNumber(sheet.Cell(rowNumber, 11), margin);
+            sheet.Cell(rowNumber, 11).Value = margin;
             if (item.Term is >= 1)
             {
                 if (termAsComment)
@@ -70,34 +64,19 @@ public static class ForeignUpliftWriter
             }
 
             sheet.Cell(rowNumber, 19).Value = currency;
-            SetNumber(sheet.Cell(rowNumber, 20), NonZeroPrice(item.Cost));
-            SetNumber(sheet.Cell(rowNumber, 21), NonZeroPrice(item.Msrp ?? 0m));
-            SetNumber(sheet.Cell(rowNumber, 22), fxRate);
+            sheet.Cell(rowNumber, 20).Value = TemplateLayout.NonZeroPrice(item.Cost);
+            sheet.Cell(rowNumber, 21).Value = TemplateLayout.NonZeroPrice(item.Msrp ?? 0m);
+            sheet.Cell(rowNumber, 22).Value = fxRate;
 
             rowNumber++;
             itemIndex++;
         }
 
         sheet.Cell(rowNumber, 2).Value = "*";
-        sheet.Cell(rowNumber, 4).Value = EndLoopWarning;
+        sheet.Cell(rowNumber, 4).Value = TemplateLayout.EndLoopWarning;
 
-        var directory = Path.GetDirectoryName(outputPath);
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        workbook.SaveAs(outputPath);
-        return outputPath;
+        return TemplateLayout.Save(workbook, outputPath);
     }
-
-    private static void SetNumber(IXLCell cell, decimal value)
-    {
-        cell.Value = value;
-    }
-
-    // Downstream uplift app treats literal 0 as an invalid price; the sentinel rounds back to 0 on import.
-    private static decimal NonZeroPrice(decimal value) => value == 0m ? TemplateLayout.ZeroPriceSentinel : value;
 
     private static void SetDate(IXLCell cell, DateOnly value)
     {

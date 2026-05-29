@@ -144,6 +144,24 @@ public static partial class PdfTableHelpers
         return values.ToDictionary(pair => pair.Key, pair => pair.Value ?? string.Empty);
     }
 
+    public static IReadOnlyDictionary<string, string> RawDict(IReadOnlyDictionary<string, string> cells)
+    {
+        return cells
+            .Select(pair => (pair.Key, Value: TextCleaner.Clean(pair.Value)))
+            .Where(pair => pair.Value.Length > 0)
+            .ToDictionary(pair => pair.Key, pair => pair.Value);
+    }
+
+    public static string Cell(IReadOnlyDictionary<string, string> cells, string key)
+    {
+        return cells.TryGetValue(key, out var value) ? TextCleaner.Clean(value) : string.Empty;
+    }
+
+    public static bool HasAny(IReadOnlyDictionary<string, string> cells, params string[] keys)
+    {
+        return keys.Any(key => Cell(cells, key).Length > 0);
+    }
+
     public static IReadOnlyDictionary<string, (double Left, double Right)> ColumnRanges(
         IReadOnlyList<(string Name, double X0)> headers,
         double pageWidth)

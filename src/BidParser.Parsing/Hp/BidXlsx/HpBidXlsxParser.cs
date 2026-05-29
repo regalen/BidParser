@@ -112,7 +112,7 @@ public sealed class HpBidXlsxParser : IParser
                 Qty = qty,
                 MinQty = minQty,
                 LineSequence = lineSequence,
-                Raw = RawDict(sheet, row, headerMap)
+                Raw = WorkbookReader.BuildRawDict(sheet, row, headerMap)
             });
         }
 
@@ -167,14 +167,4 @@ public sealed class HpBidXlsxParser : IParser
         return DecimalCleaner.ParseOptionalInt(Text(sheet, row, headerMap, label)) ?? 0;
     }
 
-    private static IReadOnlyDictionary<string, string> RawDict(
-        ClosedXML.Excel.IXLWorksheet sheet,
-        int row,
-        HeaderMap headerMap)
-    {
-        return headerMap.Columns
-            .Select(pair => (pair.Key, Value: WorkbookReader.CellText(sheet.Cell(row, pair.Value))))
-            .Where(pair => pair.Value.Length > 0)
-            .ToDictionary(pair => pair.Key, pair => pair.Value);
-    }
 }

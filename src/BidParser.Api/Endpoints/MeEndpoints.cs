@@ -31,7 +31,7 @@ public static class MeEndpoints
         HttpContext context,
         HttpRequest request,
         AppDbContext db,
-        ILoggerFactory loggerFactory,
+        ILogger<Program> logger,
         CancellationToken ct)
     {
         var body = await EndpointHelpers.ReadJsonBodyAsync<SettingsUpdateRequest>(request, ct);
@@ -85,7 +85,7 @@ public static class MeEndpoints
         }
 
         await db.SaveChangesAsync(ct);
-        loggerFactory.CreateLogger(nameof(MeEndpoints)).LogInformation(
+        logger.LogInformation(
             "Settings update user={UserId} vendor_set={VendorSet} fx_set={FxSet} margin_set={MarginSet} im_percent_set={ImPercentSet}",
             user.Id,
             body.Value.DefaultVendor is not null,

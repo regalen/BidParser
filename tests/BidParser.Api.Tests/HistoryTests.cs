@@ -121,10 +121,10 @@ public sealed class HistoryTests
         page2.GetProperty("rows").EnumerateArray().Should().HaveCount(1);
     }
 
-    // ── relative-when formatting ──────────────────────────────────────────────
+    // ── when field ───────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task HistoryRelativeWhenFormatsAllBranches()
+    public async Task HistoryWhenFieldIsIsoTimestamp()
     {
         using var fixture = await ApiTestFixture.CreateAsync();
         using var client = fixture.Factory.CreateClient();
@@ -134,53 +134,28 @@ public sealed class HistoryTests
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var admin = await db.Users.FirstAsync();
 
-        var cases = new (double SecondsAgo, string Expected)[]
+        db.ParseJobs.Add(new ParseJob
         {
-            (30, "just now"),
-            (300, "5m ago"),
-            (3 * 3600, "3h ago"),
-            (30 * 3600, "Yesterday"),
-            (3 * 24 * 3600, "3 days ago"),
-            (14 * 24 * 3600, DateTime.UtcNow.AddSeconds(-14 * 24 * 3600).ToString("dd/MM/yyyy"))
-        };
+            UserId = admin.Id,
+            Vendor = "Nutanix",
+            ParserSlug = "nutanix_software_only_pdf",
+            CrmTemplate = "Foreign Uplift",
+            SourceFilename = "when_test.pdf",
+            SourcePath = "/fake/source.pdf",
+            OutputPath = "/fake/output.xlsx",
+            FxRate = 1m,
+            Margin = 5m,
+            ComputedTotal = 100m,
+            TotalsMatch = true
+        });
+        await db.SaveChangesAsync();
 
-        var jobIds = new List<int>();
-        foreach (var (secondsAgo, _) in cases)
-        {
-            var job = new ParseJob
-            {
-                UserId = admin.Id,
-                Vendor = "Nutanix",
-                ParserSlug = "nutanix_software_only_pdf",
-                CrmTemplate = "Foreign Uplift",
-                SourceFilename = $"when_test_{secondsAgo}.pdf",
-                SourcePath = "/fake/source.pdf",
-                OutputPath = "/fake/output.xlsx",
-                FxRate = 1m,
-                Margin = 5m,
-                ComputedTotal = 100m,
-                TotalsMatch = true
-            };
-            db.ParseJobs.Add(job);
-            await db.SaveChangesAsync();
+        var response = await client.GetFromJsonAsync<JsonElement>("/api/history?limit=1");
+        var when = response.GetProperty("rows").EnumerateArray().First().GetProperty("when").GetString()!;
 
-            var createdAt = DateTime.UtcNow.AddSeconds(-secondsAgo);
-            await db.Database.ExecuteSqlRawAsync(
-                "UPDATE parse_jobs SET created_at = {0} WHERE id = {1}",
-                createdAt.ToString("yyyy-MM-dd HH:mm:ss.fffffff"),
-                job.Id);
-
-            jobIds.Add(job.Id);
-        }
-
-        var response = await client.GetFromJsonAsync<JsonElement>("/api/history?limit=100");
-        var rows = response.GetProperty("rows").EnumerateArray()
-            .ToDictionary(r => r.GetProperty("id").GetInt32());
-
-        foreach (var (id, (_, expected)) in jobIds.Zip(cases))
-        {
-            rows[id].GetProperty("when").GetString().Should().Be(expected, $"job id={id} ({expected})");
-        }
+        DateTime.TryParse(when, null, System.Globalization.DateTimeStyles.RoundtripKind, out var parsed)
+            .Should().BeTrue($"'when' should be a parseable ISO timestamp, got: {when}");
+        parsed.Kind.Should().Be(DateTimeKind.Utc);
     }
 
     // ── downloads ─────────────────────────────────────────────────────────────

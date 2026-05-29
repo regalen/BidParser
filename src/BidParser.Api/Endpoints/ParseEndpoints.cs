@@ -28,10 +28,9 @@ public static class ParseEndpoints
         AppDbContext db,
         ParseService parseService,
         AppOptions appOptions,
-        ILoggerFactory loggerFactory,
+        ILogger<Program> logger,
         CancellationToken ct)
     {
-        var logger = loggerFactory.CreateLogger(nameof(ParseEndpoints));
         IFormCollection form;
         try
         {

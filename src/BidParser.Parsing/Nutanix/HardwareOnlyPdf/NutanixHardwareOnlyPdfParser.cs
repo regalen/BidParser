@@ -34,7 +34,7 @@ public sealed class NutanixHardwareOnlyPdfParser : IParser
             // when Quote D spans multiple pages.
             if (IsPageFooterRow(cells)) continue;
 
-            var productCode = Cell(cells, "Product Code");
+            var productCode = PdfTableHelpers.Cell(cells,"Product Code");
             // A row is a wrapped-code continuation if it has a Product Code but no Quantity
             // and no Total Net Price.  Rows that carry only wrapped Net Unit Price (e.g.
             // "USD 169,690.39" on a continuation line when the price didn't fit on the
@@ -42,7 +42,7 @@ public sealed class NutanixHardwareOnlyPdfParser : IParser
             // column — only Quantity or Total Net Price reliably signals a new standalone item.
             var isWrappedCode = productCode.Length > 0
                 && current is not null
-                && !HasAny(cells, "Quantity", "Total Net Price");
+                && !PdfTableHelpers.HasAny(cells, "Quantity", "Total Net Price");
 
             if (productCode.Length > 0 && !isWrappedCode)
             {
@@ -53,7 +53,7 @@ public sealed class NutanixHardwareOnlyPdfParser : IParser
 
                 current = new CurrentItem(
                     [productCode],
-                    [Cell(cells, "Product")],
+                    [PdfTableHelpers.Cell(cells,"Product")],
                     cells);
             }
             else if (current is not null && cells.Values.Any(value => value.Length > 0))
@@ -63,7 +63,7 @@ public sealed class NutanixHardwareOnlyPdfParser : IParser
                     current.CodeParts.Add(productCode);
                 }
 
-                var product = Cell(cells, "Product");
+                var product = PdfTableHelpers.Cell(cells,"Product");
                 if (product.Length > 0)
                 {
                     current.DescriptionParts.Add(product);
@@ -216,11 +216,11 @@ public sealed class NutanixHardwareOnlyPdfParser : IParser
         {
             Vpn = JoinProductCode(item.CodeParts),
             Description = TextCleaner.JoinSpaced(item.DescriptionParts),
-            Term = DecimalCleaner.ParseOptionalInt(Cell(cells, "Term (Months)")),
-            Msrp = DecimalCleaner.Parse(Cell(cells, "List Unit Price"), defaultZero: true),
-            Cost = DecimalCleaner.Parse(Cell(cells, "Net Unit Price"), defaultZero: true),
-            Qty = DecimalCleaner.ParseInt(Cell(cells, "Quantity")),
-            Raw = RawDict(cells)
+            Term = DecimalCleaner.ParseOptionalInt(PdfTableHelpers.Cell(cells,"Term (Months)")),
+            Msrp = DecimalCleaner.Parse(PdfTableHelpers.Cell(cells,"List Unit Price"), defaultZero: true),
+            Cost = DecimalCleaner.Parse(PdfTableHelpers.Cell(cells,"Net Unit Price"), defaultZero: true),
+            Qty = DecimalCleaner.ParseInt(PdfTableHelpers.Cell(cells,"Quantity")),
+            Raw = PdfTableHelpers.RawDict(cells)
         };
     }
 
@@ -282,24 +282,6 @@ public sealed class NutanixHardwareOnlyPdfParser : IParser
     private static bool IsAllDigits(string token)
     {
         return token.Length > 0 && token.All(char.IsDigit);
-    }
-
-    private static bool HasAny(IReadOnlyDictionary<string, string> cells, params string[] keys)
-    {
-        return keys.Any(key => Cell(cells, key).Length > 0);
-    }
-
-    private static string Cell(IReadOnlyDictionary<string, string> cells, string key)
-    {
-        return cells.TryGetValue(key, out var value) ? TextCleaner.Clean(value) : string.Empty;
-    }
-
-    private static IReadOnlyDictionary<string, string> RawDict(IReadOnlyDictionary<string, string> cells)
-    {
-        return cells
-            .Select(pair => (pair.Key, Value: TextCleaner.Clean(pair.Value)))
-            .Where(pair => pair.Value.Length > 0)
-            .ToDictionary(pair => pair.Key, pair => pair.Value);
     }
 
     private sealed record CurrentItem(

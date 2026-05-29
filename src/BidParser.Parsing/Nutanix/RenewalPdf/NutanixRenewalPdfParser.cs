@@ -29,8 +29,8 @@ public sealed class NutanixRenewalPdfParser : IParser
         foreach (var row in rows)
         {
             var cells = row.Cells.ToDictionary(pair => pair.Key, pair => TextCleaner.Clean(pair.Value));
-            var number = Cell(cells, "No");
-            var productCode = Cell(cells, "Product Code");
+            var number = PdfTableHelpers.Cell(cells,"No");
+            var productCode = PdfTableHelpers.Cell(cells,"Product Code");
 
             if (int.TryParse(number, out var parsedNumber) && parsedNumber > 0 && productCode.Length > 0)
             {
@@ -40,16 +40,16 @@ public sealed class NutanixRenewalPdfParser : IParser
                 }
 
                 current = new CurrentItem(
-                    Parts(Cell(cells, "Platform")),
-                    Parts(Cell(cells, "Product Code")),
-                    Parts(Cell(cells, "Serial Number")),
+                    Parts(PdfTableHelpers.Cell(cells,"Platform")),
+                    Parts(PdfTableHelpers.Cell(cells,"Product Code")),
+                    Parts(PdfTableHelpers.Cell(cells,"Serial Number")),
                     cells);
             }
             else if (current is not null && cells.Values.Any(value => value.Length > 0))
             {
-                AddIfPresent(current.PlatformParts, Cell(cells, "Platform"));
-                AddIfPresent(current.ProductCodeParts, Cell(cells, "Product Code"));
-                AddIfPresent(current.SerialParts, Cell(cells, "Serial Number"));
+                AddIfPresent(current.PlatformParts, PdfTableHelpers.Cell(cells,"Platform"));
+                AddIfPresent(current.ProductCodeParts, PdfTableHelpers.Cell(cells,"Product Code"));
+                AddIfPresent(current.SerialParts, PdfTableHelpers.Cell(cells,"Serial Number"));
 
                 foreach (var (key, value) in cells)
                 {
@@ -167,26 +167,13 @@ public sealed class NutanixRenewalPdfParser : IParser
             Vpn = TextCleaner.JoinUnspaced(item.ProductCodeParts),
             Description = platform.Length > 0 ? $"Platform: {platform}" : null,
             SerialNumber = TextCleaner.JoinUnspaced(item.SerialParts),
-            StartDate = DateCleaner.ParseMmDdYyyy(Cell(cells, "Start Date")),
-            EndDate = DateCleaner.ParseMmDdYyyy(Cell(cells, "End Date")),
-            Msrp = DecimalCleaner.Parse(Cell(cells, "Term Adjusted List Unit Price")),
-            Cost = DecimalCleaner.Parse(Cell(cells, "Net Unit Price")),
-            Qty = DecimalCleaner.ParseInt(Cell(cells, "Qty")),
-            Raw = RawDict(cells)
+            StartDate = DateCleaner.ParseMmDdYyyy(PdfTableHelpers.Cell(cells,"Start Date")),
+            EndDate = DateCleaner.ParseMmDdYyyy(PdfTableHelpers.Cell(cells,"End Date")),
+            Msrp = DecimalCleaner.Parse(PdfTableHelpers.Cell(cells,"Term Adjusted List Unit Price")),
+            Cost = DecimalCleaner.Parse(PdfTableHelpers.Cell(cells,"Net Unit Price")),
+            Qty = DecimalCleaner.ParseInt(PdfTableHelpers.Cell(cells,"Qty")),
+            Raw = PdfTableHelpers.RawDict(cells)
         };
-    }
-
-    private static string Cell(IReadOnlyDictionary<string, string> cells, string key)
-    {
-        return cells.TryGetValue(key, out var value) ? TextCleaner.Clean(value) : string.Empty;
-    }
-
-    private static IReadOnlyDictionary<string, string> RawDict(IReadOnlyDictionary<string, string> cells)
-    {
-        return cells
-            .Select(pair => (pair.Key, Value: TextCleaner.Clean(pair.Value)))
-            .Where(pair => pair.Value.Length > 0)
-            .ToDictionary(pair => pair.Key, pair => pair.Value);
     }
 
     private static List<string> Parts(string value) =>

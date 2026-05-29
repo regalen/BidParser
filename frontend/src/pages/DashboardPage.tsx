@@ -96,7 +96,8 @@ export function DashboardPage() {
     if (!vendor || !parserSlug || !file || uploadState !== 'idle') return false;
     // Multi-template HP (HP Bid XLSX): Uplift needs margin; No Calculation needs neither
     if (selectedParser && selectedParser.available_templates.length > 1) {
-      return selectedTemplate !== CRM_TEMPLATE_UPLIFT || Boolean(margin);
+      const requiresMargin = selectedTemplate === CRM_TEMPLATE_UPLIFT;
+      return !requiresMargin || Boolean(margin);
     }
     // Single-template HP (HP OneConfig XLSX): % Off RRP with Uplift needs both margin and im_percent
     if (selectedTemplate === CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT) {
@@ -106,15 +107,15 @@ export function DashboardPage() {
     return Boolean(fxRate && margin);
   }, [vendor, parserSlug, fxRate, margin, imPercent, selectedTemplate, file, uploadState, selectedParser]);
 
-  function pushToast(toast: Omit<ToastMessage, 'id'>) {
+  const pushToast = useCallback((toast: Omit<ToastMessage, 'id'>) => {
     const id = Date.now();
     setToasts((items) => [...items, { ...toast, id }]);
     window.setTimeout(() => setToasts((items) => items.filter((item) => item.id !== id)), 6000);
-  }
+  }, []);
 
-  function handleFile(next: File) {
-    if (!next.name.match(/\.(pdf|xlsx)$/i)) {
-      setDropError('Only PDF and XLSX files are supported.');
+  const handleFile = useCallback((next: File) => {
+    if (!next.name.match(/\.(pdf|xlsx|xls)$/i)) {
+      setDropError('Only PDF, XLSX, and XLS files are supported.');
       setFile(null);
       return;
     }
@@ -125,7 +126,7 @@ export function DashboardPage() {
     }
     setDropError(null);
     setFile(next);
-  }
+  }, []);
 
   async function submit() {
     if (!file) return;

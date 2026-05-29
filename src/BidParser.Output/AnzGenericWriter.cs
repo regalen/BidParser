@@ -25,11 +25,7 @@ public static class AnzGenericWriter
         using var workbook = new XLWorkbook();
         var sheet = workbook.AddWorksheet(sheetName);
 
-        sheet.Cell(1, 12).Value = "(Optional for Software and/or Services)";
-        for (var index = 0; index < TemplateLayout.Headers.Length; index++)
-        {
-            sheet.Cell(2, index + 1).Value = TemplateLayout.Headers[index];
-        }
+        TemplateLayout.WriteHeaders(sheet);
 
         var rowNumber = 3;
         var fallbackIndex = 1; // used only when LineSequence is null
@@ -58,7 +54,7 @@ public static class AnzGenericWriter
 
             // Col I — Cost (0 → sentinel; Bundle Detail components carry no price and the
             // downstream import rejects a literal 0, rounding the sentinel back to 0).
-            sheet.Cell(rowNumber, 9).Value = NonZeroPrice(item.Cost);
+            sheet.Cell(rowNumber, 9).Value = TemplateLayout.NonZeroPrice(item.Cost);
 
             // Col K — Margin (Uplift template only)
             if (includeMargin)
@@ -78,18 +74,8 @@ public static class AnzGenericWriter
 
         // End-loop sentinel row
         sheet.Cell(rowNumber, 2).Value = "*";
-        sheet.Cell(rowNumber, 4).Value = ForeignUpliftWriter.EndLoopWarning;
+        sheet.Cell(rowNumber, 4).Value = TemplateLayout.EndLoopWarning;
 
-        var directory = Path.GetDirectoryName(outputPath);
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        workbook.SaveAs(outputPath);
-        return outputPath;
+        return TemplateLayout.Save(workbook, outputPath);
     }
-
-    // Downstream import treats a literal 0 as an invalid price; the sentinel rounds back to 0 on import.
-    private static decimal NonZeroPrice(decimal value) => value == 0m ? TemplateLayout.ZeroPriceSentinel : value;
 }

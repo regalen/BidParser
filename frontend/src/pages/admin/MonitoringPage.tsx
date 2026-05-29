@@ -1,4 +1,4 @@
-import { Activity } from 'lucide-react';
+import { Activity, AlertCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
@@ -15,6 +15,7 @@ export function MonitoringPage() {
   const [failures, setFailures] = useState<FailedParseJob[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const pageParam = Number(searchParams.get('page') ?? '1');
   const page = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
@@ -23,12 +24,16 @@ export function MonitoringPage() {
   useEffect(() => {
     let active = true;
     setLoading(true);
+    setError(null);
     api
       .monitoringFailures(PAGE_SIZE, offset)
       .then((res) => {
         if (!active) return;
         setFailures(res.items);
         setTotal(res.total);
+      })
+      .catch((err: unknown) => {
+        if (active) setError(err instanceof Error ? err.message : 'Failed to load failures.');
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -65,6 +70,13 @@ export function MonitoringPage() {
           </div>
         </div>
 
+        {error && (
+          <div className="mt-6 flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-xs font-bold text-red-600">
+            <AlertCircle className="h-4 w-4" />
+            {error}
+          </div>
+        )}
+
         <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             {failures.length === 0 ? (
@@ -72,7 +84,7 @@ export function MonitoringPage() {
                 <p className="text-sm font-medium text-slate-700">
                   {loading ? 'Loading failures…' : 'No failed parses recorded.'}
                 </p>
-                {!loading && (
+                {!loading && !error && (
                   <p className="text-xs text-slate-500">
                     Rows are purged alongside the source file at the retention cutoff.
                   </p>

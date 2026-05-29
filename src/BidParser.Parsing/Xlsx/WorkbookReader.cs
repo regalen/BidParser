@@ -86,7 +86,7 @@ public static class WorkbookReader
 
     public static decimal ParseTotalText(object? value)
     {
-        var text = CellTextValue(value);
+        var text = TextCleaner.Clean(value);
         if (text.StartsWith("TOTAL ", StringComparison.Ordinal))
         {
             text = text["TOTAL ".Length..];
@@ -95,13 +95,30 @@ public static class WorkbookReader
         return DecimalCleaner.Parse(text);
     }
 
+    public static string FindTotalTextInRow(IXLWorksheet sheet, int row, int columnCount)
+    {
+        for (var column = 1; column <= columnCount; column++)
+        {
+            var text = CellText(sheet.Cell(row, column));
+            if (text.StartsWith("TOTAL ", StringComparison.Ordinal))
+            {
+                return text;
+            }
+        }
+
+        return string.Empty;
+    }
+
+    public static IReadOnlyDictionary<string, string> BuildRawDict(IXLWorksheet sheet, int row, HeaderMap headerMap)
+    {
+        return headerMap.Columns
+            .Select(pair => (pair.Key, Value: CellText(sheet.Cell(row, pair.Value))))
+            .Where(pair => pair.Value.Length > 0)
+            .ToDictionary(pair => pair.Key, pair => pair.Value);
+    }
+
     private static IEnumerable<IXLCell> UsedCells(IXLWorksheet sheet)
     {
         return sheet.RangeUsed()?.CellsUsed() ?? Enumerable.Empty<IXLCell>();
-    }
-
-    private static string CellTextValue(object? value)
-    {
-        return TextCleaner.Clean(value);
     }
 }

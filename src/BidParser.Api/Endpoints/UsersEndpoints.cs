@@ -30,7 +30,7 @@ public static class UsersEndpoints
         HttpContext context,
         HttpRequest request,
         AppDbContext db,
-        ILoggerFactory loggerFactory,
+        ILogger<Program> logger,
         CancellationToken ct)
     {
         var body = await EndpointHelpers.ReadJsonBodyAsync<UserCreateRequest>(request, ct);
@@ -80,7 +80,7 @@ public static class UsersEndpoints
             throw;
         }
 
-        loggerFactory.CreateLogger(nameof(UsersEndpoints)).LogInformation(
+        logger.LogInformation(
             "Admin {Action} user {TargetUserId} by {AdminUserId}",
             "Create",
             user.Id,
@@ -93,7 +93,7 @@ public static class UsersEndpoints
         HttpContext context,
         HttpRequest request,
         AppDbContext db,
-        ILoggerFactory loggerFactory,
+        ILogger<Program> logger,
         CancellationToken ct)
     {
         var body = await EndpointHelpers.ReadJsonBodyAsync<UserUpdateRequest>(request, ct);
@@ -164,7 +164,7 @@ public static class UsersEndpoints
 
         var admin = await EndpointHelpers.CurrentUserAsync(context, db, ct);
         await db.SaveChangesAsync(ct);
-        loggerFactory.CreateLogger(nameof(UsersEndpoints)).LogInformation(
+        logger.LogInformation(
             "Admin {Action} user {TargetUserId} by {AdminUserId}",
             "Update",
             user.Id,
@@ -176,7 +176,7 @@ public static class UsersEndpoints
         int userId,
         HttpContext context,
         AppDbContext db,
-        ILoggerFactory loggerFactory,
+        ILogger<Program> logger,
         CancellationToken ct)
     {
         var admin = await EndpointHelpers.CurrentUserAsync(context, db, ct);
@@ -198,7 +198,7 @@ public static class UsersEndpoints
 
         db.Users.Remove(user);
         await db.SaveChangesAsync(ct);
-        loggerFactory.CreateLogger(nameof(UsersEndpoints)).LogInformation(
+        logger.LogInformation(
             "Admin {Action} user {TargetUserId} by {AdminUserId}",
             "Delete",
             userId,

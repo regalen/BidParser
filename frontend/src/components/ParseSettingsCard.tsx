@@ -99,9 +99,10 @@ export function ParseSettingsCard({
               <CrmTemplateCallout template={selectedParser.crm_template} />
             </>
           ) : (
-            // Single-template non-HP (Nutanix, Lenovo): Nutanix settings block + static callout
+            // Single-template non-HP: vendor settings block + static callout
             <>
               <NutanixSettingsBlock
+                vendorLabel={selectedParser.vendor}
                 fxRate={fxRate}
                 margin={margin}
                 onFxRate={onFxRate}

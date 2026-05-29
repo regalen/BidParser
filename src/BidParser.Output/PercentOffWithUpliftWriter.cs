@@ -15,11 +15,7 @@ public static class PercentOffWithUpliftWriter
         using var workbook = new XLWorkbook();
         var sheet = workbook.AddWorksheet("% Off RRP with Uplift");
 
-        sheet.Cell(1, 12).Value = "(Optional for Software and/or Services)";
-        for (var index = 0; index < TemplateLayout.Headers.Length; index++)
-        {
-            sheet.Cell(2, index + 1).Value = TemplateLayout.Headers[index];
-        }
+        TemplateLayout.WriteHeaders(sheet);
 
         var rowNumber = 3;
         foreach (var item in items)
@@ -44,7 +40,7 @@ public static class PercentOffWithUpliftWriter
 
             // Col H — MSRP: parent carries the real price; children use the zero-price sentinel.
             // (Col I Cost is intentionally blank for this template.)
-            sheet.Cell(rowNumber, 8).Value = NonZeroPrice(item.Msrp ?? 0m);
+            sheet.Cell(rowNumber, 8).Value = TemplateLayout.NonZeroPrice(item.Msrp ?? 0m);
 
             // Col K — Margin (always written for this template)
             sheet.Cell(rowNumber, 11).Value = margin;
@@ -57,18 +53,8 @@ public static class PercentOffWithUpliftWriter
 
         // End-loop sentinel row
         sheet.Cell(rowNumber, 2).Value = "*";
-        sheet.Cell(rowNumber, 4).Value = ForeignUpliftWriter.EndLoopWarning;
+        sheet.Cell(rowNumber, 4).Value = TemplateLayout.EndLoopWarning;
 
-        var directory = Path.GetDirectoryName(outputPath);
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        workbook.SaveAs(outputPath);
-        return outputPath;
+        return TemplateLayout.Save(workbook, outputPath);
     }
-
-    // Downstream import rejects a literal 0; the sentinel rounds back to 0 on import.
-    private static decimal NonZeroPrice(decimal value) => value == 0m ? TemplateLayout.ZeroPriceSentinel : value;
 }

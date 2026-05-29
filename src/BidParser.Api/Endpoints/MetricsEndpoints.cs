@@ -29,6 +29,11 @@ public static class MetricsEndpoints
         IParserRegistry parserRegistry,
         CancellationToken cancellationToken)
     {
+        if (!string.IsNullOrEmpty(to) && !DateTime.TryParseExact(to, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
+            return Results.BadRequest(new ApiError("Invalid 'to' date — expected yyyy-MM-dd."));
+        if (!string.IsNullOrEmpty(from) && !DateTime.TryParseExact(from, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
+            return Results.BadRequest(new ApiError("Invalid 'from' date — expected yyyy-MM-dd."));
+
         var toDate = string.IsNullOrEmpty(to) ? DateTime.Today : DateTime.ParseExact(to, "yyyy-MM-dd", CultureInfo.InvariantCulture);
         var fromDate = string.IsNullOrEmpty(from) ? toDate.AddDays(-30) : DateTime.ParseExact(from, "yyyy-MM-dd", CultureInfo.InvariantCulture);
 
@@ -118,6 +123,11 @@ public static class MetricsEndpoints
         IParserRegistry parserRegistry,
         CancellationToken cancellationToken)
     {
+        if (!string.IsNullOrEmpty(to) && !DateTime.TryParseExact(to, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
+            return Results.BadRequest(new ApiError("Invalid 'to' date — expected yyyy-MM-dd."));
+        if (!string.IsNullOrEmpty(from) && !DateTime.TryParseExact(from, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
+            return Results.BadRequest(new ApiError("Invalid 'from' date — expected yyyy-MM-dd."));
+
         var toDate = string.IsNullOrEmpty(to) ? DateTime.Today : DateTime.ParseExact(to, "yyyy-MM-dd", CultureInfo.InvariantCulture);
         var fromDate = string.IsNullOrEmpty(from) ? toDate.AddDays(-30) : DateTime.ParseExact(from, "yyyy-MM-dd", CultureInfo.InvariantCulture);
 
@@ -191,9 +201,5 @@ public static class MetricsEndpoints
         return Results.File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"utilisation_{fromStr}_{toStr}.xlsx");
     }
 
-    public class TimeSeriesRow
-    {
-        public required string Date { get; set; }
-        public int Count { get; set; }
-    }
+    private sealed record TimeSeriesRow(string Date, int Count);
 }
