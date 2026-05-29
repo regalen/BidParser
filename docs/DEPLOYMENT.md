@@ -8,8 +8,9 @@ BidParser ships as a single Docker container that serves the ASP.NET Core API an
 # 1. Download the compose file
 curl -O https://raw.githubusercontent.com/regalen/bidparser/main/docker-compose.yml
 
-# 2. Create .env with a session secret and trusted proxy IP
+# 2. Create .env — SESSION_SECRET, SQL Server password, and proxy IP are required
 echo "SESSION_SECRET=$(openssl rand -hex 32)" > .env
+echo "MSSQL_SA_PASSWORD=Change_This_Strong_P@ssw0rd" >> .env
 echo "FORWARDED_ALLOW_IPS=127.0.0.1" >> .env
 
 # 3. (Optional) Override defaults
@@ -46,26 +47,31 @@ All configuration is via environment variables. Set them in a `.env` file next t
 | `RETENTION_DAYS` | `90` | Uploaded files and parse history older than this are deleted daily. |
 | `RATE_LIMIT_AUTH_PER_MIN` | `5` | Max login/change-password attempts per minute per IP and per username. |
 | `MAX_UPLOAD_MB` | `10` | Maximum upload file size. |
-| `DATABASE_URL` | `sqlite:///data/db.sqlite` | SQLite connection URL. Relative paths resolve inside the container. |
+| `DB_CONNECTION_STRING` | _(assembled by compose)_ | SQL Server connection string. Set automatically by `docker-compose.yml` from `MSSQL_SA_PASSWORD` and `MSSQL_DB`. Override only if pointing at an external SQL Server instance. |
+| `MSSQL_SA_PASSWORD` | _(required)_ | SA password for the bundled SQL Server container. Must meet SQL Server complexity requirements (≥8 chars, upper + lower + digit + symbol). |
+| `MSSQL_DB` | `bidparser` | Database name created inside the SQL Server container. |
 | `DATA_DIR` | _(named volume)_ | Set to a host path (e.g. `/opt/bidparser/data`) to use a bind mount instead of a Docker named volume. |
 | `FORWARDED_ALLOW_IPS` | _(required)_ | Comma-separated IPs trusted for `X-Forwarded-*` headers. Set this to the reverse proxy IP address as seen by the app container. |
 
 ## Data Volume
 
-All persistent state lives under `/data` inside the container:
+Persistent state is split across two volumes:
+
+**App container (`/data`)** — named volume `bidparser-data`, or a `DATA_DIR` bind mount:
 
 ```
 /data
-├── db.sqlite                         # SQLite database (EF Core managed)
 ├── dp-keys/                          # ASP.NET Core Data Protection keyring
 └── files/
     ├── originals/<uuid>.<ext>        # Uploaded source files
     └── outputs/<uuid>.xlsx           # Generated *_parsed.xlsx files
 ```
 
+**SQL Server container (`/var/opt/mssql`)** — named volume `bidparser-mssql-data`. Contains the SQL Server database files. Managed entirely by SQL Server; do not bind-mount a path shared with the app container.
+
 **`/data/dp-keys` must persist across container restarts.** This directory holds the Data Protection keyring — the cryptographic material used to protect session cookies. If it is deleted or not mounted, the keyring regenerates on next start and all existing sessions become invalid (everyone is logged out).
 
-By default `docker-compose.yml` uses a Docker named volume (`bidparser-data`), which Docker creates automatically if it does not exist. To use a bind mount instead, set `DATA_DIR` in your `.env`:
+By default `docker-compose.yml` uses Docker named volumes (`bidparser-data` and `bidparser-mssql-data`), which Docker creates automatically if they do not exist. To use a bind mount for app files, set `DATA_DIR` in your `.env`:
 
 ```sh
 echo "DATA_DIR=/opt/bidparser/data" >> .env
@@ -141,9 +147,9 @@ New users are created with the password `changeme` and are forced to change it o
 
 ## CI/CD (GitHub Actions)
 
-The workflow at `.github/workflows/build.yml` builds multi-arch (`linux/amd64`, `linux/arm64`) images and pushes to ghcr.io. It triggers on:
+The workflow at `.github/workflows/build.yml` builds `linux/amd64` images and pushes to ghcr.io. It triggers on:
 
-- Push to `main` — tags `latest` + `sha-<short-sha>`
-- Push of a `v*` SemVer tag — tags the SemVer version + `latest`
+- Push to any branch — runs tests only
+- Push of a `v*` SemVer tag — runs tests, then builds and pushes the image tagged with the SemVer version (without `v` prefix) + `latest`
 
 No manual setup is required beyond the default `GITHUB_TOKEN` permissions for packages. Release tags must follow Semantic Versioning 2.0.0, for example `v0.1.0`, `v1.0.0`, or `v1.2.3`.
