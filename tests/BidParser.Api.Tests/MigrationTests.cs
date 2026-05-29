@@ -47,13 +47,13 @@ public sealed class MigrationTests
 
             // Verify CI collation on username and source_filename via INFORMATION_SCHEMA
             var usernameCollation = await db.Database.SqlQueryRaw<string>(
-                "SELECT COLLATION_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'users' AND COLUMN_NAME = 'username'")
+                "SELECT COLLATION_NAME AS Value FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'users' AND COLUMN_NAME = 'username'")
                 .SingleAsync();
             usernameCollation.Should().Be("SQL_Latin1_General_CP1_CI_AS");
 
             // Verify composite descending index on parse_jobs exists
             var indexExists = await db.Database.SqlQueryRaw<int>(
-                "SELECT COUNT(*) FROM sys.indexes WHERE name = 'ix_parse_jobs_user_id_created_at'")
+                "SELECT COUNT(*) AS Value FROM sys.indexes WHERE name = 'ix_parse_jobs_user_id_created_at'")
                 .SingleAsync();
             indexExists.Should().Be(1);
         }

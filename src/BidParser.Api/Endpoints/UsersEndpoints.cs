@@ -196,6 +196,10 @@ public static class UsersEndpoints
             return Results.Json(new ApiError("Cannot remove the last admin."), statusCode: StatusCodes.Status409Conflict);
         }
 
+        await db.ParseMetrics
+            .Where(m => m.UserId == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(m => m.UserId, (int?)null), ct);
+
         db.Users.Remove(user);
         await db.SaveChangesAsync(ct);
         logger.LogInformation(
