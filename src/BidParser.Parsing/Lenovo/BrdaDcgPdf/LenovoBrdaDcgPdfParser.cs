@@ -22,7 +22,7 @@ public sealed class LenovoBrdaDcgPdfParser : IParser
             var words = PdfWordCollector.CollectWords(path);
             var hasSec1 = FindSectionAnchor(words, ["PRODUCT", "AND", "SERVICE", "DETAILS"]) is not null;
             var hasSec2 = FindSectionAnchor(words, ["CONFIGURATION", "DETAILS"]) is not null;
-            return hasSec1 && hasSec2 ? 0.85 : 0.0;
+            return hasSec1 ? (hasSec2 ? 0.85 : 0.75) : 0.0;
         }
         catch
         {
@@ -97,7 +97,7 @@ public sealed class LenovoBrdaDcgPdfParser : IParser
                     entries.Add(current.Build());
                 }
 
-                current = new CurrentSection1Item(Section1EntryType.Parent, partNumberCell, lineNo, SafeParseQty(qtyCell), 0m);
+                current = new CurrentSection1Item(Section1EntryType.Parent, partNumberCell, lineNo, SafeParseQty(qtyCell), ParsePrice(unitPriceCell));
                 // Prepend any descriptions that arrived before this PARENT row in y-order
                 foreach (var d in bufferedDescriptions)
                     current.DescriptionParts.Add(d);
@@ -243,10 +243,10 @@ public sealed class LenovoBrdaDcgPdfParser : IParser
 
     private static Dictionary<int, List<ChildItem>> ParseSection2(IReadOnlyList<PdfWord> words)
     {
-        var anchorIdx = FindSectionAnchor(words, ["CONFIGURATION", "DETAILS"])
-            ?? throw new ParseError("detect", "Could not find the CONFIGURATION DETAILS section.", "Missing section 2 anchor");
+        var anchorIdx = FindSectionAnchor(words, ["CONFIGURATION", "DETAILS"]);
+        if (anchorIdx is null) return [];
 
-        var headerWord = FindSection2Header(words, anchorIdx);
+        var headerWord = FindSection2Header(words, anchorIdx.Value);
         var columns = BuildSection2Columns(words, headerWord);
 
         // Stop at "Please" — first word of the footer paragraph after the table

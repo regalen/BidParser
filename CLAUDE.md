@@ -18,7 +18,7 @@ format at a time** — the architecture is a pluggable `IParser` registry so a n
 format is one parser class + fixtures + one registry entry.
 
 Backend was re-platformed from Python/FastAPI to ASP.NET Core 10. All tests pass:
-`dotnet test BidParser.sln` (186: 115 parsing + 71 API integration).
+`dotnet test BidParser.sln` (196: 125 parsing + 71 API integration).
 
 ## Project layout
 
@@ -86,7 +86,7 @@ Parsers detect *source* labels (`"Net Unit Price"`, `"List Unit Price"`, …) as
 
 ## Commands
 
-- `dotnet test BidParser.sln` — full suite (186 tests).
+- `dotnet test BidParser.sln` — full suite (196 tests).
 - `dotnet run --project src/BidParser.Api` — backend dev server (`http://localhost:5000`).
 - `cd frontend && npm run dev` — Vite dev server, proxies `/api` to `http://127.0.0.1:5000` (`VITE_API_PROXY_TARGET=…` to point elsewhere).
 - `cd frontend && npm run build` — TypeScript + production frontend build.

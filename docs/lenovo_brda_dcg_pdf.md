@@ -4,7 +4,7 @@ Parser slug: `lenovo_brda_dcg_pdf`
 Vendor: `Lenovo`  
 Accepted MIME: `application/pdf`  
 Default CRM template: `No Calculation`  
-Available CRM templates: `No Calculation`
+Available CRM templates: `No Calculation`, `Uplift`
 
 ---
 
@@ -15,13 +15,19 @@ Lenovo BRDA (Business Ready Deal Architecture) DCG (Data Centre Group) quote PDF
 | File | Quote Number | Items | Notes |
 |---|---|---|---|
 | `BRDAS010260417V1.pdf` | BRDAS010260417V1 | 152 | 2 configs, 13 parents, 137 children (parent-VPN self-components deduped) |
+| `BRDAS010545504V1.pdf` | BRDAS010545504V1 | 3 | Simple variant — no CONFIGURATION DETAILS section; all rows are top-level parents with real unit prices; AUD 77,545.95 |
+| `BRDAS010546096V1.pdf` | BRDAS010546096V1 | 1 | Simple variant — single parent item; AUD 38,896.08 |
 
 ### Structure
 
-Multi-page PDF with two main table sections separated by visual headers:
+Multi-page PDF. Two variants exist:
 
-1. **PRODUCT AND SERVICE DETAILS** — section 1 header. Contains the top-level line items (CONFIG blocks, each with PARENT products listed beneath).
+**Complex variant** (with CONFIGURATION DETAILS): Two main table sections separated by visual headers.
+
+1. **PRODUCT AND SERVICE DETAILS** — section 1 header. Contains the top-level line items (CONFIG blocks, each with PARENT products listed beneath). CONFIG rows carry the real unit price; PARENT rows have `"-"` for unit price.
 2. **CONFIGURATION DETAILS** — section 2 header. Contains the per-component breakdown of each CONFIG/PARENT, grouped by a sequential line number.
+
+**Simple variant** (without CONFIGURATION DETAILS): Only the PRODUCT AND SERVICE DETAILS section is present. All numbered rows are top-level parent items, each with a real unit price (no `"-"`). No CONFIG rows. Section 2 is absent and the parser returns an empty children map.
 
 ### Section 1 — PRODUCT AND SERVICE DETAILS
 
@@ -37,8 +43,8 @@ Table columns (anchored on header words, not fixed positions):
 | Total Price | `Total` | — |
 
 **Row types:**
-- **CONFIG** — `Line Item` is blank, `Part Number` is non-empty, and `Unit Price` is a parseable number. Represents the whole config block with its aggregate price.
-- **PARENT** — `Line Item` is a positive integer. `Unit Price` is `"-"`. No cost. These are the individual products within the config.
+- **CONFIG** — `Line Item` is blank, `Part Number` is non-empty, and `Unit Price` is a parseable number. Represents the whole config block with its aggregate price. Only present in the complex variant.
+- **PARENT** — `Line Item` is a positive integer. In the complex variant, `Unit Price` is `"-"` (cost is zero — price is carried by the CONFIG). In the simple variant, `Unit Price` is a real number.
 - **Continuation** — Both `Line Item` and `Part Number` are blank, `Description` is non-empty. Appended to the current item's description.
 - **Pre-description** — A description-only row that appears *before* its PARENT in y-order (the PDF renders the description cluster ~7 pt above the VPN line). Buffered while the current item is a CONFIG and flushed when the next PARENT anchor is found.
 
@@ -76,7 +82,7 @@ Table columns:
 1. Extract all words with `PdfWordCollector.CollectWords(path)`.
 2. Search for `["PRODUCT", "AND", "SERVICE", "DETAILS"]` on the same y-band (y-tolerance 5 pt).
 3. Search for `["CONFIGURATION", "DETAILS"]` on the same y-band.
-4. Return `0.85` if both anchors are found; `0.0` otherwise.
+4. Return `0.85` if both anchors are found (complex variant), `0.75` if only section 1 is found (simple variant), `0.0` otherwise.
 
 ### Parse — Section 1
 
@@ -89,8 +95,10 @@ Table columns:
 
 ### Parse — Section 2
 
-1. `FindSectionAnchor(words, ["CONFIGURATION", "DETAILS"])` → `anchorIdx`.
-2. `FindSection2Header(words, anchorIdx)` — scan forward for word `"No"` / `"No."` with `"Components"` nearby.
+If the CONFIGURATION DETAILS anchor is not found (simple variant), immediately return an empty `children` map and skip all steps below.
+
+1. `FindSectionAnchor(words, ["CONFIGURATION", "DETAILS"])` → `anchorIdx` (null → return `[]`).
+2. `FindSection2Header(words, anchorIdx.Value)` — scan forward for word `"No"` / `"No."` with `"Components"` nearby.
 3. `BuildSection2Columns(words, headerWord)` — X1+1 boundaries for Components and Description; subtract 1.0 from No and Qty left boundaries for floating-point tolerance.
 4. `PdfTableHelpers.RowsBetween(words, headerWord.Top, headerWord.PageIndex, columns, stopToken: "Please")`.
 5. Iterate rows; track `currentParentLineNo` on group-header rows; accumulate `CurrentChildItem` instances.

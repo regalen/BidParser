@@ -266,3 +266,139 @@ public sealed class LenovoBrdaDcgPdfParserTests
         throw new DirectoryNotFoundException("Could not locate repository root.");
     }
 }
+
+/// <summary>
+/// Covers BRDA DCG PDFs that have only a PRODUCT AND SERVICE DETAILS section
+/// (no CONFIGURATION DETAILS). All extracted rows are top-level parent items.
+/// </summary>
+public sealed class LenovoBrdaDcgPdfSimpleVariantTests
+{
+    // ── Detection ────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Detect_returns_sufficient_confidence_without_configuration_details_section()
+    {
+        var root = FindRepoRoot();
+        var parser = new LenovoBrdaDcgPdfParser();
+
+        var score = parser.Detect(Path.Combine(root, "samples", "inputs", "BRDAS010545504V1.pdf"));
+
+        score.Should().BeGreaterThanOrEqualTo(0.7);
+    }
+
+    // ── Three-item quote (BRDAS010545504V1) ──────────────────────────────────
+
+    [Fact]
+    public void ThreeItemQuote_extracts_correct_quote_number()
+    {
+        ParseThreeItem().Metadata.QuoteNumber.Should().Be("BRDAS010545504V1");
+    }
+
+    [Fact]
+    public void ThreeItemQuote_produces_three_top_level_items()
+    {
+        var items = ParseThreeItem().LineItems;
+        items.Should().HaveCount(3);
+        items.Should().AllSatisfy(i => i.LineSequence.Should().NotContain("."));
+    }
+
+    [Fact]
+    public void ThreeItemQuote_validation_matches()
+    {
+        var result = ParseThreeItem();
+        result.Metadata.QuotedTotal.Should().Be(77_545.95m);
+        result.Validation.Matches.Should().BeTrue();
+        result.Validation.ComputedTotal.Should().Be(77_545.95m);
+    }
+
+    [Fact]
+    public void ThreeItemQuote_first_item_has_correct_fields()
+    {
+        var item = ParseThreeItem().LineItems[0];
+        item.LineSequence.Should().Be("1");
+        item.Vpn.Should().Be("4XB7A93897");
+        item.Qty.Should().Be(3);
+        item.Cost.Should().Be(5_340.85m);
+        item.Description.Should().Contain("ThinkSystem");
+    }
+
+    [Fact]
+    public void ThreeItemQuote_all_items_have_positive_cost()
+    {
+        ParseThreeItem().LineItems.Should().AllSatisfy(i => i.Cost.Should().BePositive());
+    }
+
+    // ── Single-item quote (BRDAS010546096V1) ─────────────────────────────────
+
+    [Fact]
+    public void SingleItemQuote_extracts_correct_quote_number()
+    {
+        ParseSingleItem().Metadata.QuoteNumber.Should().Be("BRDAS010546096V1");
+    }
+
+    [Fact]
+    public void SingleItemQuote_produces_one_top_level_item()
+    {
+        var items = ParseSingleItem().LineItems;
+        items.Should().HaveCount(1);
+        items[0].LineSequence.Should().Be("1");
+    }
+
+    [Fact]
+    public void SingleItemQuote_validation_matches()
+    {
+        var result = ParseSingleItem();
+        result.Metadata.QuotedTotal.Should().Be(38_896.08m);
+        result.Validation.Matches.Should().BeTrue();
+        result.Validation.ComputedTotal.Should().Be(38_896.08m);
+    }
+
+    [Fact]
+    public void SingleItemQuote_item_has_correct_fields()
+    {
+        var item = ParseSingleItem().LineItems[0];
+        item.Vpn.Should().Be("4X77B09750");
+        item.Qty.Should().Be(12);
+        item.Cost.Should().Be(3_241.34m);
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private static BidParser.Domain.Models.ParseResult? _threeItem;
+    private static BidParser.Domain.Models.ParseResult? _singleItem;
+    private static readonly object _lock = new();
+
+    private static BidParser.Domain.Models.ParseResult ParseThreeItem()
+    {
+        lock (_lock)
+        {
+            if (_threeItem is not null) return _threeItem;
+            var parser = new LenovoBrdaDcgPdfParser();
+            _threeItem = parser.Parse(Path.Combine(FindRepoRoot(), "samples", "inputs", "BRDAS010545504V1.pdf"));
+            return _threeItem;
+        }
+    }
+
+    private static BidParser.Domain.Models.ParseResult ParseSingleItem()
+    {
+        lock (_lock)
+        {
+            if (_singleItem is not null) return _singleItem;
+            var parser = new LenovoBrdaDcgPdfParser();
+            _singleItem = parser.Parse(Path.Combine(FindRepoRoot(), "samples", "inputs", "BRDAS010546096V1.pdf"));
+            return _singleItem;
+        }
+    }
+
+    private static string FindRepoRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "BidParser.sln")))
+                return directory.FullName;
+            directory = directory.Parent;
+        }
+        throw new DirectoryNotFoundException("Could not locate repository root.");
+    }
+}
