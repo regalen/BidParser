@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { AppHeader } from '../components/AppHeader';
+import { CurrencyErrorModal } from '../components/CurrencyErrorModal';
 import { Dropzone, type UploadState } from '../components/Dropzone';
 import { Footer } from '../components/Footer';
 import { ParseSettingsCard } from '../components/ParseSettingsCard';
@@ -36,6 +37,7 @@ export function DashboardPage() {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [currencyError, setCurrencyError] = useState(false);
   const [mismatchPending, setMismatchPending] = useState<{
     blob: Blob;
     filename: string;
@@ -174,9 +176,13 @@ export function DashboardPage() {
       }
     } catch (caught) {
       setUploadState('idle');
-      const message = errorMessage(caught);
-      setDropError(message);
-      pushToast({ tone: 'error', title: 'Could not parse file', detail: message });
+      if (isCurrencyError(caught)) {
+        setCurrencyError(true);
+      } else {
+        const message = errorMessage(caught);
+        setDropError(message);
+        pushToast({ tone: 'error', title: 'Could not parse file', detail: message });
+      }
     }
   }
 
@@ -241,6 +247,9 @@ export function DashboardPage() {
       </main>
       <Footer />
       <ToastStack toasts={toasts} dismiss={(id) => setToasts((items) => items.filter((item) => item.id !== id))} />
+      {currencyError && (
+        <CurrencyErrorModal onClose={() => setCurrencyError(false)} />
+      )}
       {mismatchPending && (
         <ValidationWarningModal
           currency={mismatchPending.currency}
@@ -262,6 +271,13 @@ function downloadBlob(blob: Blob, filename: string) {
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+}
+
+function isCurrencyError(error: unknown): boolean {
+  if (error instanceof ApiError && typeof error.detail === 'object' && error.detail !== null) {
+    return (error.detail as ApiErrorDetail).stage === 'currency';
+  }
+  return false;
 }
 
 function errorMessage(error: unknown) {

@@ -9,6 +9,7 @@ public static class ParserSlugs
     public const string NutanixHardwareOnlyXlsx = "nutanix_hardware_only_xlsx";
     public const string HpBidXlsx = "hp_bid_xlsx";
     public const string HpOneConfigXlsx = "hp_oneconfig_xlsx";
+    public const string HpGlobalBidXlsx = "hp_global_bid_xlsx";
     public const string LenovoBrdaDcgPdf = "lenovo_brda_dcg_pdf";
     public const string LenovoBrdaDcgXlsx = "lenovo_brda_dcg_xlsx";
 }

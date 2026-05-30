@@ -18,14 +18,14 @@ format at a time** — the architecture is a pluggable `IParser` registry so a n
 format is one parser class + fixtures + one registry entry.
 
 Backend was re-platformed from Python/FastAPI to ASP.NET Core 10. All tests pass:
-`dotnet test BidParser.sln` (175: 104 parsing + 71 API integration).
+`dotnet test BidParser.sln` (186: 115 parsing + 71 API integration).
 
 ## Project layout
 
 - `src/BidParser.Api/` — Minimal API. Endpoints `/auth/*`, `/me`, `/users`, `/parsers`, `/parse`, `/history`, `/metrics/*`, `/monitoring/*`, health. Cookie auth, CSRF, rate limiters, `GlobalExceptionHandler`, `SecurityHeadersMiddleware`, locked-down `ForwardedHeaders`. Typed response records in `Contracts/`, decimal converters in `Serialization/`. Hosts the SPA from `wwwroot/`.
 - `src/BidParser.Domain/` — `LineItem`, `QuoteMetadata`, `ValidationResult`, `ParseResult`, `ParseError`, `IParser`, `IParserRegistry`. `Constants/` centralises `Vendors.*`, `CrmTemplates.*`, `ParserSlugs.*`.
 - `src/BidParser.Infrastructure/` — `AppDbContext` (EF Core + SQL Server, `AddDbContextPool`), entities (`User`, `ParseJob`, `ParseMetric`, `FailedParseJob`), migrations, `FileStorage`, `ParseService`, `FailedParseJobRecorder`, `RetentionService`.
-- `src/BidParser.Parsing/` — PDF helpers via PdfPig (`Pdf/`), XLSX helpers via ClosedXML (`Xlsx/`), legacy `.xls` via ExcelDataReader, five Nutanix + two HP + two Lenovo parsers, explicit `Registry/ParserRegistry.cs`.
+- `src/BidParser.Parsing/` — PDF helpers via PdfPig (`Pdf/`), XLSX helpers via ClosedXML (`Xlsx/`), legacy `.xls` via ExcelDataReader, five Nutanix + three HP + two Lenovo parsers, explicit `Registry/ParserRegistry.cs`.
 - `src/BidParser.Output/` — `ForeignUpliftWriter`, `AnzGenericWriter`, `PercentOffWithUpliftWriter`, shared `TemplateLayout`, `OutputNaming`.
 - `tests/BidParser.Parsing.Tests/`, `tests/BidParser.Api.Tests/` — xUnit; the latter uses `WebApplicationFactory` (shared infra in `TestInfrastructure.cs`).
 - `frontend/` — React 19/Vite/TypeScript SPA, `recharts ^2`. ProductLens visual design; shared utility classes in `src/styles.css`; CRM template names in `src/constants.ts`.
@@ -68,6 +68,7 @@ Display headers (Title Case, UI + chat tables) and field names (snake_case, mode
 | Subscription end | `End Date` | `end_date` | |
 | Minimum order quantity | `Min Order Qty` | `min_qty` | HP only; null for Nutanix |
 | Output line sequence | `Item` | `line_sequence` | HP only; col A of ANZ-GENERIC templates |
+| Output comments | `Comments` | `comments` | col R of ANZ-GENERIC templates; set by parsers that need it (e.g. Global Bid writes `"{term} Months \| {remaining} Remaining"`); null = blank |
 
 Parsers detect *source* labels (`"Net Unit Price"`, `"List Unit Price"`, …) as extraction anchors; the source label is captured in `raw[source_label]`, the cleaned value written to the canonical field.
 
@@ -85,7 +86,7 @@ Parsers detect *source* labels (`"Net Unit Price"`, `"List Unit Price"`, …) as
 
 ## Commands
 
-- `dotnet test BidParser.sln` — full suite (176 tests).
+- `dotnet test BidParser.sln` — full suite (186 tests).
 - `dotnet run --project src/BidParser.Api` — backend dev server (`http://localhost:5000`).
 - `cd frontend && npm run dev` — Vite dev server, proxies `/api` to `http://127.0.0.1:5000` (`VITE_API_PROXY_TARGET=…` to point elsewhere).
 - `cd frontend && npm run build` — TypeScript + production frontend build.
@@ -99,6 +100,8 @@ Parsers detect *source* labels (`"Net Unit Price"`, `"List Unit Price"`, …) as
 3. **One fixture + golden** under `samples/inputs/` and `samples/outputs/`, plus a test case. Add a `SAMPLE_FILES` entry + file under `frontend/public/samples/` (`FileTypeSelect.tsx`).
 4. **Optionally a spec** `docs/<vendor>_<format>.md`, linked from `docs/project_memory.md`.
 5. **New CRM template** → new writer in `src/BidParser.Output/`, dispatch `case` in `ParseService.ParseAsync`.
+
+**Parser-specific error modals**: throw `ParseError("currency", hint, message)` (or another stage name) from the parser; the API returns HTTP 422 with `{ detail: { stage, hint, message } }`. To show a dedicated modal for a specific stage, add a `isCurrencyError`-style helper in `DashboardPage.tsx` and a matching modal component — the existing `CurrencyErrorModal` (AUD validation) is the pattern to follow.
 
 Do **not** touch API routes, frontend components (dropdowns auto-populate from `/api/parsers`), Docker, validation, auth, or history — the parser surface is the entire change. Preserve that property.
 

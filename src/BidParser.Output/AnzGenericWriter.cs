@@ -62,6 +62,12 @@ public static class AnzGenericWriter
                 sheet.Cell(rowNumber, 11).Value = margin;
             }
 
+            // Col R — Comments
+            if (item.Comments is not null)
+            {
+                sheet.Cell(rowNumber, 18).Value = item.Comments;
+            }
+
             // Col W — Min Order Qty
             if (item.MinQty is not null)
             {

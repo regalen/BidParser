@@ -11,6 +11,7 @@ public sealed record LineItem
     public string? SerialNumber { get; init; }
     public DateOnly? StartDate { get; init; }
     public DateOnly? EndDate { get; init; }
+    public string? Comments { get; init; }
     public IReadOnlyDictionary<string, string> Raw { get; init; } = new Dictionary<string, string>();
     public int? MinQty { get; init; }
     public string? LineSequence { get; init; }

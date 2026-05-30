@@ -44,6 +44,6 @@ public static partial class DecimalCleaner
         return text.Length == 0 ? null : ParseInt(text);
     }
 
-    [GeneratedRegex(@"USD|\$|,|\s")]
+    [GeneratedRegex(@"AUD|USD|\$|,|\s")]
     private static partial Regex CurrencyNoise();
 }

@@ -113,8 +113,33 @@ All other columns: blank.
 **Key differences vs ForeignUplift:**
 - Item col A holds the `LineSequence` string (`"1.01"` etc.) rather than a running integer
 - Zero costs export as the `0.0001` sentinel in column I (every Bundle Detail, whose price is dropped onto its Bundle parent); non-zero Part Number / Bundle costs are written as-is
-- No term, date, serial number, or FX columns populated
+- No term, date, serial number, or FX columns populated (for HP Bid — Global Bid populates R)
 - `Matches = true` always (HP files have no quoted total to compare against)
+
+---
+
+## HP Global Bid (ANZ-GENERIC — No Calculation / Uplift)
+
+**Parser:** `HpGlobalBidXlsxParser` (`hp_global_bid_xlsx`)  
+**Template / Writer:** same as HP Bid above — `AnzGenericWriter.Write`  
+**Source sheet:** `"Product numbers"` (by name), header row anchored on `"Product number"`
+
+Same 27-column layout. Differences from HP Bid:
+
+| Col | Header | Global Bid value | Notes |
+|---|---|---|---|
+| A | Item | auto-increment 1, 2, 3… | Writer fallback counter (LineSequence not set) |
+| B | Vendor Name | `"HP"` | |
+| D | Vendor Part Number | `vpn` | Source col B `"Product number"` |
+| E | Description | `description` | Source col E `"Description"` |
+| F | Qty. | `qty` | Source col V `"Aggregated item quantity"` |
+| I | Cost | `cost` | Source col G `"Converted net price [AUD]"` (AUD prefix stripped by `DecimalCleaner`) |
+| K | Margin | `margin` (Uplift only) | |
+| R | Comments | `comments` | `"{term} Months \| {remaining} Remaining"` when term present; `"{remaining} Remaining"` otherwise. `remaining` = col H `"Remaining qty"`. |
+
+**AUD validation:** parser throws `ParseError` (category `"currency"`) if the header row does not contain `"Converted net price [AUD]"` — prevents non-AUD quotes from being silently mis-parsed.
+
+**Quote number:** extracted from the `"About this deal"` sheet — cell adjacent to `"Deal Number"` label. Falls back to filename without extension.
 
 ---
 
