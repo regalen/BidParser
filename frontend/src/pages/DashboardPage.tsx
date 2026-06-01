@@ -103,9 +103,9 @@ export function DashboardPage() {
 
   const canSubmit = useMemo(() => {
     if (!vendor || !parserSlug || !file || uploadState !== 'idle') return false;
-    // Zebra (multi-template): On Cost % is optional, so no required fields beyond vendor/parser/file.
+    // Zebra: Uplift requires margin; No Calculation has no required fields (On Cost % is optional).
     if (selectedParser?.vendor === VENDOR_ZEBRA) {
-      return true;
+      return selectedTemplate !== CRM_TEMPLATE_UPLIFT || Boolean(margin);
     }
     // Multi-template HP (HP Bid XLSX): Uplift needs margin; No Calculation needs neither
     if (selectedParser && selectedParser.available_templates.length > 1) {

@@ -84,6 +84,9 @@ export function ParseSettingsCard({
               </label>
               <ZebraSettingsBlock
                 vendorLabel={selectedParser.vendor}
+                selectedTemplate={selectedTemplate}
+                margin={margin}
+                onMargin={onMargin}
                 onCostPct={onCostPct}
                 onOnCostPct={onOnCostPct}
               />
