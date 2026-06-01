@@ -56,6 +56,12 @@ endpoint contracts.
 | `BRDAS010545504V1.pdf` | Lenovo BRDA DCG (PDF) | Simple variant (no CONFIGURATION DETAILS); 3 top-level items with real unit prices; AUD 77,545.95 |
 | `BRDAS010546096V1.pdf` | Lenovo BRDA DCG (PDF) | Simple variant; 1 top-level item; AUD 38,896.08 |
 | `BRDAD010458440.xls`   | Lenovo BRDA DCG (XLS) | Legacy .xls binary; 62 items: 8 parents, 54 children; AUD 103,542.60 |
+| `Zebra_PC_81391641.pdf` | Zebra Price Concession (PDF) | 3 active items; AUD; page-break description split on ZD4AH22 |
+| `Zebra_PC_81391641.xls` | Zebra Price Concession (XLS) | HTML-disguised XLS; 3 active items; matches PDF extraction |
+| `Zebra_PC_81413855.pdf` | Zebra Price Concession (PDF) | 5 items, all active |
+| `Zebra_PC_81413855.xls` | Zebra Price Concession (XLS) | 5 items, all active |
+| `Zebra_PC_81422095.pdf` | Zebra Price Concession (PDF) | 8 items; cross-page description split; AUD |
+| `Zebra_PC_81422095.xls` | Zebra Price Concession (XLS) | 8 items |
 
 ## ParseResult contract
 
@@ -71,7 +77,16 @@ the rest are nullable and populated per format:
   Software Only (PDF + XLSX):  Description, Term, Msrp
   Renewal:                     Msrp, SerialNumber, StartDate, EndDate
   Hardware Only (PDF + XLSX):  Description, Term, Msrp    // Term per-row nullable
+  HP Bid (XLSX):               Description, MinQty, LineSequence, Comments
+  HP Global Bid (XLSX):        Description, LineSequence, Comments
+  HP OneConfig (XLSX):         Description, Msrp, LineSequence
+  Lenovo BRDA DCG (PDF+XLS):  Description, Msrp, MinQty, LineSequence
+  Zebra PCR (PDF+XLS):        Description, Msrp, MinQty, LineSequence, Comments, IsCancelled
   Common debug:                Raw (Dictionary<string,string> of original column text)
+
+IsCancelled (bool, default false): set by Zebra parser for Cancelled=Y rows. The writer
+leaves col H/I/W blank (no sentinel), sets Qty=1, writes Comments="Cancelled (Standard
+Price)". All other parsers leave this false; it is inert for them.
 
 Across formats: List Price / List Unit Price / MSRP / Term Adjusted List Unit Price
 → Msrp; Sale Price / Net Unit Price / Cost Price → Cost.
@@ -397,6 +412,7 @@ Out of scope: multi-file batch upload, CSV formats, vendors other than Nutanix, 
 - `docs/hp_oneconfig_xlsx.md` — HP OneConfig (XLSX). Single Config per file, parent VPN from `Config ID`, MSRP from `Total Price`, 30 children zeroed. Output `% Off RRP with Uplift`; requires `margin` + `im_percent`.
 - `docs/lenovo_brda_dcg_xlsx.md` — Lenovo BRDA DCG (XLS). Legacy `.xls` (OLE Compound Document) read via ExcelDataReader; PARENT/CHILD classified by whether the unit-price cell is `> 0` (explicit `0.0` is a child — `5374CM1` "Configuration Instruction" rows depend on this). LineSequence integer for parents (`"1"`, `"2"`), `parent.NN` for children (`"1.01"`). Quoted total from the `Total:` row's unit-price column, rounded 2 dp.
 - `docs/lenovo_brda_dcg_pdf.md` — Lenovo BRDA DCG (PDF). Two variants: complex (PRODUCT AND SERVICE DETAILS + CONFIGURATION DETAILS — CONFIGs/PARENTs/children, detect 0.85) and simple (PRODUCT AND SERVICE DETAILS only — numbered parent items with real unit prices, no children, detect 0.75). Quirks: X1+1-based column boundaries for Part Number/Description; floating-point 1 pt offset for No/Qty in section 2; pre-description buffering; section 2 absent → empty children map.
+- `docs/zebra_price_concession.md` — Zebra Price Concession (PDF + XLS). HTML-disguised XLS (HtmlAgilityPack); PDF uses anchor-based column detection with blank-word filtering and fused-number splitting (see memory/zebra-parser-pdfpig-quirks.md). Field map: Part No.→vpn, Max. Qty→qty, Min. Qty→min_qty, List Price→msrp (col H), Unit Special Price→cost (col I). Cancelled=Y rows: blank col H/I/W, qty=1, Comments="Cancelled (Standard Price)", warning modal. On Cost % written to col Z when provided. Available templates: No Calculation and Uplift.
 - `docs/output_mapping.md` — how parsed `LineItem` fields map into `ANZ-GENERIC_ForeignUplift.xlsx`, output filename convention, locked output rules (MSRP column H stays empty; `serial_number` → Comments not Serial Number; term written only when `>= 1`). Read before generating any `*_parsed.xlsx`.
 - `docs/design/` — Claude Design handoff for the V4 side-panel UI; read `docs/design/README.md` before frontend work.
 

@@ -171,3 +171,49 @@ All other columns: blank.
 - Pricing lands on column H (MSRP), not column I (Cost)
 - Both `margin` and `im_percent` are mandatory parse parameters
 - `User.ImPercent` (`im` DB column) is persisted as a per-user default, serialised as `im_percent` in JSON
+
+---
+
+## Zebra Price Concession (ANZ-GENERIC — No Calculation / Uplift)
+
+**Parsers:** `ZebraPriceConcessionPdfParser` (`zebra_price_concession_pdf`), `ZebraPriceConcessionXlsParser` (`zebra_price_concession_xls`)  
+**Template / Writer:** `AnzGenericWriter.Write(items, outputPath, sheetName, includeMargin, margin, vendorName, onCost)`  
+**Sheet names:** `"No Calculation"` / `"Uplift"` (user-selected)
+
+Same 27-column layout as HP. Differences from HP Bid:
+
+| Col | Header | Zebra value | Notes |
+|---|---|---|---|
+| A | Item | `LineSequence` | `"1"`, `"2"`, … — running index assigned at extract time |
+| B | Vendor Name | `"ZEBRA"` | `vendor.ToUpperInvariant()` |
+| D | Vendor Part Number | `vpn` | Source col `Part No.` |
+| E | Description | `description` | Source col `Description`; may span multiple PDF lines or a page break |
+| F | Qty. | `qty` | Source col `Max. Qty` — or `1` for cancelled rows |
+| H | MSRP | `msrp` | Source col `List Price`; **blank for cancelled rows** (no sentinel) |
+| I | Cost | `cost` | Source col `Unit Special Price`; **blank for cancelled rows** (no sentinel) |
+| K | Margin | `margin` (Uplift only) | Written only when `includeMargin = true` |
+| R | Comments | `"Cancelled (Standard Price)"` for cancelled rows; otherwise empty | |
+| W | Min Order Qty | `min_qty` | Source col `Min. Qty`; **blank for cancelled rows** |
+| Z | On Cost % | `onCostPercent` (user-supplied, optional) | Written to all **non-cancelled** rows when the user enters a value; blank when omitted or for cancelled rows |
+
+All other columns: blank.
+
+**Cancelled-row rules (`IsCancelled = true`):**
+- Col H (MSRP) and col I (Cost) are left entirely blank — no `0.0001` sentinel. The downstream system retrieves current pricing from SAP.
+- Col F (Qty) is written as `1` regardless of the source qty.
+- Col W (Min Order Qty) is left blank.
+- Col Z (On Cost %) is left blank.
+- Col R (Comments) is written as `"Cancelled (Standard Price)"`.
+
+**On Cost % (col Z):**
+- User-supplied optional decimal at parse time (`on_cost_pct` form field).
+- Written to every non-cancelled row when provided; blank otherwise.
+- Not persisted between sessions.
+
+**End-loop sentinel row:** after the last line item — col B = `"*"`, col D = `EndLoopWarning` constant.
+
+**Key differences vs HP Bid:**
+- MSRP (col H) is populated from `List Price` — HP Bid leaves col H blank
+- Cancelled rows leave col H/I/W blank with no sentinel (unlike Bundle Detail rows which use the sentinel)
+- Col Z (On Cost %) is written when the user provides a value
+- `Matches = true` always (no quoted total in PCR documents)
