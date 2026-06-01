@@ -52,6 +52,11 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+export interface CancelledLineInfo {
+  line: string;
+  vpn: string;
+}
+
 export interface ParseResponse {
   blob: Blob;
   filename: string;
@@ -59,6 +64,8 @@ export interface ParseResponse {
   currency: string;
   computedTotal: string;
   quotedTotal: string;
+  /** Lines flagged Cancelled=Y in the source document; empty array when none. */
+  cancelledLines: CancelledLineInfo[];
 }
 
 export const api = {
@@ -154,6 +161,18 @@ export const api = {
     }
     const disposition = response.headers.get('Content-Disposition') ?? '';
     const filename = disposition.match(/filename="?([^"]+)"?/)?.[1] ?? 'parsed.xlsx';
+
+    // Parse the X-Cancelled-Lines header: "line:VPN;line:VPN;..."
+    const cancelledRaw = response.headers.get('X-Cancelled-Lines') ?? '';
+    const cancelledLines: CancelledLineInfo[] = cancelledRaw
+      ? cancelledRaw.split(';').map((entry) => {
+          const colonIdx = entry.indexOf(':');
+          return colonIdx >= 0
+            ? { line: entry.slice(0, colonIdx), vpn: entry.slice(colonIdx + 1) }
+            : { line: entry, vpn: '' };
+        })
+      : [];
+
     return {
       blob: await response.blob(),
       filename,
@@ -161,6 +180,7 @@ export const api = {
       currency: response.headers.get('X-Currency') ?? '',
       computedTotal: response.headers.get('X-Computed-Total') ?? '',
       quotedTotal: response.headers.get('X-Quoted-Total') ?? '',
+      cancelledLines,
     };
   },
 };

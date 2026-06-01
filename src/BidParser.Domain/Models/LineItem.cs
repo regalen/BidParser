@@ -15,4 +15,5 @@ public sealed record LineItem
     public IReadOnlyDictionary<string, string> Raw { get; init; } = new Dictionary<string, string>();
     public int? MinQty { get; init; }
     public string? LineSequence { get; init; }
+    public bool IsCancelled { get; init; }
 }

@@ -11,6 +11,8 @@ const SAMPLE_FILES: Record<string, string> = {
   hp_oneconfig_xlsx: '55648855.xlsx',
   lenovo_brda_dcg_pdf: 'BRDAS010260417V1.pdf',
   lenovo_brda_dcg_xlsx: 'BRDAD010458440.xls',
+  zebra_price_concession_pdf: 'Zebra_PC_81391641.pdf',
+  zebra_price_concession_xls: 'Zebra_PC_81391641.xls',
 };
 
 export function FileTypeSelect({

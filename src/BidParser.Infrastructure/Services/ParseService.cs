@@ -27,6 +27,7 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
         decimal? fxRate,
         decimal? margin,
         decimal? imPercent,
+        decimal? onCostPercent,
         string? crmTemplate,
         long maxUploadBytes,
         CancellationToken ct = default)
@@ -70,12 +71,14 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
                 case CrmTemplates.NoCalculation:
                     AnzGenericWriter.Write(
                         result.LineItems, outputPath, "No Calculation",
-                        includeMargin: false, effectiveMargin, vendor.ToUpperInvariant());
+                        includeMargin: false, effectiveMargin, vendor.ToUpperInvariant(),
+                        onCost: onCostPercent);
                     break;
                 case CrmTemplates.Uplift:
                     AnzGenericWriter.Write(
                         result.LineItems, outputPath, "Uplift",
-                        includeMargin: true, effectiveMargin, vendor.ToUpperInvariant());
+                        includeMargin: true, effectiveMargin, vendor.ToUpperInvariant(),
+                        onCost: onCostPercent);
                     break;
                 case CrmTemplates.PercentOffWithUplift:
                     if (imPercent is null)
@@ -156,12 +159,18 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
                 }
             }
 
+            var cancelledLines = result.LineItems
+                .Where(i => i.IsCancelled)
+                .Select(i => new CancelledLine(i.LineSequence ?? string.Empty, i.Vpn))
+                .ToList();
+
             return new ParseServiceResult(
                 job,
                 OutputNaming.OutputFilename(displayFilename),
                 outputPath,
                 result.Validation,
-                result.Metadata.Currency);
+                result.Metadata.Currency,
+                cancelledLines);
         }
         catch (Exception ex)
         {
@@ -210,32 +219,30 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
 
     private static async Task ValidateMagicBytesAsync(string path, string parserAcceptedMime, CancellationToken ct)
     {
-        var header = new byte[8];
+        // Read enough bytes to detect either OLE compound doc or an HTML signature.
+        var header = new byte[512];
         await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
         var bytesRead = await stream.ReadAsync(header, ct);
 
         var matches = parserAcceptedMime switch
         {
             "application/pdf" => bytesRead >= 4
-                && header[0] == 0x25
-                && header[1] == 0x50
-                && header[2] == 0x44
-                && header[3] == 0x46,
+                && header[0] == 0x25    // %
+                && header[1] == 0x50    // P
+                && header[2] == 0x44    // D
+                && header[3] == 0x46,   // F
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" => bytesRead >= 4
-                && header[0] == 0x50
-                && header[1] == 0x4B
+                && header[0] == 0x50    // P
+                && header[1] == 0x4B    // K
                 && header[2] == 0x03
                 && header[3] == 0x04,
-            // OLE Compound Document signature (legacy .xls)
-            "application/vnd.ms-excel" => bytesRead >= 8
-                && header[0] == 0xD0
-                && header[1] == 0xCF
-                && header[2] == 0x11
-                && header[3] == 0xE0
-                && header[4] == 0xA1
-                && header[5] == 0xB1
-                && header[6] == 0x1A
-                && header[7] == 0xE1,
+            // OLE Compound Document signature (real legacy .xls, e.g. Lenovo BRDA DCG)
+            // OR HTML content (Zebra Price Concession exports HTML under a .xls filename).
+            // DELIBERATE DEVIATION: Zebra's portal saves styled HTML with a .xls extension.
+            // Real-OLE files still pass the OLE check; HTML files are identified by finding
+            // a '<' character in the leading 512 bytes after skipping ASCII whitespace.
+            "application/vnd.ms-excel" => IsOleCompoundDoc(header, bytesRead)
+                                       || IsHtmlContent(header, bytesRead),
             _ => false
         };
 
@@ -244,6 +251,32 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
             throw new ParseError("upload", "Unsupported file format.", "Unsupported file format.");
         }
     }
+
+    private static bool IsOleCompoundDoc(byte[] header, int bytesRead)
+        => bytesRead >= 8
+            && header[0] == 0xD0
+            && header[1] == 0xCF
+            && header[2] == 0x11
+            && header[3] == 0xE0
+            && header[4] == 0xA1
+            && header[5] == 0xB1
+            && header[6] == 0x1A
+            && header[7] == 0xE1;
+
+    private static bool IsHtmlContent(byte[] header, int bytesRead)
+    {
+        // After skipping leading ASCII whitespace, a '<' identifies an HTML document.
+        for (var i = 0; i < bytesRead; i++)
+        {
+            if (header[i] == (byte)' ' || header[i] == (byte)'\t'
+                || header[i] == (byte)'\r' || header[i] == (byte)'\n')
+            {
+                continue;
+            }
+            return header[i] == (byte)'<';
+        }
+        return false;
+    }
 }
 
 public sealed record ParseServiceResult(
@@ -251,7 +284,14 @@ public sealed record ParseServiceResult(
     string OutputFilename,
     string OutputPath,
     ValidationResult Validation,
-    string Currency);
+    string Currency,
+    IReadOnlyList<CancelledLine> CancelledLines);
+
+/// <summary>
+/// A line item flagged as cancelled in the source document.
+/// Surfaced to the frontend via the <c>X-Cancelled-Lines</c> response header.
+/// </summary>
+public sealed record CancelledLine(string Line, string Vpn);
 
 public sealed class ParseValidationException : Exception
 {

@@ -8,3 +8,4 @@ export const CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT = '% Off RRP with Uplift';
 export const VENDOR_NUTANIX = 'Nutanix';
 export const VENDOR_HP = 'HP';
 export const VENDOR_LENOVO = 'Lenovo';
+export const VENDOR_ZEBRA = 'Zebra';

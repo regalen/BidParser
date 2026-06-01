@@ -5,6 +5,7 @@ using BidParser.Parsing.Hp.OneConfigXlsx;
 using BidParser.Parsing.Lenovo.BrdaDcgPdf;
 using BidParser.Parsing.Lenovo.BrdaDcgXlsx;
 using BidParser.Parsing.Nutanix.HardwareOnlyPdf;
+using BidParser.Parsing.Zebra.PriceConcession;
 using BidParser.Parsing.Nutanix.HardwareOnlyXlsx;
 using BidParser.Parsing.Nutanix.RenewalPdf;
 using BidParser.Parsing.Nutanix.SoftwareOnlyPdf;
@@ -25,6 +26,8 @@ public sealed class ParserRegistry : IParserRegistry
         new HpGlobalBidXlsxParser(),
         new HpOneConfigXlsxParser(),
         new LenovoBrdaDcgPdfParser(),
-        new LenovoBrdaDcgXlsxParser()
+        new LenovoBrdaDcgXlsxParser(),
+        new ZebraPriceConcessionPdfParser(),
+        new ZebraPriceConcessionXlsParser()
     ];
 }

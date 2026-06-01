@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { api, ApiError } from '../api/client';
+import { api, ApiError, type CancelledLineInfo } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { AppHeader } from '../components/AppHeader';
+import { CancelledLinesModal } from '../components/CancelledLinesModal';
 import { CurrencyErrorModal } from '../components/CurrencyErrorModal';
 import { Dropzone, type UploadState } from '../components/Dropzone';
 import { Footer } from '../components/Footer';
@@ -10,7 +11,7 @@ import { ParseSettingsCard } from '../components/ParseSettingsCard';
 import { RecentUploadsTable } from '../components/RecentUploadsTable';
 import { ToastStack, type ToastMessage } from '../components/Toast';
 import { ValidationWarningModal } from '../components/ValidationWarningModal';
-import { CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT, CRM_TEMPLATE_UPLIFT } from '../constants';
+import { CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT, CRM_TEMPLATE_UPLIFT, VENDOR_ZEBRA } from '../constants';
 import type { ApiErrorDetail, HistoryRow, ParserInfo } from '../types';
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -27,6 +28,7 @@ export function DashboardPage() {
   const [fxRate, setFxRate] = useState('');
   const [margin, setMargin] = useState('');
   const [imPercent, setImPercent] = useState('');
+  const [onCostPct, setOnCostPct] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [uploadState, setUploadState] = useState<UploadState>('idle');
   const [dropError, setDropError] = useState<string | null>(null);
@@ -44,6 +46,11 @@ export function DashboardPage() {
     currency: string;
     computedTotal: string;
     quotedTotal: string;
+  } | null>(null);
+  const [cancelledPending, setCancelledPending] = useState<{
+    blob: Blob;
+    filename: string;
+    cancelledLines: CancelledLineInfo[];
   } | null>(null);
 
   const loadHistory = useCallback(async () => {
@@ -96,6 +103,10 @@ export function DashboardPage() {
 
   const canSubmit = useMemo(() => {
     if (!vendor || !parserSlug || !file || uploadState !== 'idle') return false;
+    // Zebra (multi-template): On Cost % is optional, so no required fields beyond vendor/parser/file.
+    if (selectedParser?.vendor === VENDOR_ZEBRA) {
+      return true;
+    }
     // Multi-template HP (HP Bid XLSX): Uplift needs margin; No Calculation needs neither
     if (selectedParser && selectedParser.available_templates.length > 1) {
       const requiresMargin = selectedTemplate === CRM_TEMPLATE_UPLIFT;
@@ -143,6 +154,9 @@ export function DashboardPage() {
     if (imPercent) {
       form.set('im_percent', imPercent);
     }
+    if (onCostPct) {
+      form.set('on_cost_pct', onCostPct);
+    }
     if (selectedTemplate) {
       form.set('crm_template', selectedTemplate);
     }
@@ -153,8 +167,15 @@ export function DashboardPage() {
       await refresh();
       await loadHistory();
 
-      if (result.validation !== 'match') {
-        // Hold the blob and let the user acknowledge the warning before downloading.
+      if (result.cancelledLines.length > 0) {
+        // Hold the blob and require the user to acknowledge the cancelled-lines warning.
+        setCancelledPending({
+          blob: result.blob,
+          filename: result.filename,
+          cancelledLines: result.cancelledLines,
+        });
+      } else if (result.validation !== 'match') {
+        // Hold the blob and let the user acknowledge the validation mismatch.
         setMismatchPending({
           blob: result.blob,
           filename: result.filename,
@@ -196,6 +217,16 @@ export function DashboardPage() {
     }, 1800);
   }
 
+  function acknowledgeCancelled() {
+    if (!cancelledPending) return;
+    downloadBlob(cancelledPending.blob, cancelledPending.filename);
+    setCancelledPending(null);
+    window.setTimeout(() => {
+      setFile(null);
+      setUploadState('idle');
+    }, 1800);
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
       <AppHeader />
@@ -208,6 +239,7 @@ export function DashboardPage() {
             fxRate={fxRate}
             margin={margin}
             imPercent={imPercent}
+            onCostPct={onCostPct}
             selectedTemplate={selectedTemplate}
             canSubmit={canSubmit}
             parsing={uploadState === 'parsing'}
@@ -224,6 +256,7 @@ export function DashboardPage() {
             onFxRate={setFxRate}
             onMargin={setMargin}
             onImPercent={setImPercent}
+            onOnCostPct={setOnCostPct}
             onTemplate={setSelectedTemplate}
             onSubmit={submit}
           />
@@ -256,6 +289,12 @@ export function DashboardPage() {
           computedTotal={mismatchPending.computedTotal}
           quotedTotal={mismatchPending.quotedTotal}
           onAcknowledge={acknowledgeMismatch}
+        />
+      )}
+      {cancelledPending && (
+        <CancelledLinesModal
+          cancelledLines={cancelledPending.cancelledLines}
+          onAcknowledge={acknowledgeCancelled}
         />
       )}
     </div>

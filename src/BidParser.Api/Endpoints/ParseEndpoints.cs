@@ -51,6 +51,7 @@ public static class ParseEndpoints
         var fxRateStr = form["fx_rate"].FirstOrDefault()?.Trim();
         var marginStr = form["margin"].FirstOrDefault()?.Trim();
         var imPercentStr = form["im_percent"].FirstOrDefault()?.Trim();
+        var onCostPctStr = form["on_cost_pct"].FirstOrDefault()?.Trim();
         var crmTemplate = form["crm_template"].FirstOrDefault()?.Trim();
 
         if (file is null)
@@ -102,6 +103,16 @@ public static class ParseEndpoints
             imPercent = parsedImPercent;
         }
 
+        decimal? onCostPct = null;
+        if (!string.IsNullOrEmpty(onCostPctStr))
+        {
+            if (!decimal.TryParse(onCostPctStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedOnCostPct))
+            {
+                return Results.Json(new ApiError("Invalid on_cost_pct."), statusCode: 400);
+            }
+            onCostPct = parsedOnCostPct;
+        }
+
         if (file.Length > appOptions.MaxUploadBytes)
         {
             return Results.Json(new ApiError("File is too large."), statusCode: 413);
@@ -122,7 +133,7 @@ public static class ParseEndpoints
         {
             result = await parseService.ParseAsync(
                 user, stream, displayFilename, vendor, parserSlug,
-                fxRate, margin, imPercent, crmTemplate, appOptions.MaxUploadBytes, ct);
+                fxRate, margin, imPercent, onCostPct, crmTemplate, appOptions.MaxUploadBytes, ct);
         }
         catch (ParseValidationException ex)
         {
@@ -158,6 +169,14 @@ public static class ParseEndpoints
 
         context.Response.Headers["X-Validation"] = result.Validation.Matches ? "match" : "mismatch";
         context.Response.Headers["X-Currency"] = result.Currency;
+
+        // Emit cancelled-line details so the frontend can surface a warning modal.
+        // Format: "line:VPN;line:VPN;..." (VPNs are ASCII and never contain ':' or ';').
+        if (result.CancelledLines.Count > 0)
+        {
+            context.Response.Headers["X-Cancelled-Lines"] =
+                string.Join(';', result.CancelledLines.Select(cl => $"{cl.Line}:{cl.Vpn}"));
+        }
         context.Response.Headers["X-Computed-Total"] =
             result.Validation.ComputedTotal.ToString("F2", CultureInfo.InvariantCulture);
 

@@ -6,6 +6,7 @@
   <ItemGroup>
     <PackageReference Include="ClosedXML" />
     <PackageReference Include="ExcelDataReader" />
+    <PackageReference Include="HtmlAgilityPack" />
     <PackageReference Include="PdfPig" />
   </ItemGroup>
 

@@ -1,12 +1,13 @@
 import { Loader2 } from 'lucide-react';
 
-import { VENDOR_HP } from '../constants';
+import { VENDOR_HP, VENDOR_ZEBRA } from '../constants';
 import type { ParserInfo } from '../types';
 import { CrmTemplateCallout } from './CrmTemplateCallout';
 import { FileTypeSelect } from './FileTypeSelect';
 import { HpSettingsBlock } from './HpSettingsBlock';
 import { NutanixSettingsBlock } from './NutanixSettingsBlock';
 import { VendorSelect } from './VendorSelect';
+import { ZebraSettingsBlock } from './ZebraSettingsBlock';
 
 export function ParseSettingsCard({
   parsers,
@@ -15,6 +16,7 @@ export function ParseSettingsCard({
   fxRate,
   margin,
   imPercent,
+  onCostPct,
   selectedTemplate,
   canSubmit,
   parsing,
@@ -23,6 +25,7 @@ export function ParseSettingsCard({
   onFxRate,
   onMargin,
   onImPercent,
+  onOnCostPct,
   onTemplate,
   onSubmit,
 }: {
@@ -32,6 +35,7 @@ export function ParseSettingsCard({
   fxRate: string;
   margin: string;
   imPercent: string;
+  onCostPct: string;
   selectedTemplate: string;
   canSubmit: boolean;
   parsing: boolean;
@@ -40,6 +44,7 @@ export function ParseSettingsCard({
   onFxRate: (value: string) => void;
   onMargin: (value: string) => void;
   onImPercent: (value: string) => void;
+  onOnCostPct: (value: string) => void;
   onTemplate: (value: string) => void;
   onSubmit: () => void;
 }) {
@@ -47,6 +52,7 @@ export function ParseSettingsCard({
   const vendors = Array.from(new Set(parsers.map((parser) => parser.vendor)));
   const filtered = parsers.filter((parser) => parser.vendor === vendor);
   const showVendorSettings = Boolean(vendor && parserSlug);
+  const isZebraVendor = selectedParser?.vendor === VENDOR_ZEBRA;
   const isMultiTemplate = (selectedParser?.available_templates?.length ?? 0) > 1;
   const isHpVendor = selectedParser?.vendor === VENDOR_HP;
 
@@ -59,7 +65,30 @@ export function ParseSettingsCard({
 
       {showVendorSettings && selectedParser && (
         <>
-          {isMultiTemplate ? (
+          {isZebraVendor ? (
+            // Zebra (multi-template): template dropdown + Zebra On Cost % block
+            <>
+              <label className="flex flex-col gap-2">
+                <span className="label">CRM Import Template</span>
+                <select
+                  className="field"
+                  value={selectedTemplate}
+                  onChange={(e) => onTemplate(e.target.value)}
+                >
+                  {selectedParser.available_templates.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <ZebraSettingsBlock
+                vendorLabel={selectedParser.vendor}
+                onCostPct={onCostPct}
+                onOnCostPct={onOnCostPct}
+              />
+            </>
+          ) : isMultiTemplate ? (
             // Multi-template HP (HP Bid XLSX): template dropdown + HP settings block
             <>
               <label className="flex flex-col gap-2">
