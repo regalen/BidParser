@@ -25,7 +25,7 @@ export function ZebraSettingsBlock({
         <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Vendor-specific</span>
       </div>
 
-      {isUplift ? (
+      {isUplift && (
         <label className="flex flex-col gap-2">
           <span className="label">
             Uplift <span className="font-medium normal-case tracking-normal text-slate-400">· %, 2 d.p.</span>
@@ -41,24 +41,24 @@ export function ZebraSettingsBlock({
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400">%</span>
           </div>
         </label>
-      ) : (
-        <label className="flex flex-col gap-2">
-          <span className="label">
-            On Cost %{' '}
-            <span className="font-medium normal-case tracking-normal text-slate-400">· %, 2 d.p. (optional)</span>
-          </span>
-          <div className="relative">
-            <input
-              className="field pr-9"
-              inputMode="decimal"
-              value={onCostPct}
-              placeholder="5.00"
-              onChange={(event) => onOnCostPct(event.target.value)}
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400">%</span>
-          </div>
-        </label>
       )}
+
+      <label className="flex flex-col gap-2">
+        <span className="label">
+          On Cost %{' '}
+          <span className="font-medium normal-case tracking-normal text-slate-400">· %, 2 d.p. (optional)</span>
+        </span>
+        <div className="relative">
+          <input
+            className="field pr-9"
+            inputMode="decimal"
+            value={onCostPct}
+            placeholder="5.00"
+            onChange={(event) => onOnCostPct(event.target.value)}
+          />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400">%</span>
+        </div>
+      </label>
     </>
   );
 }
