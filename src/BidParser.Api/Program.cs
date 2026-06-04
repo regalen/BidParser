@@ -149,6 +149,7 @@ app.MapAuthEndpoints();
 app.MapMeEndpoints();
 app.MapParsersEndpoints();
 app.MapUsersEndpoints();
+app.MapReportTypesEndpoints();
 app.MapParseEndpoints();
 app.MapHistoryEndpoints();
 app.MapMetricsEndpoints();

@@ -20,6 +20,8 @@ export interface ParserInfo {
   accepted_mime: string;
   crm_template: string;
   available_templates: string[];
+  /** Admin-configured report type to use when sending the quote to the customer; null when unconfigured. */
+  report_type?: string | null;
 }
 
 export interface HistoryRow {

@@ -140,6 +140,15 @@ export const api = {
     return request<void>(`/users/${id}`, { method: 'DELETE' });
   },
 
+  // Upsert the admin-configured report type for a parser slug. An empty string
+  // clears the mapping.
+  updateReportType(slug: string, reportType: string): Promise<{ ok: boolean }> {
+    return request<{ ok: boolean }>(`/report-types/${encodeURIComponent(slug)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ report_type: reportType }),
+    });
+  },
+
   async parse(formData: FormData): Promise<ParseResponse> {
     const headers = new Headers({ 'X-Requested-With': 'BidParser' });
     const response = await fetch('/api/parse', {

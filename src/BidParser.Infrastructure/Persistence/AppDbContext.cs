@@ -14,6 +14,7 @@ public sealed class AppDbContext : DbContext
     public DbSet<ParseJob> ParseJobs => Set<ParseJob>();
     public DbSet<ParseMetric> ParseMetrics => Set<ParseMetric>();
     public DbSet<FailedParseJob> FailedParseJobs => Set<FailedParseJob>();
+    public DbSet<ReportTypeConfig> ReportTypeConfigs => Set<ReportTypeConfig>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
@@ -155,6 +156,18 @@ public sealed class AppDbContext : DbContext
             entity.HasIndex(f => new { f.UserId, f.CreatedAt }).IsDescending(false, true).HasDatabaseName("ix_failed_parse_jobs_user_id_created_at");
             entity.HasIndex(f => new { f.Category, f.CreatedAt }).IsDescending(false, true).HasDatabaseName("ix_failed_parse_jobs_category_created_at");
         });
+
+        modelBuilder.Entity<ReportTypeConfig>(entity =>
+        {
+            entity.ToTable("report_type_configs");
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Id).HasColumnName("id");
+            entity.Property(c => c.ParserSlug).HasColumnName("parser_slug").HasMaxLength(128).IsRequired();
+            entity.HasIndex(c => c.ParserSlug).IsUnique().HasDatabaseName("ix_report_type_configs_parser_slug");
+            entity.Property(c => c.ReportType).HasColumnName("report_type").HasMaxLength(512).IsRequired();
+            entity.Property(c => c.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.Property(c => c.UpdatedAt).HasColumnName("updated_at").IsRequired();
+        });
     }
 
     private void StampTimestamps()
@@ -194,6 +207,19 @@ public sealed class AppDbContext : DbContext
             if (entry.State == EntityState.Added && entry.Entity.CreatedAt == default)
             {
                 entry.Entity.CreatedAt = now;
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<ReportTypeConfig>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                if (entry.Entity.CreatedAt == default) entry.Entity.CreatedAt = now;
+                entry.Entity.UpdatedAt = now;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.UpdatedAt = now;
             }
         }
     }

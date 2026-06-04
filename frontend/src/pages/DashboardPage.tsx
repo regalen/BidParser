@@ -3,14 +3,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, ApiError, type CancelledLineInfo } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { AppHeader } from '../components/AppHeader';
-import { CancelledLinesModal } from '../components/CancelledLinesModal';
 import { CurrencyErrorModal } from '../components/CurrencyErrorModal';
 import { Dropzone, type UploadState } from '../components/Dropzone';
 import { Footer } from '../components/Footer';
+import { ParseResultModal } from '../components/ParseResultModal';
 import { ParseSettingsCard } from '../components/ParseSettingsCard';
 import { RecentUploadsTable } from '../components/RecentUploadsTable';
 import { ToastStack, type ToastMessage } from '../components/Toast';
-import { ValidationWarningModal } from '../components/ValidationWarningModal';
 import { CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT, CRM_TEMPLATE_UPLIFT, VENDOR_ZEBRA } from '../constants';
 import type { ApiErrorDetail, HistoryRow, ParserInfo } from '../types';
 
@@ -40,17 +39,15 @@ export function DashboardPage() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [currencyError, setCurrencyError] = useState(false);
-  const [mismatchPending, setMismatchPending] = useState<{
+  const [resultPending, setResultPending] = useState<{
     blob: Blob;
     filename: string;
+    validation: 'match' | 'mismatch';
     currency: string;
     computedTotal: string;
     quotedTotal: string;
-  } | null>(null);
-  const [cancelledPending, setCancelledPending] = useState<{
-    blob: Blob;
-    filename: string;
     cancelledLines: CancelledLineInfo[];
+    reportType: string | null;
   } | null>(null);
 
   const loadHistory = useCallback(async () => {
@@ -167,34 +164,20 @@ export function DashboardPage() {
       await refresh();
       await loadHistory();
 
-      if (result.cancelledLines.length > 0) {
-        // Hold the blob and require the user to acknowledge the cancelled-lines warning.
-        setCancelledPending({
-          blob: result.blob,
-          filename: result.filename,
-          cancelledLines: result.cancelledLines,
-        });
-      } else if (result.validation !== 'match') {
-        // Hold the blob and let the user acknowledge the validation mismatch.
-        setMismatchPending({
-          blob: result.blob,
-          filename: result.filename,
-          currency: result.currency ?? '',
-          computedTotal: result.computedTotal ?? '',
-          quotedTotal: result.quotedTotal ?? '',
-        });
-      } else {
-        downloadBlob(result.blob, result.filename);
-        pushToast({
-          tone: 'success',
-          title: 'Parsed workbook downloaded',
-          detail: `Computed ${result.currency} ${result.computedTotal || '-'} · Quoted ${result.currency} ${result.quotedTotal || '-'}`,
-        });
-        window.setTimeout(() => {
-          setFile(null);
-          setUploadState('idle');
-        }, 1800);
-      }
+      // Show a single result popup. The file is NOT auto-downloaded; the user
+      // downloads explicitly from the modal. The report type to use when sending
+      // the quote to the customer is admin-configured per parser slug.
+      const reportType = parsers.find((p) => p.slug === parserSlug)?.report_type ?? null;
+      setResultPending({
+        blob: result.blob,
+        filename: result.filename,
+        validation: result.validation,
+        currency: result.currency ?? '',
+        computedTotal: result.computedTotal ?? '',
+        quotedTotal: result.quotedTotal ?? '',
+        cancelledLines: result.cancelledLines,
+        reportType,
+      });
     } catch (caught) {
       setUploadState('idle');
       if (isCurrencyError(caught)) {
@@ -207,24 +190,15 @@ export function DashboardPage() {
     }
   }
 
-  function acknowledgeMismatch() {
-    if (!mismatchPending) return;
-    downloadBlob(mismatchPending.blob, mismatchPending.filename);
-    setMismatchPending(null);
-    window.setTimeout(() => {
-      setFile(null);
-      setUploadState('idle');
-    }, 1800);
+  function downloadResult() {
+    if (!resultPending) return;
+    downloadBlob(resultPending.blob, resultPending.filename);
   }
 
-  function acknowledgeCancelled() {
-    if (!cancelledPending) return;
-    downloadBlob(cancelledPending.blob, cancelledPending.filename);
-    setCancelledPending(null);
-    window.setTimeout(() => {
-      setFile(null);
-      setUploadState('idle');
-    }, 1800);
+  function closeResult() {
+    setResultPending(null);
+    setFile(null);
+    setUploadState('idle');
   }
 
   return (
@@ -283,18 +257,16 @@ export function DashboardPage() {
       {currencyError && (
         <CurrencyErrorModal onClose={() => setCurrencyError(false)} />
       )}
-      {mismatchPending && (
-        <ValidationWarningModal
-          currency={mismatchPending.currency}
-          computedTotal={mismatchPending.computedTotal}
-          quotedTotal={mismatchPending.quotedTotal}
-          onAcknowledge={acknowledgeMismatch}
-        />
-      )}
-      {cancelledPending && (
-        <CancelledLinesModal
-          cancelledLines={cancelledPending.cancelledLines}
-          onAcknowledge={acknowledgeCancelled}
+      {resultPending && (
+        <ParseResultModal
+          validation={resultPending.validation}
+          currency={resultPending.currency}
+          computedTotal={resultPending.computedTotal}
+          quotedTotal={resultPending.quotedTotal}
+          cancelledLines={resultPending.cancelledLines}
+          reportType={resultPending.reportType}
+          onDownload={downloadResult}
+          onClose={closeResult}
         />
       )}
     </div>

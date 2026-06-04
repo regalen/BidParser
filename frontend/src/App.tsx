@@ -6,6 +6,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { MetricsDashboard } from './pages/admin/MetricsDashboard';
 import { MonitoringPage } from './pages/admin/MonitoringPage';
+import { ReportTypesPage } from './pages/admin/ReportTypesPage';
 import { UsersPage } from './pages/admin/UsersPage';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -39,6 +40,7 @@ export function App() {
       {/* Admin Shell Routes */}
       <Route path="/settings" element={<Navigate to="/admin/users" replace />} />
       <Route path="/admin/users" element={<AdminRoute><UsersPage /></AdminRoute>} />
+      <Route path="/admin/report-types" element={<AdminRoute><ReportTypesPage /></AdminRoute>} />
       <Route path="/admin/metrics" element={<AdminRoute><MetricsDashboard /></AdminRoute>} />
       <Route path="/admin/monitoring" element={<AdminRoute><MonitoringPage /></AdminRoute>} />
       

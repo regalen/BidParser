@@ -11,20 +11,23 @@ Read that file (and the per-format specs in `docs/`) when you need specifics.
 
 An internal web app for sales operations. Users upload a supplier quote (PDF or
 XLSX in supplier-specific layouts); the app extracts and validates line items and
-auto-downloads a standardised `*_parsed.xlsx`. Stack: ASP.NET Core 10 backend +
+presents a result popup (success/warnings, a Download button, and the
+admin-configured report type to use) from which the user downloads a standardised
+`*_parsed.xlsx`. Stack: ASP.NET Core 10 backend +
 React 19/Vite/TypeScript frontend, deployed as a single Docker image via
 `docker-compose` behind nginx-proxy-manager. Work is **iterative, one supplier
 format at a time** — the architecture is a pluggable `IParser` registry so a new
 format is one parser class + fixtures + one registry entry.
 
 Backend was re-platformed from Python/FastAPI to ASP.NET Core 10. All tests pass:
-`dotnet test BidParser.sln` (216: 145 parsing + 71 API integration).
+`dotnet test BidParser.sln` (219: 145 parsing + 74 API integration). API tests
+need a running Docker daemon (SQL Server testcontainer).
 
 ## Project layout
 
-- `src/BidParser.Api/` — Minimal API. Endpoints `/auth/*`, `/me`, `/users`, `/parsers`, `/parse`, `/history`, `/metrics/*`, `/monitoring/*`, health. Cookie auth, CSRF, rate limiters, `GlobalExceptionHandler`, `SecurityHeadersMiddleware`, locked-down `ForwardedHeaders`. Typed response records in `Contracts/`, decimal converters in `Serialization/`. Hosts the SPA from `wwwroot/`.
+- `src/BidParser.Api/` — Minimal API. Endpoints `/auth/*`, `/me`, `/users`, `/parsers`, `/report-types` (admin), `/parse`, `/history`, `/metrics/*`, `/monitoring/*`, health. Cookie auth, CSRF, rate limiters, `GlobalExceptionHandler`, `SecurityHeadersMiddleware`, locked-down `ForwardedHeaders`. Typed response records in `Contracts/`, decimal converters in `Serialization/`. Hosts the SPA from `wwwroot/`.
 - `src/BidParser.Domain/` — `LineItem`, `QuoteMetadata`, `ValidationResult`, `ParseResult`, `ParseError`, `IParser`, `IParserRegistry`. `Constants/` centralises `Vendors.*`, `CrmTemplates.*`, `ParserSlugs.*`.
-- `src/BidParser.Infrastructure/` — `AppDbContext` (EF Core + SQL Server, `AddDbContextPool`), entities (`User`, `ParseJob`, `ParseMetric`, `FailedParseJob`), migrations, `FileStorage`, `ParseService`, `FailedParseJobRecorder`, `RetentionService`.
+- `src/BidParser.Infrastructure/` — `AppDbContext` (EF Core + SQL Server, `AddDbContextPool`), entities (`User`, `ParseJob`, `ParseMetric`, `FailedParseJob`, `ReportTypeConfig`), migrations, `FileStorage`, `ParseService`, `FailedParseJobRecorder`, `RetentionService`.
 - `src/BidParser.Parsing/` — PDF helpers via PdfPig (`Pdf/`), XLSX helpers via ClosedXML (`Xlsx/`), legacy `.xls` via ExcelDataReader, five Nutanix + three HP + two Lenovo parsers, explicit `Registry/ParserRegistry.cs`.
 - `src/BidParser.Output/` — `ForeignUpliftWriter`, `AnzGenericWriter`, `PercentOffWithUpliftWriter`, shared `TemplateLayout`, `OutputNaming`.
 - `tests/BidParser.Parsing.Tests/`, `tests/BidParser.Api.Tests/` — xUnit; the latter uses `WebApplicationFactory` (shared infra in `TestInfrastructure.cs`).
@@ -109,7 +112,7 @@ Do **not** touch API routes, frontend components (dropdowns auto-populate from `
 
 - Iterate one supplier format at a time. **Confirm extraction accuracy in chat (render a table) before writing scaffolding** for a new format.
 - Output field mapping is locked in `docs/output_mapping.md` — read it; don't re-derive cell positions from the template.
-- Flag scope drift against the MVP guardrails (single vendor Nutanix, single-file upload, auto-download, no review gate — full list in `docs/project_memory.md`) before building anything outside them.
+- Flag scope drift against the MVP guardrails (single-file upload, result-popup download, no review/edit gate — full list in `docs/project_memory.md`) before building anything outside them.
 
 ## Release versioning
 

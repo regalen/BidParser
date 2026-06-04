@@ -10,6 +10,8 @@ public sealed record ParseErrorResponse(ParseErrorDetail Detail);
 
 public sealed record PasswordValidationError(IReadOnlyList<string> Detail);
 
+public sealed record ReportTypeUpdateRequest(string ReportType);
+
 public sealed record MetricsKpis(
     int TotalParses,
     int ActiveUsers,

@@ -193,6 +193,11 @@ internal sealed class ApiTestFixture : IDisposable
         return SendJsonWithCsrfAsync(client, HttpMethod.Patch, url, body);
     }
 
+    public static Task<HttpResponseMessage> PutJsonWithCsrfAsync<T>(HttpClient client, string url, T body)
+    {
+        return SendJsonWithCsrfAsync(client, HttpMethod.Put, url, body);
+    }
+
     public static async Task<HttpResponseMessage> DeleteWithCsrfAsync(HttpClient client, string url)
     {
         using var request = new HttpRequestMessage(HttpMethod.Delete, url);
