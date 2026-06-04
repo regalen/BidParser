@@ -69,17 +69,12 @@ public sealed class ReportTypesAdminTests
 
         var slug = await FirstParserSlugAsync(client);
 
+        // Create the non-admin user while still authenticated as admin, then switch to it.
+        var create = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/users", new { username = "salesperson1", name = "Sales Person", role = "user" });
+        create.StatusCode.Should().Be(HttpStatusCode.OK);
+
         var logout = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/auth/logout", new { });
         logout.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var create = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/users", new { username = "salesperson1", name = "Sales Person", role = "user" });
-        // Not authenticated to create — re-login as admin to create the user, then act as the user.
-        if (create.StatusCode != HttpStatusCode.OK)
-        {
-            await ApiTestFixture.UnlockAdminAsync(client);
-            await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/users", new { username = "salesperson1", name = "Sales Person", role = "user" });
-            await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/auth/logout", new { });
-        }
 
         var login = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/auth/login", new { username = "salesperson1", password = "changeme" });
         login.StatusCode.Should().Be(HttpStatusCode.OK);

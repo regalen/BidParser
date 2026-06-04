@@ -42,8 +42,9 @@ public sealed class MigrationTests
             admin.MustChangePassword.Should().BeTrue();
             BCrypt.Net.BCrypt.Verify("change-me-123!", admin.PasswordHash).Should().BeTrue();
 
-            var migrationIds = await db.Database.GetAppliedMigrationsAsync();
-            migrationIds.Should().ContainSingle().Which.Should().EndWith("_InitialCreate");
+            var migrationIds = (await db.Database.GetAppliedMigrationsAsync()).ToList();
+            migrationIds.Should().Contain(id => id.EndsWith("_InitialCreate"));
+            migrationIds.Should().Contain(id => id.EndsWith("_AddReportTypeConfig"));
 
             // Verify CI collation on username and source_filename via INFORMATION_SCHEMA
             var usernameCollation = await db.Database.SqlQueryRaw<string>(
