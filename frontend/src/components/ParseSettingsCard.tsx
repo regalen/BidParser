@@ -157,9 +157,6 @@ export function ParseSettingsCard({
           'Upload & parse'
         )}
       </button>
-      <span className="text-center text-[11px] leading-5 text-slate-500">
-        Output will automatically download once completed.
-      </span>
     </aside>
   );
 }
