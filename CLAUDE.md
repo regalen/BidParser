@@ -20,7 +20,7 @@ format at a time** — the architecture is a pluggable `IParser` registry so a n
 format is one parser class + fixtures + one registry entry.
 
 Backend was re-platformed from Python/FastAPI to ASP.NET Core 10. All tests pass:
-`dotnet test BidParser.sln` (222: 148 parsing + 74 API integration). API tests
+`dotnet test BidParser.sln` (237: 161 parsing + 76 API integration). API tests
 need a running Docker daemon (SQL Server testcontainer).
 
 ## Project layout
@@ -40,7 +40,8 @@ need a running Docker daemon (SQL Server testcontainer).
 - **Anchor-based extraction is mandatory.** Every parser locates sections, headers, totals, and column positions by searching for anchor strings — never hard-code row numbers, column letters, or fixed offsets. The same workbook can contain multiple quote sections where rows shift and column letters differ between sections (Quote C uses column H for `Product Code`; Quote D in the same file uses column E). Hard-coded positions break on real quotes.
 - **Single parser contract.** Every parser returns `ParseResult { Metadata, LineItems, Validation }`. `LineItem` requires only `VPN`, `Cost`, `Qty`; the rest are nullable, populated per format. See `docs/project_memory.md` for the full contract.
 - **Validation is identical across formats**: `computed_total = Σ(cost × qty)` compared to `quoted_total` with `0.01` tolerance. For formats with **no quoted total** (e.g. HP), construct `ValidationResult` directly with `Matches = true`, `Difference = 0` — do **not** call `ParseValidation.Validate(items, null)`, which returns `Matches = false` and trips the frontend's mismatch modal on every parse.
-- **Format detection is a soft hint, not routing.** `Detect()` returns 0.0–1.0; the UI pre-fills the dropdown above 0.7 but the user always confirms.
+- **Format detection is a soft hint, not routing.** `Detect()` returns 0.0–1.0. It is **not** used to route or pre-fill the dropdown (the user always picks the file type). Its one consumer is the **wrong-file-type** flow: when the selected parser fails recognition, `ParseService` runs `Detect()` across the *same-vendor, same-MIME* siblings to name the likely-correct type (see "Wrong file-type handling" below). Parsers without a `Detect()` override default to `0.0` and simply never get suggested.
+- **Wrong file-type handling.** A recognition failure — `ParseError(stage: "detect")`, raised when the table anchor or a required column (`HeaderMap.Require`) is missing — is treated as a *wrong file-type selection*, **not** a recorded failure. `ParseService` catches it before the generic handler: it suggests the correct type via sibling `Detect()` (confidence ≥ 0.7), deletes the stored upload, writes **nothing** (no `FailedParseJob`/`ParseJob`/`ParseMetric`), and rethrows `ParseError(stage: "file_type")` with a composed message (named when confident, generic otherwise). Failures *after* the table is located (e.g. `stage: "currency"`, `"extract"`, magic-byte `"upload"`) remain genuine recorded failures. The SPA shows `FileTypeErrorModal` for `stage: "file_type"`.
 - **Registry is the single extension point** — `src/BidParser.Parsing/Registry/ParserRegistry.cs` holds an explicit `IReadOnlyList<IParser>`. No assembly scanning; registration order is visible. Each parser lives in its own subfolder.
 - **Dates** are `DateOnly` internally (serialised ISO `YYYY-MM-DD`); `DD/MM/YYYY` display is a frontend concern.
 - **`XQ-4108785` (PDF + XLSX) are multi-quote files** (Quote A/B/C/D). Both parsers extract **Quote D only**. Quote C is a separate budgetary breakdown; A/B are noise.
@@ -89,7 +90,7 @@ Parsers detect *source* labels (`"Net Unit Price"`, `"List Unit Price"`, …) as
 
 ## Commands
 
-- `dotnet test BidParser.sln` — full suite (222 tests).
+- `dotnet test BidParser.sln` — full suite (237 tests).
 - `dotnet run --project src/BidParser.Api` — backend dev server (`http://localhost:5000`).
 - `cd frontend && npm run dev` — Vite dev server, proxies `/api` to `http://127.0.0.1:5000` (`VITE_API_PROXY_TARGET=…` to point elsewhere).
 - `cd frontend && npm run build` — TypeScript + production frontend build.
@@ -98,13 +99,13 @@ Parsers detect *source* labels (`"Net Unit Price"`, `"List Unit Price"`, …) as
 
 ## Adding a parser format
 
-1. **One parser class** in `src/BidParser.Parsing/<Vendor>/<Slug>/` implementing `IParser` (`Slug`, `DisplayName`, `Vendor`, `AcceptedMime`, `CrmTemplate`, `Parse`; optional `Detect` defaults `0.0`). Reference `Vendors.*`/`CrmTemplates.*`/`ParserSlugs.*`. Override `AvailableTemplates` only for multi-template parsers (the frontend then auto-renders a dropdown).
+1. **One parser class** in `src/BidParser.Parsing/<Vendor>/<Slug>/` implementing `IParser` (`Slug`, `DisplayName`, `Vendor`, `AcceptedMime`, `CrmTemplate`, `Parse`; optional `Detect` defaults `0.0`). Reference `Vendors.*`/`CrmTemplates.*`/`ParserSlugs.*`. Override `AvailableTemplates` only for multi-template parsers (the frontend then auto-renders a dropdown). **If the vendor has ≥2 formats sharing a MIME, add a `Detect()` signature** (anchor/header check, `try/catch → score`) here *and* to the siblings so the wrong-file-type flow can name the correct type — and a cross-detection test case in `WrongFileTypeDetectionTests` (each format high on its own fixture, `< 0.7` on siblings). Lenovo/Zebra have a single format per MIME, so they need no `Detect()`.
 2. **One registry entry** appended to `ParserRegistry.cs`.
 3. **One fixture + golden** under `samples/inputs/` and `samples/outputs/`, plus a test case. Add a `SAMPLE_FILES` entry + file under `frontend/public/samples/` (`FileTypeSelect.tsx`).
 4. **Optionally a spec** `docs/<vendor>_<format>.md`, linked from `docs/project_memory.md`.
 5. **New CRM template** → new writer in `src/BidParser.Output/`, dispatch `case` in `ParseService.ParseAsync`.
 
-**Parser-specific error modals**: throw `ParseError("currency", hint, message)` (or another stage name) from the parser; the API returns HTTP 422 with `{ detail: { stage, hint, message } }`. To show a dedicated modal for a specific stage, add a `isCurrencyError`-style helper in `DashboardPage.tsx` and a matching modal component — the existing `CurrencyErrorModal` (AUD validation) is the pattern to follow.
+**Parser-specific error modals**: throw `ParseError("currency", hint, message)` (or another stage name) from the parser; the API returns HTTP 422 with `{ detail: { stage, hint, message } }`. To show a dedicated modal for a specific stage, add a `isCurrencyError`-style helper in `DashboardPage.tsx` and a matching modal component — the existing `CurrencyErrorModal` (AUD validation) is the pattern to follow. **Reserved stages:** `"detect"` is the wrong-file-type signal (recognition failure — see "Wrong file-type handling"); it is reclassified to `"file_type"` by `ParseService` and rendered by `FileTypeErrorModal`. Use `"detect"` only for "this file isn't my format" failures, never for genuine extraction errors.
 
 Do **not** touch API routes, frontend components (dropdowns auto-populate from `/api/parsers`), Docker, validation, auth, or history — the parser surface is the entire change. Preserve that property.
 

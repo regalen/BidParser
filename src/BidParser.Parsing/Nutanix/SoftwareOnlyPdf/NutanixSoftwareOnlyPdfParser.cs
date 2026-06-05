@@ -16,6 +16,34 @@ public sealed partial class NutanixSoftwareOnlyPdfParser : IParser
     public string AcceptedMime => "application/pdf";
     public string CrmTemplate => CrmTemplates.ForeignUplift;
 
+    // Signature: a "Product Code" table header, with no Quote D banner (Hardware Only)
+    // and no Serial column (Renewal).
+    public double Detect(string path)
+    {
+        try
+        {
+            var words = PdfWordCollector.CollectWords(path);
+            var text = TextCleaner.Clean(PdfTableHelpers.WordStreamText(words));
+            // Disqualify the siblings: Hardware Only carries the Quote D banner; Renewal
+            // carries a "Serial" column. Software Only has neither.
+            if (text.Contains("distributor to quote to the reseller only", StringComparison.OrdinalIgnoreCase))
+            {
+                return 0.0;
+            }
+
+            if (words.Any(word => word.Text.Trim() == "Serial"))
+            {
+                return 0.0;
+            }
+
+            return text.Contains("Nutanix", StringComparison.OrdinalIgnoreCase) ? 0.8 : 0.0;
+        }
+        catch
+        {
+            return 0.0;
+        }
+    }
+
     public ParseResult Parse(string path)
     {
         var words = PdfWordCollector.CollectWords(path);

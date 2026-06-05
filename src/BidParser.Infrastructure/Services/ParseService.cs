@@ -11,6 +11,9 @@ namespace BidParser.Infrastructure.Services;
 
 public sealed class ParseService(IParserRegistry registry, FileStorage storage, AppDbContext db, FailedParseJobRecorder failureRecorder, ILogger<ParseService> logger)
 {
+    // Minimum Detect() score for naming a suggested file type in the wrong-type message.
+    private const double WrongFileTypeConfidence = 0.7;
+
     private static readonly Dictionary<string, string> ExtensionToMime = new(StringComparer.OrdinalIgnoreCase)
     {
         [".pdf"] = "application/pdf",
@@ -172,6 +175,27 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
                 result.Metadata.Currency,
                 cancelledLines);
         }
+        catch (ParseError pe) when (pe.Stage == "detect")
+        {
+            // The selected parser could not recognise the file's layout (missing table
+            // anchor or required column) — almost always a wrong file-type selection, not
+            // a genuine parser failure. Suggest the correct type by comparing the file
+            // against the other formats for the SAME vendor, drop everything (no monitoring
+            // entry, no parse job/metric) and delete the stored upload.
+            storage.TryDelete(outputPath);
+            var suggestedType = DetectSuggestedType(parser, sourcePath);
+            storage.TryDelete(sourcePath);
+
+            logger.LogInformation(
+                "Wrong file type for {Filename}: selected {Slug}, suggested {Suggested}",
+                displayFilename, parser.Slug, suggestedType ?? "(none)");
+
+            var message = suggestedType is null
+                ? $"The file is not recognised as {parser.DisplayName}. Check the selected file type and try again."
+                : $"The file is not recognised as {parser.DisplayName} and appears to be a {suggestedType}. Select the correct file type and try again.";
+
+            throw new ParseError("file_type", message, message);
+        }
         catch (Exception ex)
         {
             storage.TryDelete(outputPath);
@@ -185,6 +209,34 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
 
             throw;
         }
+    }
+
+    // Among the other formats for the selected file's vendor (and matching MIME), find
+    // the one whose Detect() signature confidently matches the uploaded file. Returns the
+    // display name to suggest, or null when nothing is confident enough.
+    private string? DetectSuggestedType(IParser selected, string sourcePath)
+    {
+        IParser? best = null;
+        var bestScore = 0.0;
+
+        foreach (var candidate in registry.Parsers)
+        {
+            if (candidate.Slug == selected.Slug
+                || candidate.Vendor != selected.Vendor
+                || candidate.AcceptedMime != selected.AcceptedMime)
+            {
+                continue;
+            }
+
+            var score = candidate.Detect(sourcePath);
+            if (score > bestScore)
+            {
+                bestScore = score;
+                best = candidate;
+            }
+        }
+
+        return bestScore >= WrongFileTypeConfidence ? best!.DisplayName : null;
     }
 
     private IParser ResolveParser(string parserSlug, string vendor)

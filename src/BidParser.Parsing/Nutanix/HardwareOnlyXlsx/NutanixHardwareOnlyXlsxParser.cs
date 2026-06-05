@@ -9,13 +9,36 @@ namespace BidParser.Parsing.Nutanix.HardwareOnlyXlsx;
 
 public sealed class NutanixHardwareOnlyXlsxParser : IParser
 {
-    private const string QuoteDBanner = "Quote D For distributor to quote to the reseller only";
+    private const string QuoteDBanner = NutanixXlsxSignatures.QuoteDBanner;
 
     public string Slug => ParserSlugs.NutanixHardwareOnlyXlsx;
     public string DisplayName => "Hardware Only (XLSX)";
     public string Vendor => Vendors.Nutanix;
     public string AcceptedMime => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     public string CrmTemplate => CrmTemplates.ForeignUplift;
+
+    // Signature: the "Quote D" banner with a "Product Code" header below it.
+    public double Detect(string path)
+    {
+        try
+        {
+            using var workbook = WorkbookReader.Open(path);
+            var sheet = workbook.Worksheets.First();
+            var banner = WorkbookReader.FindCell(sheet, QuoteDBanner);
+            if (banner is null)
+            {
+                return 0.0;
+            }
+
+            return WorkbookReader.FindCellAfter(sheet, "Product Code", banner.Address.RowNumber) is not null
+                ? 0.9
+                : 0.0;
+        }
+        catch
+        {
+            return 0.0;
+        }
+    }
 
     public ParseResult Parse(string path)
     {

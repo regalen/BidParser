@@ -1,3 +1,5 @@
+using BidParser.Domain.Models;
+
 namespace BidParser.Parsing.Xlsx;
 
 public sealed record HeaderMap(int RowNumber, IReadOnlyDictionary<string, int> Columns)
@@ -9,6 +11,12 @@ public sealed record HeaderMap(int RowNumber, IReadOnlyDictionary<string, int> C
             return column;
         }
 
-        throw new InvalidOperationException($"Missing required header '{label}'.");
+        // A missing required column means the selected parser does not recognise this
+        // file's layout. Surface it as a "detect"-stage ParseError so ParseService can
+        // classify it as a wrong-file-type selection (rather than a genuine failure).
+        throw new ParseError(
+            "detect",
+            $"Missing the '{label}' column.",
+            $"Missing required header '{label}'.");
     }
 }

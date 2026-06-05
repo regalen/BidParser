@@ -15,6 +15,38 @@ public sealed class NutanixRenewalXlsxParser : IParser
     public string AcceptedMime => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     public string CrmTemplate => CrmTemplates.ForeignUplift;
 
+    // Signature: the "Quote Number" grid carrying the renewal price/serial columns
+    // (Net Unit Price + Serial Number + Term Adjusted List Unit Price).
+    public double Detect(string path)
+    {
+        try
+        {
+            using var workbook = WorkbookReader.Open(path);
+            var sheet = workbook.Worksheets.First();
+            if (WorkbookReader.FindCell(sheet, NutanixXlsxSignatures.QuoteDBanner) is not null)
+            {
+                return 0.0;
+            }
+
+            var headerCell = WorkbookReader.FindCell(sheet, "Quote Number");
+            if (headerCell is null)
+            {
+                return 0.0;
+            }
+
+            var columns = WorkbookReader.HeaderMap(sheet, headerCell.Address.RowNumber).Columns;
+            return columns.ContainsKey("Net Unit Price")
+                && columns.ContainsKey("Serial Number")
+                && columns.ContainsKey("Term Adjusted List Unit Price")
+                ? 0.9
+                : 0.0;
+        }
+        catch
+        {
+            return 0.0;
+        }
+    }
+
     public ParseResult Parse(string path)
     {
         using var workbook = WorkbookReader.Open(path);

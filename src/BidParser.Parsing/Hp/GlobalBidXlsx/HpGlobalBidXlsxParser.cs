@@ -15,6 +15,23 @@ public sealed class HpGlobalBidXlsxParser : IParser
     public string CrmTemplate => CrmTemplates.NoCalculation;
     public IReadOnlyList<string> AvailableTemplates => [CrmTemplates.NoCalculation, CrmTemplates.Uplift];
 
+    // Signature: a "Product number" header on the "Product numbers" sheet, unique to
+    // the HP Global Bid export.
+    public double Detect(string path)
+    {
+        try
+        {
+            using var workbook = WorkbookReader.Open(path);
+            var sheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name == "Product numbers")
+                ?? workbook.Worksheets.First();
+            return WorkbookReader.FindCell(sheet, "Product number") is not null ? 0.9 : 0.0;
+        }
+        catch
+        {
+            return 0.0;
+        }
+    }
+
     public ParseResult Parse(string path)
     {
         using var workbook = WorkbookReader.Open(path);

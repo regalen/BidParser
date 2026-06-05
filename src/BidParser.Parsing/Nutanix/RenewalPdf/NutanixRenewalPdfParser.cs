@@ -14,6 +14,28 @@ public sealed class NutanixRenewalPdfParser : IParser
     public string AcceptedMime => "application/pdf";
     public string CrmTemplate => CrmTemplates.ForeignUplift;
 
+    // Signature: a "Serial" column on the line-item table, with no Quote D banner
+    // (Hardware Only). Software Only has a Product Code table but no Serial column.
+    public double Detect(string path)
+    {
+        try
+        {
+            var words = PdfWordCollector.CollectWords(path);
+            var text = TextCleaner.Clean(PdfTableHelpers.WordStreamText(words));
+            if (text.Contains("distributor to quote to the reseller only", StringComparison.OrdinalIgnoreCase))
+            {
+                return 0.0; // Hardware Only (Quote D)
+            }
+
+            // The "Serial" column header is unique to Renewal among the Nutanix PDF formats.
+            return words.Any(word => word.Text.Trim() == "Serial") ? 0.9 : 0.0;
+        }
+        catch
+        {
+            return 0.0;
+        }
+    }
+
     public ParseResult Parse(string path)
     {
         var words = PdfWordCollector.CollectWords(path);

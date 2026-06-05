@@ -15,6 +15,43 @@ public sealed class NutanixSoftwareOnlyXlsxParser : IParser
     public string AcceptedMime => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     public string CrmTemplate => CrmTemplates.ForeignUplift;
 
+    // Signature: the "Quote Number" grid carrying Term (Months) + List/Sale Price, and
+    // NOT under a "Quote D" banner (Hardware Only) nor carrying the renewal price columns.
+    public double Detect(string path)
+    {
+        try
+        {
+            using var workbook = WorkbookReader.Open(path);
+            var sheet = workbook.Worksheets.First();
+            if (WorkbookReader.FindCell(sheet, NutanixXlsxSignatures.QuoteDBanner) is not null)
+            {
+                return 0.0;
+            }
+
+            var headerCell = WorkbookReader.FindCell(sheet, "Quote Number");
+            if (headerCell is null)
+            {
+                return 0.0;
+            }
+
+            var columns = WorkbookReader.HeaderMap(sheet, headerCell.Address.RowNumber).Columns;
+            if (columns.ContainsKey("Net Unit Price") || columns.ContainsKey("Serial Number"))
+            {
+                return 0.0;
+            }
+
+            return columns.ContainsKey("Term (Months)")
+                && columns.ContainsKey("List Price")
+                && columns.ContainsKey("Sale Price")
+                ? 0.85
+                : 0.0;
+        }
+        catch
+        {
+            return 0.0;
+        }
+    }
+
     public ParseResult Parse(string path)
     {
         using var workbook = WorkbookReader.Open(path);

@@ -15,6 +15,21 @@ public sealed class HpOneConfigXlsxParser : IParser
     public string AcceptedMime => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     public string CrmTemplate => CrmTemplates.PercentOffWithUplift;
 
+    // Signature: the "Config ID" header, unique to the HP OneConfig export.
+    public double Detect(string path)
+    {
+        try
+        {
+            using var workbook = WorkbookReader.Open(path);
+            var sheet = workbook.Worksheets.First();
+            return WorkbookReader.FindCell(sheet, "Config ID") is not null ? 0.9 : 0.0;
+        }
+        catch
+        {
+            return 0.0;
+        }
+    }
+
     public ParseResult Parse(string path)
     {
         using var workbook = WorkbookReader.Open(path);

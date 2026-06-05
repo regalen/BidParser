@@ -373,9 +373,49 @@ Success responses with no useful body use `OkResponse { Ok: true }` → `{"ok":t
 
 **JSON casing:** `JsonNamingPolicy.SnakeCaseLower` globally — `Detail` → `"detail"`, `MustChangePassword` → `"must_change_password"`. New DTOs follow this without per-property `[JsonPropertyName]`.
 
+## Wrong file-type detection
+
+When a user picks the wrong file type, the selected parser fails at recognition and
+`ParseService` turns that into a helpful "wrong file type" message instead of a recorded
+failure.
+
+- **Signal.** A recognition failure surfaces as `ParseError(stage: "detect")` — thrown when
+  the table anchor is missing (`?? throw new ParseError("detect", …)`) or a required column
+  is absent (`HeaderMap.Require` now throws `ParseError("detect", …)` rather than
+  `InvalidOperationException`). Only `stage == "detect"` is reclassified; every other stage
+  (`"currency"`, `"extract"`, `"upload"`, `"config"`, …) stays a genuine recorded failure.
+- **Classification + cleanup.** `ParseService` catches `ParseError when (Stage == "detect")`
+  *before* the generic handler: deletes the output **and the stored upload**, records nothing
+  (no `FailedParseJob`, `ParseJob`, or `ParseMetric`), and rethrows
+  `ParseError(stage: "file_type", message, message)`.
+- **Naming (hybrid).** `DetectSuggestedType` runs `Detect()` over the **same-vendor,
+  same-MIME** siblings of the selected parser (excluding it), takes the top score, and names
+  it when `≥ 0.7` (`WrongFileTypeConfidence`). Message: *"The file is not recognised as
+  {selected} and appears to be a {suggested}. Select the correct file type and try again."*;
+  when nothing is confident: *"The file is not recognised as {selected}. Check the selected
+  file type and try again."*
+- **Candidate set / coverage.** Only vendors with ≥2 formats per MIME can ever name a
+  sibling: **Nutanix PDF** (Software/Renewal/Hardware), **Nutanix XLSX** (Software/Renewal/
+  Hardware), **HP XLSX** (Bid/Global Bid/OneConfig). Lenovo & Zebra have one format per MIME →
+  always the generic message.
+- **`Detect()` signatures** (each `try/catch → score`, `0.0` on failure):
+  - *Nutanix XLSX:* Hardware = `Quote D` banner present; Renewal = `Quote Number` grid with
+    `Net Unit Price` + `Serial Number` + `Term Adjusted List Unit Price`; Software = same grid
+    with `Term (Months)` + `List Price` + `Sale Price`, no banner, no renewal columns.
+  - *Nutanix PDF* (over whitespace-normalised `WordStreamText`): Hardware = `…distributor to
+    quote to the reseller only` banner; Renewal = a `Serial` column word, no banner; Software =
+    contains `Nutanix`, no banner, no `Serial`.
+  - *HP XLSX:* Bid = `Line Type` header; Global Bid = `Product number` on the `Product
+    numbers` sheet; OneConfig = `Config ID` header.
+- **Frontend.** `DashboardPage.fileTypeErrorMessage` matches `stage === "file_type"` and shows
+  `FileTypeErrorModal` (message-only; the dropdown is left unchanged).
+- **Tests.** `WrongFileTypeDetectionTests` (parsing project, runnable) asserts the
+  cross-detection matrix; `WrongFileTypeTests` (API project, needs Docker) asserts the 422
+  `file_type` response, that nothing is recorded, and the upload is deleted.
+
 ## CRM template mapping
 
-All five Nutanix parsers declare `CrmTemplate = "Foreign Uplift"` and `AvailableTemplates = ["Foreign Uplift"]`; `ForeignUpliftWriter.WriteForeignUplift` produces their workbook.
+All six Nutanix parsers declare `CrmTemplate = "Foreign Uplift"` and `AvailableTemplates = ["Foreign Uplift"]`; `ForeignUpliftWriter.WriteForeignUplift` produces their workbook.
 
 HP Bid (XLSX): `CrmTemplate = "No Calculation"`, `AvailableTemplates = ["No Calculation", "Uplift"]`. User selects template via dropdown. `AnzGenericWriter.Write(items, path, sheetName, includeMargin, margin, vendorName)` produces both; `Uplift` populates Margin column (K), `No Calculation` leaves it blank. `Bundle Detail` rows carry `cost = 0` (the `Bundle` parent holds the deal total); `AnzGenericWriter` writes the `0.0001` sentinel in Cost column (I) for any zero cost.
 

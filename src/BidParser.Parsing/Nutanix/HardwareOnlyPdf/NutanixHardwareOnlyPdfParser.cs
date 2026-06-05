@@ -14,6 +14,23 @@ public sealed class NutanixHardwareOnlyPdfParser : IParser
     public string AcceptedMime => "application/pdf";
     public string CrmTemplate => CrmTemplates.ForeignUplift;
 
+    // Signature: the reseller-facing "Quote D" banner — unique to the multi-quote
+    // Hardware Only file among the Nutanix PDF formats.
+    public double Detect(string path)
+    {
+        try
+        {
+            var text = TextCleaner.Clean(PdfTableHelpers.WordStreamText(PdfWordCollector.CollectWords(path)));
+            return text.Contains("distributor to quote to the reseller only", StringComparison.OrdinalIgnoreCase)
+                ? 0.9
+                : 0.0;
+        }
+        catch
+        {
+            return 0.0;
+        }
+    }
+
     public ParseResult Parse(string path)
     {
         var words = PdfTableHelpers.FuseCurrencyTokens(PdfWordCollector.CollectWords(path));

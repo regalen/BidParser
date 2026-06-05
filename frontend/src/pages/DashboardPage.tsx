@@ -4,6 +4,7 @@ import { api, ApiError, type CancelledLineInfo } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { AppHeader } from '../components/AppHeader';
 import { CurrencyErrorModal } from '../components/CurrencyErrorModal';
+import { FileTypeErrorModal } from '../components/FileTypeErrorModal';
 import { Dropzone, type UploadState } from '../components/Dropzone';
 import { Footer } from '../components/Footer';
 import { ParseResultModal } from '../components/ParseResultModal';
@@ -39,6 +40,7 @@ export function DashboardPage() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [currencyError, setCurrencyError] = useState(false);
+  const [fileTypeError, setFileTypeError] = useState<string | null>(null);
   const [resultPending, setResultPending] = useState<{
     blob: Blob;
     filename: string;
@@ -180,8 +182,11 @@ export function DashboardPage() {
       });
     } catch (caught) {
       setUploadState('idle');
+      const fileTypeMessage = fileTypeErrorMessage(caught);
       if (isCurrencyError(caught)) {
         setCurrencyError(true);
+      } else if (fileTypeMessage) {
+        setFileTypeError(fileTypeMessage);
       } else {
         const message = errorMessage(caught);
         setDropError(message);
@@ -257,6 +262,9 @@ export function DashboardPage() {
       {currencyError && (
         <CurrencyErrorModal onClose={() => setCurrencyError(false)} />
       )}
+      {fileTypeError && (
+        <FileTypeErrorModal message={fileTypeError} onClose={() => setFileTypeError(null)} />
+      )}
       {resultPending && (
         <ParseResultModal
           validation={resultPending.validation}
@@ -289,6 +297,18 @@ function isCurrencyError(error: unknown): boolean {
     return (error.detail as ApiErrorDetail).stage === 'currency';
   }
   return false;
+}
+
+// Wrong file-type selection: the server composes the full guidance message and tags it
+// with stage "file_type". Returns the message to show, or null when not this error.
+function fileTypeErrorMessage(error: unknown): string | null {
+  if (error instanceof ApiError && typeof error.detail === 'object' && error.detail !== null) {
+    const detail = error.detail as ApiErrorDetail;
+    if (detail.stage === 'file_type') {
+      return detail.message ?? detail.hint ?? 'The selected file type is incorrect.';
+    }
+  }
+  return null;
 }
 
 function errorMessage(error: unknown) {
