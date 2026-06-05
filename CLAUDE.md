@@ -20,7 +20,7 @@ format at a time** — the architecture is a pluggable `IParser` registry so a n
 format is one parser class + fixtures + one registry entry.
 
 Backend was re-platformed from Python/FastAPI to ASP.NET Core 10. All tests pass:
-`dotnet test BidParser.sln` (219: 145 parsing + 74 API integration). API tests
+`dotnet test BidParser.sln` (222: 148 parsing + 74 API integration). API tests
 need a running Docker daemon (SQL Server testcontainer).
 
 ## Project layout
@@ -28,7 +28,7 @@ need a running Docker daemon (SQL Server testcontainer).
 - `src/BidParser.Api/` — Minimal API. Endpoints `/auth/*`, `/me`, `/users`, `/parsers`, `/report-types` (admin), `/parse`, `/history`, `/metrics/*`, `/monitoring/*`, health. Cookie auth, CSRF, rate limiters, `GlobalExceptionHandler`, `SecurityHeadersMiddleware`, locked-down `ForwardedHeaders`. Typed response records in `Contracts/`, decimal converters in `Serialization/`. Hosts the SPA from `wwwroot/`.
 - `src/BidParser.Domain/` — `LineItem`, `QuoteMetadata`, `ValidationResult`, `ParseResult`, `ParseError`, `IParser`, `IParserRegistry`. `Constants/` centralises `Vendors.*`, `CrmTemplates.*`, `ParserSlugs.*`.
 - `src/BidParser.Infrastructure/` — `AppDbContext` (EF Core + SQL Server, `AddDbContextPool`), entities (`User`, `ParseJob`, `ParseMetric`, `FailedParseJob`, `ReportTypeConfig`), migrations, `FileStorage`, `ParseService`, `FailedParseJobRecorder`, `RetentionService`.
-- `src/BidParser.Parsing/` — PDF helpers via PdfPig (`Pdf/`), XLSX helpers via ClosedXML (`Xlsx/`), legacy `.xls` via ExcelDataReader, five Nutanix + three HP + two Lenovo parsers, explicit `Registry/ParserRegistry.cs`.
+- `src/BidParser.Parsing/` — PDF helpers via PdfPig (`Pdf/`), XLSX helpers via ClosedXML (`Xlsx/`), legacy `.xls` via ExcelDataReader, six Nutanix + three HP + two Lenovo parsers, explicit `Registry/ParserRegistry.cs`.
 - `src/BidParser.Output/` — `ForeignUpliftWriter`, `AnzGenericWriter`, `PercentOffWithUpliftWriter`, shared `TemplateLayout`, `OutputNaming`.
 - `tests/BidParser.Parsing.Tests/`, `tests/BidParser.Api.Tests/` — xUnit; the latter uses `WebApplicationFactory` (shared infra in `TestInfrastructure.cs`).
 - `frontend/` — React 19/Vite/TypeScript SPA, `recharts ^2`. ProductLens visual design; shared utility classes in `src/styles.css`; CRM template names in `src/constants.ts`.
@@ -89,7 +89,7 @@ Parsers detect *source* labels (`"Net Unit Price"`, `"List Unit Price"`, …) as
 
 ## Commands
 
-- `dotnet test BidParser.sln` — full suite (216 tests).
+- `dotnet test BidParser.sln` — full suite (222 tests).
 - `dotnet run --project src/BidParser.Api` — backend dev server (`http://localhost:5000`).
 - `cd frontend && npm run dev` — Vite dev server, proxies `/api` to `http://127.0.0.1:5000` (`VITE_API_PROXY_TARGET=…` to point elsewhere).
 - `cd frontend && npm run build` — TypeScript + production frontend build.

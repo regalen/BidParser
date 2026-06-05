@@ -8,6 +8,7 @@ using BidParser.Parsing.Nutanix.HardwareOnlyPdf;
 using BidParser.Parsing.Zebra.PriceConcession;
 using BidParser.Parsing.Nutanix.HardwareOnlyXlsx;
 using BidParser.Parsing.Nutanix.RenewalPdf;
+using BidParser.Parsing.Nutanix.RenewalXlsx;
 using BidParser.Parsing.Nutanix.SoftwareOnlyPdf;
 using BidParser.Parsing.Nutanix.SoftwareOnlyXlsx;
 
@@ -20,6 +21,7 @@ public sealed class ParserRegistry : IParserRegistry
         new NutanixSoftwareOnlyPdfParser(),
         new NutanixSoftwareOnlyXlsxParser(),
         new NutanixRenewalPdfParser(),
+        new NutanixRenewalXlsxParser(),
         new NutanixHardwareOnlyPdfParser(),
         new NutanixHardwareOnlyXlsxParser(),
         new HpBidXlsxParser(),

@@ -22,7 +22,7 @@ endpoint contracts.
 
 ### Implementation notes
 
-- Parser slugs, package names, spec docs are vendor-prefixed. Use `nutanix_software_only_pdf`, `nutanix_software_only_xlsx`, `nutanix_renewal_pdf`, `nutanix_hardware_only_pdf`, `nutanix_hardware_only_xlsx`; never reintroduce vendorless slugs.
+- Parser slugs, package names, spec docs are vendor-prefixed. Use `nutanix_software_only_pdf`, `nutanix_software_only_xlsx`, `nutanix_renewal_pdf`, `nutanix_renewal_xlsx`, `nutanix_hardware_only_pdf`, `nutanix_hardware_only_xlsx`; never reintroduce vendorless slugs.
 - Frontend proxies `/api` to `http://127.0.0.1:5000` by default. If port 5000 is occupied: `VITE_API_PROXY_TARGET=http://127.0.0.1:<port>`.
 - In Docker, `DB_CONNECTION_STRING` is assembled by `docker-compose.yml` from `MSSQL_SA_PASSWORD` and `MSSQL_DB` and passed to the app container; `UPLOAD_DIR` defaults to `/data/files`. The app container mounts `/data` (named volume `bidparser-data` or `DATA_DIR` bind mount). SQL Server data lives in a separate `bidparser-mssql-data` volume mounted at `/var/opt/mssql` in the `mssql` container.
 - `RetentionBackgroundService` (sleep-first, 24h cadence) calls `RetentionService.CleanupOldParseJobsAsync` to delete expired `ParseJob` rows + source+output files, and expired `FailedParseJob` rows + source files, after `RETENTION_DAYS`. `ParseMetric` rows retained indefinitely — `parse_job_id` nulled by SQL Server `ON DELETE SET NULL` when the parent `ParseJob` is purged.
@@ -45,6 +45,7 @@ endpoint contracts.
 | `XQ-4128926.pdf`   | Renewal (PDF)          |                                        |
 | `XQ-4166696.pdf`   | Renewal (PDF)          | Wrapped currency amount (USD on separate line)  |
 | `XQ-4029825.pdf`   | Renewal (PDF)          | Platform-column variant: extra `Platform` column, wrapped Product Code, hardware rows emit `Description = "Platform: {value}"` |
+| `XQ-4176792.xlsx`  | Renewal (XLSX)         | XLSX envelope of Renewal; `Product Description` + `Platform` combined into Description; blank row before `TOTAL` |
 | `XQ-4157308.pdf`   | Software Only (PDF)    | Extended 9-column layout, 1 line item  |
 | `XQ-4165884.pdf`   | Software Only (PDF)    | Extended 9-column layout, wrapped SKUs |
 | `XQ-4175235-….pdf` | Hardware Only (PDF)    | Multi-page Quote D (pages 4–5/7); page-footer falls inside Term column; quoted total `USD 247,510.94` |
@@ -235,6 +236,35 @@ Expected output for `XQ-4029825.pdf` (Platform-column variant):
 
 Computed total = quoted total = `USD 392,190.58`.
 
+## Renewal (XLSX) — extraction algorithm
+
+The XLSX envelope of the Renewal format (`NutanixRenewalXlsxParser`, slug `nutanix_renewal_xlsx`). Same supplier and field set as Renewal (PDF), but the spreadsheet carries each value in one cell, so none of the PDF wrapping / `USD`-fusion machinery is needed. **Anchor on string labels, never fixed positions** — the metadata block above the table varies in height and column letters differ between quotes.
+
+Locating + extracting:
+1. Find the cell whose value is the literal `Quote Number`; its row is the header row. Build a label→column map across that row.
+2. Required labels: `Product Code`, `Serial Number`, `Start Date`, `End Date`, `Term Adjusted List Unit Price`, `Net Unit Price`, `Quantity`. Optional: `Product Description`, `Platform`.
+3. Iterate rows below the header; stop on the first wholly-empty row **or** a `TOTAL ` cell. A blank row can separate the last item from the `TOTAL $…` row, so fall back to scanning the whole sheet for the first `TOTAL ` cell (same pattern as Software Only (XLSX)).
+
+Per-field:
+- **Part Number** ← `Product Code`.
+- **Description** ← `Product Description`, with `Platform` appended as `… (Platform: {value})` when the platform cell is non-empty (software-subscription rows leave Platform blank → bare description). This differs from Renewal (PDF), whose source has no description column and emits only `Platform: {value}`.
+- **Serial Number** ← `Serial Number`; internal whitespace stripped so the embedded license joins as `26SW000487027,LIC-02574676` (matching the PDF convention).
+- **Start/End Date** ← `Start Date` / `End Date` (native date cell, else `MM/dd/yyyy` with the usual fallbacks).
+- **MSRP** ← `Term Adjusted List Unit Price`; **Cost** ← `Net Unit Price` (both `$`-prefixed, parsed with `defaultZero`). No `Term` column → `Term` left null.
+- **Quantity** ← `Quantity`.
+
+Expected output for `XQ-4176792.xlsx` (golden):
+
+| Part Number    | Serial Number              | Start Date | End Date   | List Price | Sale Price | Quantity |
+|----------------|----------------------------|------------|------------|------------|------------|----------|
+| RS-HW-PRD-ST   | 21FM6K270093               | 2026-07-12 | 2027-07-11 | 1107.36    | 803.30     | 1        |
+| RS-HW-PRD-ST   | 21FM6K270094               | 2026-07-12 | 2027-07-11 | 1107.36    | 803.30     | 1        |
+| RS-HW-PRD-ST   | 21FM6K270091               | 2026-07-12 | 2027-07-11 | 1107.36    | 803.30     | 1        |
+| RS-HW-PRD-ST   | 21FM6K270092               | 2026-07-12 | 2027-07-11 | 1107.36    | 803.30     | 1        |
+| RSW-NCI-PRO-PR | 26SW000487027,LIC-02574676 | 2026-07-12 | 2027-07-11 | 455        | 225.51     | 288      |
+
+Computed total = quoted total = `$68,160.08`.
+
 ## Hardware Only (PDF) — extraction algorithm
 
 PDF bundles stacked quote sections (Quote A/B/C/D). **Parse Quote D only** — the reseller-facing breakdown. Quote C is a separate budgetary breakdown of pure components; ignore it.
@@ -407,6 +437,7 @@ Out of scope: multi-file batch upload, CSV formats, review/approve gate, multi-t
 - `docs/nutanix_software_only_pdf.md` — Software Only (PDF), Nutanix subscription quotes.
 - `docs/nutanix_software_only_xlsx.md` — Software Only (XLSX), same data as the PDF, workbook envelope.
 - `docs/nutanix_renewal_pdf.md` — Renewal (PDF), subscription renewals with serial/license numbers.
+- `docs/nutanix_renewal_xlsx.md` — Renewal (XLSX), workbook envelope of the renewal format.
 - `docs/nutanix_hardware_only_pdf.md` — Hardware Only (PDF), multi-quote PDF; parse Quote D only.
 - `docs/nutanix_hardware_only_xlsx.md` — Hardware Only (XLSX), multi-quote workbook; parse Quote D only.
 - `docs/hp_bid_xlsx.md` — HP Bid (XLSX). Deal-export workbooks with Part Number, Bundle, and Bundle Detail rows; no quoted total; available templates `No Calculation` and `Uplift`.

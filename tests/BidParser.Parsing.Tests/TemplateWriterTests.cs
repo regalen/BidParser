@@ -18,6 +18,7 @@ public sealed class TemplateWriterTests
     [InlineData("nutanix_hardware_only_xlsx", "XQ-4108785.xlsx", "XQ-4108785_parsed.xlsx")]
     [InlineData("nutanix_renewal_pdf", "XQ-4128926.pdf", "XQ-4128926_parsed.xlsx")]
     [InlineData("nutanix_renewal_pdf", "XQ-4029825.pdf", "XQ-4029825_parsed.xlsx")]
+    [InlineData("nutanix_renewal_xlsx", "XQ-4176792.xlsx", "XQ-4176792_parsed.xlsx")]
     public void TemplateWriterMatchesGoldenWorkbookCells(string slug, string inputName, string expectedName)
     {
         var root = FindRepoRoot();

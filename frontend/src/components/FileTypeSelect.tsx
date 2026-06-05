@@ -4,6 +4,7 @@ const SAMPLE_FILES: Record<string, string> = {
   nutanix_software_only_pdf: 'XQ-4076249.pdf',
   nutanix_software_only_xlsx: 'XQ-4076249.xlsx',
   nutanix_renewal_pdf: 'XQ-4128926.pdf',
+  nutanix_renewal_xlsx: 'XQ-4176792.xlsx',
   nutanix_hardware_only_pdf: 'XQ-4108785.pdf',
   nutanix_hardware_only_xlsx: 'XQ-4108785.xlsx',
   hp_bid_xlsx: 'Deals20260518T034809_HPI.xlsx',
