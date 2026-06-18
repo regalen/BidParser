@@ -20,7 +20,7 @@ format at a time** — the architecture is a pluggable `IParser` registry so a n
 format is one parser class + fixtures + one registry entry.
 
 Backend was re-platformed from Python/FastAPI to ASP.NET Core 10. All tests pass:
-`dotnet test BidParser.sln` (237: 161 parsing + 76 API integration). API tests
+`dotnet test BidParser.sln` (239: 161 parsing + 78 API integration). API tests
 need a running Docker daemon (SQL Server testcontainer).
 
 ## Project layout
@@ -53,6 +53,7 @@ need a running Docker daemon (SQL Server testcontainer).
 - **Numeric inputs are never persisted** back to the User row from the parse flow. Only the last-used vendor persists (`ParseService` sets `user.DefaultVendor` on success). The dashboard re-prompts FX rate / margin / IM% every parse; the three numeric inputs always start empty on page load.
 - **`ParseMetric`** is an append-only ledger written transactionally with `ParseJob` on success; retained indefinitely (FK nulled by `ON DELETE SET NULL` when the `ParseJob` is purged at `RETENTION_DAYS`).
 - **`FailedParseJob`** records exception failures (catch block) and `ValidationMismatch` entries (success path, best-effort, fresh `AppDbContext` scope). Category serialises snake_case.
+- **Admin monitoring is a unified runs view.** `GET /api/monitoring/runs` (admin) merges successful/mismatched `ParseJob` rows (`kind: "job"`, status `success` / `validation_mismatch`, both input+output downloadable) with genuine `FailedParseJob` failures (`kind: "failure"`, status = category, input only). A validation mismatch exists in **both** tables; the `ParseJob` is the source of truth, so the runs query **excludes** `FailedParseJob` rows where `Category == ValidationMismatch` to surface each mismatch exactly once (with its output file). Filters: `status`, `vendor`, `userId`, `parserSlug`, `from`/`to`; each table is read to `offset+limit` then merged/sorted/paged in memory. Downloads: `/monitoring/jobs/{id}/source|output` (jobs) and `/monitoring/failures/{id}/source` (failures, input only). The SPA renders this at `/admin/monitoring`.
 - **Magic-byte upload validation**: `%PDF` / `PK\x03\x04`, checked alongside extension in `ParseService`.
 
 ## Canonical naming (locked vocabulary)
@@ -90,7 +91,7 @@ Parsers detect *source* labels (`"Net Unit Price"`, `"List Unit Price"`, …) as
 
 ## Commands
 
-- `dotnet test BidParser.sln` — full suite (237 tests).
+- `dotnet test BidParser.sln` — full suite (239 tests).
 - `dotnet run --project src/BidParser.Api` — backend dev server (`http://localhost:5000`).
 - `cd frontend && npm run dev` — Vite dev server, proxies `/api` to `http://127.0.0.1:5000` (`VITE_API_PROXY_TARGET=…` to point elsewhere).
 - `cd frontend && npm run build` — TypeScript + production frontend build.

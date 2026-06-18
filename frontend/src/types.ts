@@ -108,7 +108,33 @@ export interface FailedParseJob {
   quoted_total: string | null;
 }
 
-export interface FailedParseJobResponse {
-  items: FailedParseJob[];
+export type RunStatus = 'success' | FailureCategory;
+
+export interface MonitoringRun {
+  /** "job" → successful/mismatch ParseJob; "failure" → recorded failure. */
+  kind: 'job' | 'failure';
+  id: number;
+  status: RunStatus | string;
+  created_at: string;
+  user_id: number | null;
+  username: string;
+  name: string | null;
+  vendor: string;
+  parser_slug: string;
+  parser_display_name: string;
+  source_filename: string;
+  source_available: boolean;
+  output_available: boolean;
+  computed_total: string | null;
+  quoted_total: string | null;
+  /** Populated for failure rows only. */
+  stage: string | null;
+  hint: string | null;
+  message: string | null;
+  error_detail: string | null;
+}
+
+export interface MonitoringRunsResponse {
+  items: MonitoringRun[];
   total: number;
 }

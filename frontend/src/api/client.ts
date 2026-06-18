@@ -1,7 +1,7 @@
 import type {
-  FailedParseJobResponse,
   HistoryResponse,
   MetricsSummaryResponse,
+  MonitoringRunsResponse,
   ParserInfo,
   User,
 } from '../types';
@@ -117,9 +117,8 @@ export const api = {
     return request<MetricsSummaryResponse>(`/metrics/summary?${params.toString()}`);
   },
 
-  monitoringFailures(limit: number, offset: number): Promise<FailedParseJobResponse> {
-    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-    return request<FailedParseJobResponse>(`/monitoring/failures?${params.toString()}`);
+  monitoringRuns(params: URLSearchParams): Promise<MonitoringRunsResponse> {
+    return request<MonitoringRunsResponse>(`/monitoring/runs?${params.toString()}`);
   },
 
   createUser(payload: { username: string; name: string; role: 'admin' | 'user' }): Promise<User> {

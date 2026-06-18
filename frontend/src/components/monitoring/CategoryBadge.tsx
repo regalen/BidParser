@@ -1,6 +1,10 @@
-type Category = 'magic_byte_mismatch' | 'parser_error' | 'unhandled_exception' | 'validation_mismatch' | string;
+type Category = 'success' | 'magic_byte_mismatch' | 'parser_error' | 'unhandled_exception' | 'validation_mismatch' | string;
 
 const STYLES: Record<string, { tone: string; label: string }> = {
+  success: {
+    tone: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+    label: 'success',
+  },
   magic_byte_mismatch: {
     tone: 'bg-slate-100 text-slate-700 ring-slate-600/10',
     label: 'magic_byte_mismatch',

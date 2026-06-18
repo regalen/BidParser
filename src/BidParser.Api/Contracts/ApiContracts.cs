@@ -56,8 +56,12 @@ public sealed record MetricsDateRange(
     string To
 );
 
-public sealed record FailedParseJobItem(
+public sealed record MonitoringRunItem(
+    // "job" → download via /jobs/{id}/source|output; "failure" → /failures/{id}/source.
+    string Kind,
     int Id,
+    // "success", "validation_mismatch", "magic_byte_mismatch", "parser_error", "unhandled_exception".
+    string Status,
     DateTime CreatedAt,
     int? UserId,
     string Username,
@@ -66,18 +70,18 @@ public sealed record FailedParseJobItem(
     string ParserSlug,
     string ParserDisplayName,
     string SourceFilename,
-    string Category,
+    bool SourceAvailable,
+    bool OutputAvailable,
+    string? ComputedTotal,
+    string? QuotedTotal,
+    // Populated for failure rows only; null for successful/mismatch jobs.
     string? Stage,
     string? Hint,
     string? Message,
-    string ErrorDetail,
-    bool SourceAvailable,
-    // Populated only for validation_mismatch entries; null for exception categories.
-    string? ComputedTotal,
-    string? QuotedTotal
+    string? ErrorDetail
 );
 
-public sealed record FailedParseJobListResponse(
+public sealed record MonitoringRunsResponse(
     int Total,
-    IReadOnlyList<FailedParseJobItem> Items
+    IReadOnlyList<MonitoringRunItem> Items
 );
