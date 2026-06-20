@@ -9,15 +9,20 @@ Read that file (and the per-format specs in `docs/`) when you need specifics.
 
 ## What is being built
 
-An internal web app for sales operations. Users upload a supplier quote (PDF or
-XLSX in supplier-specific layouts); the app extracts and validates line items and
-presents a result popup (success/warnings, a Download button, and the
-admin-configured report type to use) from which the user downloads a standardised
-`*_parsed.xlsx`. Stack: ASP.NET Core 10 backend +
-React 19/Vite/TypeScript frontend, deployed as a single Docker image via
-`docker-compose` behind nginx-proxy-manager. Work is **iterative, one supplier
-format at a time** — the architecture is a pluggable `IParser` registry so a new
-format is one parser class + fixtures + one registry entry.
+Two products in one repo, sharing the same parser core:
+
+- **Web app** — ASP.NET Core 10 + SQL Server + React 19/Vite/TypeScript, deployed
+  as a single Docker image via `docker-compose` behind nginx-proxy-manager. Users
+  log in, upload a supplier quote (PDF or XLSX), and download a standardised
+  `*_parsed.xlsx` from a result popup.
+- **BidParserLite** — a portable Windows desktop variant: a single self-contained
+  `.exe`, no installer, no database, no admin rights required. Reuses the same
+  `Domain`/`Parsing`/`Output` projects via `BidParserLite.sln`. Ships as a
+  GitHub Release asset on every `v*` tag alongside the Docker image.
+
+Work is **iterative, one supplier format at a time** — the architecture is a
+pluggable `IParser` registry so a new format is one parser class + fixtures + one
+registry entry, and both products pick it up automatically.
 
 Backend was re-platformed from Python/FastAPI to ASP.NET Core 10. All tests pass:
 `dotnet test BidParser.sln` (239: 161 parsing + 78 API integration). API tests
@@ -25,11 +30,27 @@ need a running Docker daemon (SQL Server testcontainer).
 
 ## Project layout
 
+**Two solutions share three projects:**
+
+| Project | `BidParser.sln` | `BidParserLite.sln` |
+|---|:---:|:---:|
+| `src/BidParser.Domain/` | ✓ | ✓ |
+| `src/BidParser.Parsing/` | ✓ | ✓ |
+| `src/BidParser.Output/` | ✓ | ✓ |
+| `src/BidParser.Core/` | — | ✓ |
+| `src/BidParser.Wpf/` | — | ✓ |
+| `src/BidParser.Api/` | ✓ | — |
+| `src/BidParser.Infrastructure/` | ✓ | — |
+| `tests/BidParser.Parsing.Tests/` | ✓ | ✓ |
+| `tests/BidParser.Api.Tests/` | ✓ | — |
+
 - `src/BidParser.Api/` — Minimal API. Endpoints `/auth/*`, `/me`, `/users`, `/parsers`, `/report-types` (admin), `/parse`, `/history`, `/metrics/*`, `/monitoring/*`, health. Cookie auth, CSRF, rate limiters, `GlobalExceptionHandler`, `SecurityHeadersMiddleware`, locked-down `ForwardedHeaders`. Typed response records in `Contracts/`, decimal converters in `Serialization/`. Hosts the SPA from `wwwroot/`.
 - `src/BidParser.Domain/` — `LineItem`, `QuoteMetadata`, `ValidationResult`, `ParseResult`, `ParseError`, `IParser`, `IParserRegistry`. `Constants/` centralises `Vendors.*`, `CrmTemplates.*`, `ParserSlugs.*`.
 - `src/BidParser.Infrastructure/` — `AppDbContext` (EF Core + SQL Server, `AddDbContextPool`), entities (`User`, `ParseJob`, `ParseMetric`, `FailedParseJob`, `ReportTypeConfig`), migrations, `FileStorage`, `ParseService`, `FailedParseJobRecorder`, `RetentionService`.
-- `src/BidParser.Parsing/` — PDF helpers via PdfPig (`Pdf/`), XLSX helpers via ClosedXML (`Xlsx/`), legacy `.xls` via ExcelDataReader, six Nutanix + three HP + two Lenovo parsers, explicit `Registry/ParserRegistry.cs`.
+- `src/BidParser.Parsing/` — PDF helpers via PdfPig (`Pdf/`), XLSX helpers via ClosedXML (`Xlsx/`), legacy `.xls` via ExcelDataReader, six Nutanix + three HP + two Lenovo + two Zebra parsers, explicit `Registry/ParserRegistry.cs`.
 - `src/BidParser.Output/` — `ForeignUpliftWriter`, `AnzGenericWriter`, `PercentOffWithUpliftWriter`, shared `TemplateLayout`, `OutputNaming`.
+- `src/BidParser.Core/` (**desktop only**) — `ParseRunner`: the pure parse→write orchestration lifted from `ParseService` with all DB/auth/User code removed. Returns `ParseOutcome { Validation, Currency, CancelledLines, OutputPath }`. Also defines `CancelledLine` and `ParseValidationException`.
+- `src/BidParser.Wpf/` (**desktop only**, `net10.0-windows`) — WPF shell. `MainViewModel` ports the web SPA's state: vendor/file-type/template pickers and the **vendor-driven** conditional-field matrix from `ParseSettingsCard.tsx` + the settings blocks (FX Rate, Uplift, Discount Off MSRP, On Cost %), plus `canSubmit` enablement and wrong-file-type / currency / generic error branching from `DashboardPage.tsx`, with success / warning result panels. Output auto-named beside the input via `OutputNaming`. No DI, no config files, no persistent storage. (Full field matrix in `docs/project_memory.md`.)
 - `tests/BidParser.Parsing.Tests/`, `tests/BidParser.Api.Tests/` — xUnit; the latter uses `WebApplicationFactory` (shared infra in `TestInfrastructure.cs`).
 - `frontend/` — React 19/Vite/TypeScript SPA, `recharts ^2`. ProductLens visual design; shared utility classes in `src/styles.css`; CRM template names in `src/constants.ts`.
 - `samples/inputs/`, `samples/outputs/` (golden `<basename>_parsed.xlsx`), `samples/template/` (output templates).
@@ -91,12 +112,14 @@ Parsers detect *source* labels (`"Net Unit Price"`, `"List Unit Price"`, …) as
 
 ## Commands
 
-- `dotnet test BidParser.sln` — full suite (239 tests).
+- `dotnet test BidParser.sln` — full suite (239 tests; API tests need Docker).
+- `dotnet build BidParser.Core` — verify the shared orchestrator compiles (no Docker needed).
 - `dotnet run --project src/BidParser.Api` — backend dev server (`http://localhost:5000`).
 - `cd frontend && npm run dev` — Vite dev server, proxies `/api` to `http://127.0.0.1:5000` (`VITE_API_PROXY_TARGET=…` to point elsewhere).
 - `cd frontend && npm run build` — TypeScript + production frontend build.
 - `docker compose up -d` — production container (after `cp .env.example .env`, set `SESSION_SECRET`).
 - `docker compose build` — local image build from the repo-root `Dockerfile`.
+- **Windows only** — `dotnet build BidParserLite.sln` / `dotnet test BidParserLite.sln` / `dotnet publish src/BidParser.Wpf -c Release -r win-x64 --self-contained -p:PublishSingleFile=true` (produces `BidParserLite.exe`).
 
 ## Adding a parser format
 
@@ -104,7 +127,8 @@ Parsers detect *source* labels (`"Net Unit Price"`, `"List Unit Price"`, …) as
 2. **One registry entry** appended to `ParserRegistry.cs`.
 3. **One fixture + golden** under `samples/inputs/` and `samples/outputs/`, plus a test case. Add a `SAMPLE_FILES` entry + file under `frontend/public/samples/` (`FileTypeSelect.tsx`).
 4. **Optionally a spec** `docs/<vendor>_<format>.md`, linked from `docs/project_memory.md`.
-5. **New CRM template** → new writer in `src/BidParser.Output/`, dispatch `case` in `ParseService.ParseAsync`.
+5. **New CRM template** → new writer in `src/BidParser.Output/`, dispatch `case` in both `ParseService.ParseAsync` (web) and `ParseRunner.Run` (desktop).
+6. **Both solutions pick up the new parser automatically** — rebuild `BidParserLite.sln` on Windows to verify.
 
 **Parser-specific error modals**: throw `ParseError("currency", hint, message)` (or another stage name) from the parser; the API returns HTTP 422 with `{ detail: { stage, hint, message } }`. To show a dedicated modal for a specific stage, add a `isCurrencyError`-style helper in `DashboardPage.tsx` and a matching modal component — the existing `CurrencyErrorModal` (AUD validation) is the pattern to follow. **Reserved stages:** `"detect"` is the wrong-file-type signal (recognition failure — see "Wrong file-type handling"); it is reclassified to `"file_type"` by `ParseService` and rendered by `FileTypeErrorModal`. Use `"detect"` only for "this file isn't my format" failures, never for genuine extraction errors.
 
@@ -118,4 +142,4 @@ Do **not** touch API routes, frontend components (dropdowns auto-populate from `
 
 ## Release versioning
 
-SemVer 2.0.0 tags `vMAJOR.MINOR.PATCH`; `0.y.z` while in internal testing. Pushing a `v*` tag triggers the Docker build and publishes to `ghcr.io`. Details in `docs/project_memory.md`.
+SemVer 2.0.0 tags `vMAJOR.MINOR.PATCH`; `0.y.z` while in internal testing. Pushing a `v*` tag triggers three CI jobs: tests → Docker image to `ghcr.io` **and** a portable `BidParserLite-X.Y.Z-win-x64.exe` published as a GitHub Release asset. Details in `docs/project_memory.md`.
