@@ -1,9 +1,11 @@
 using System.Diagnostics;
+using System.IO;
 using BidParser.Core;
 using BidParser.Domain.Abstractions;
 using BidParser.Domain.Constants;
 using BidParser.Domain.Models;
 using BidParser.Parsing.Registry;
+using VendorNames = BidParser.Domain.Constants.Vendors;
 
 namespace BidParser.Wpf.ViewModels;
 
@@ -308,8 +310,8 @@ public sealed class MainViewModel : ViewModelBase
     {
         var parser = _selectedParser;
         var template = EffectiveTemplate;
-        var isZebra = parser?.Vendor == Vendors.Zebra;
-        var isHp = parser?.Vendor == Vendors.Hp;
+        var isZebra = parser?.Vendor == VendorNames.Zebra;
+        var isHp = parser?.Vendor == VendorNames.Hp;
         var isMultiTemplate = parser is { } p && p.AvailableTemplates.Count > 1;
         var isNutanixBlock = parser is not null && !isZebra && !isHp;
 
