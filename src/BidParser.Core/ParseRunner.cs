@@ -27,7 +27,8 @@ public sealed class ParseRunner
         decimal? margin,
         decimal? imPercent,
         decimal? onCostPercent,
-        string? crmTemplate)
+        string? crmTemplate,
+        string? outputPath = null)
     {
         var parser = ResolveParser(parserSlug, vendor);
         ValidateExtension(inputPath, parser.AcceptedMime);
@@ -44,7 +45,9 @@ public sealed class ParseRunner
             if (!parser.AvailableTemplates.Contains(template))
                 throw new ParseValidationException("Unknown CRM template for this parser.");
 
-            var outputPath = Path.Combine(
+            // Caller (desktop "Save As") may specify the destination; otherwise
+            // fall back to the conventional <basename>_parsed.xlsx beside the input.
+            outputPath ??= Path.Combine(
                 Path.GetDirectoryName(inputPath)!,
                 OutputNaming.OutputFilename(Path.GetFileName(inputPath)));
 

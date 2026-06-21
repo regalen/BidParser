@@ -5,6 +5,7 @@ using BidParser.Core;
 using BidParser.Domain.Abstractions;
 using BidParser.Domain.Constants;
 using BidParser.Domain.Models;
+using BidParser.Output;
 using BidParser.Parsing.Registry;
 using VendorNames = BidParser.Domain.Constants.Vendors;
 
@@ -84,6 +85,11 @@ public sealed class MainViewModel : ViewModelBase
         // Auto-select when there is only one vendor; otherwise pick the first.
         SelectedVendor = Vendors.FirstOrDefault();
     }
+
+    // Set by the View: given the default output path, shows a "Save As" dialog and
+    // returns the chosen full path, or null if the user cancelled. Kept as a
+    // delegate so the dialog stays in the View and the view-model stays testable.
+    public Func<string, string?>? SaveFilePrompt { get; set; }
 
     // ── Selection properties ──────────────────────────────────────────────────
 
@@ -377,12 +383,27 @@ public sealed class MainViewModel : ViewModelBase
 
     private async Task ExecuteConvertAsync()
     {
+        var inputPath = _inputFilePath!;
+
+        // Ask the user where to save (and what to name) the parsed workbook before
+        // doing any work. Cancelling the dialog aborts cleanly — no parse, no file,
+        // and the current state is left untouched. When no prompt is wired (e.g. a
+        // headless test), fall back to the default beside-input path.
+        string? outputPath = null;
+        if (SaveFilePrompt is not null)
+        {
+            var defaultPath = Path.Combine(
+                Path.GetDirectoryName(inputPath)!,
+                OutputNaming.OutputFilename(Path.GetFileName(inputPath)));
+            outputPath = SaveFilePrompt(defaultPath);
+            if (string.IsNullOrEmpty(outputPath)) return;
+        }
+
         State = ParseState.Running;
         ErrorMessage = null;
         ErrorStage = null;
 
         var runner = new ParseRunner();
-        var inputPath = _inputFilePath!;
         var vendor = _selectedVendor!;
         var slug = _selectedParser!.Slug;
         var fxRate = TryParsePositive(_fxRate, out var fx) ? fx : (decimal?)null;
@@ -393,7 +414,7 @@ public sealed class MainViewModel : ViewModelBase
 
         try
         {
-            var outcome = await Task.Run(() => runner.Run(inputPath, vendor, slug, fxRate, margin, imPct, onCost, template));
+            var outcome = await Task.Run(() => runner.Run(inputPath, vendor, slug, fxRate, margin, imPct, onCost, template, outputPath));
             ApplyResult(outcome);
         }
         catch (ParseError pe)

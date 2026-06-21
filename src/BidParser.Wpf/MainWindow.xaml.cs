@@ -14,7 +14,26 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _vm = new MainViewModel();
+        _vm.SaveFilePrompt = ShowSaveDialog;
         DataContext = _vm;
+    }
+
+    // Asks the user where to save the parsed workbook, pre-filled with the default
+    // <basename>_parsed.xlsx beside the input. Returns the chosen path, or null on cancel.
+    private string? ShowSaveDialog(string defaultPath)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Title = "Save parsed file",
+            FileName = Path.GetFileName(defaultPath),
+            InitialDirectory = Path.GetDirectoryName(defaultPath),
+            DefaultExt = ".xlsx",
+            Filter = "Excel workbook|*.xlsx|All files|*.*",
+            AddExtension = true,
+            OverwritePrompt = true
+        };
+
+        return dialog.ShowDialog(this) == true ? dialog.FileName : null;
     }
 
     private void Browse_Click(object sender, RoutedEventArgs e) => OpenFilePicker();
