@@ -44,9 +44,9 @@ need a running Docker daemon (SQL Server testcontainer).
 | `tests/BidParser.Parsing.Tests/` | ✓ | ✓ |
 | `tests/BidParser.Api.Tests/` | ✓ | — |
 
-- `src/BidParser.Api/` — Minimal API. Endpoints `/auth/*`, `/me`, `/users`, `/parsers`, `/report-types` (admin), `/parse`, `/history`, `/metrics/*`, `/monitoring/*`, health. Cookie auth, CSRF, rate limiters, `GlobalExceptionHandler`, `SecurityHeadersMiddleware`, locked-down `ForwardedHeaders`. Typed response records in `Contracts/`, decimal converters in `Serialization/`. Hosts the SPA from `wwwroot/`.
-- `src/BidParser.Domain/` — `LineItem`, `QuoteMetadata`, `ValidationResult`, `ParseResult`, `ParseError`, `IParser`, `IParserRegistry`. `Constants/` centralises `Vendors.*`, `CrmTemplates.*`, `ParserSlugs.*`.
-- `src/BidParser.Infrastructure/` — `AppDbContext` (EF Core + SQL Server, `AddDbContextPool`), entities (`User`, `ParseJob`, `ParseMetric`, `FailedParseJob`, `ReportTypeConfig`), migrations, `FileStorage`, `ParseService`, `FailedParseJobRecorder`, `RetentionService`.
+- `src/BidParser.Api/` — Minimal API. Endpoints `/auth/*`, `/me`, `/users`, `/parsers`, `/parse`, `/history`, `/metrics/*`, `/monitoring/*`, health. Cookie auth, CSRF, rate limiters, `GlobalExceptionHandler`, `SecurityHeadersMiddleware`, locked-down `ForwardedHeaders`. Typed response records in `Contracts/`, decimal converters in `Serialization/`. Hosts the SPA from `wwwroot/`.
+- `src/BidParser.Domain/` — `LineItem`, `QuoteMetadata`, `ValidationResult`, `ParseResult`, `ParseError`, `IParser`, `IParserRegistry`. `Constants/` centralises `Vendors.*`, `CrmTemplates.*`, `ParserSlugs.*`, and `ReportTypes.*` (the hardcoded slug → report-type map, see below).
+- `src/BidParser.Infrastructure/` — `AppDbContext` (EF Core + SQL Server, `AddDbContextPool`), entities (`User`, `ParseJob`, `ParseMetric`, `FailedParseJob`), migrations, `FileStorage`, `ParseService`, `FailedParseJobRecorder`, `RetentionService`.
 - `src/BidParser.Parsing/` — PDF helpers via PdfPig (`Pdf/`), XLSX helpers via ClosedXML (`Xlsx/`), legacy `.xls` via ExcelDataReader, six Nutanix + three HP + two Lenovo + two Zebra parsers, explicit `Registry/ParserRegistry.cs`.
 - `src/BidParser.Output/` — `ForeignUpliftWriter`, `AnzGenericWriter`, `PercentOffWithUpliftWriter`, shared `TemplateLayout`, `OutputNaming`.
 - `src/BidParser.Core/` (**desktop only**) — `ParseRunner`: the pure parse→write orchestration lifted from `ParseService` with all DB/auth/User code removed. Returns `ParseOutcome { Validation, Currency, CancelledLines, OutputPath }`. Also defines `CancelledLine` and `ParseValidationException`.
@@ -102,7 +102,8 @@ Parsers detect *source* labels (`"Net Unit Price"`, `"List Unit Price"`, …) as
 
 ## Code style
 
-- **Use the centralised constants** (`Vendors.*`, `CrmTemplates.*`, `ParserSlugs.*` from `BidParser.Domain.Constants`) — never inline these string literals. Add the constant first for a new vendor/template/slug.
+- **Use the centralised constants** (`Vendors.*`, `CrmTemplates.*`, `ParserSlugs.*`, `ReportTypes.*` from `BidParser.Domain.Constants`) — never inline these string literals. Add the constant first for a new vendor/template/slug.
+- **Report type is a hardcoded slug → report-type map**, not DB config. `ReportTypes.For(slug)` (in `BidParser.Domain.Constants`) is the single source of truth shared by both products: the web surfaces it via `/api/parsers` (`report_type` field, shown in `ParseResultModal`), and the desktop reads it directly (shown in the result panel). Unmapped slugs render no guidance. There is no admin UI or endpoint for it.
 - **Typed response records only** — use the records in `Contracts/` (`ApiError`, `PasswordValidationError`, `ParseErrorResponse`, `OkResponse`, …). No anonymous `new { detail = "…" }` objects. Three error body shapes; the SPA branches on shape (see `docs/project_memory.md`).
 - **JSON casing**: `JsonNamingPolicy.SnakeCaseLower` globally — no per-property `[JsonPropertyName]`.
 - **Decimal serialisation**: money/rates serialise as fixed-scale strings via per-field `[JsonConverter]` (`fx_rate` 4 dp, `margin`/totals 2 dp).
@@ -125,10 +126,11 @@ Parsers detect *source* labels (`"Net Unit Price"`, `"List Unit Price"`, …) as
 
 1. **One parser class** in `src/BidParser.Parsing/<Vendor>/<Slug>/` implementing `IParser` (`Slug`, `DisplayName`, `Vendor`, `AcceptedMime`, `CrmTemplate`, `Parse`; optional `Detect` defaults `0.0`). Reference `Vendors.*`/`CrmTemplates.*`/`ParserSlugs.*`. Override `AvailableTemplates` only for multi-template parsers (the frontend then auto-renders a dropdown). **If the vendor has ≥2 formats sharing a MIME, add a `Detect()` signature** (anchor/header check, `try/catch → score`) here *and* to the siblings so the wrong-file-type flow can name the correct type — and a cross-detection test case in `WrongFileTypeDetectionTests` (each format high on its own fixture, `< 0.7` on siblings). Lenovo/Zebra have a single format per MIME, so they need no `Detect()`.
 2. **One registry entry** appended to `ParserRegistry.cs`.
-3. **One fixture + golden** under `samples/inputs/` and `samples/outputs/`, plus a test case. Add a `SAMPLE_FILES` entry + file under `frontend/public/samples/` (`FileTypeSelect.tsx`).
-4. **Optionally a spec** `docs/<vendor>_<format>.md`, linked from `docs/project_memory.md`.
-5. **New CRM template** → new writer in `src/BidParser.Output/`, dispatch `case` in both `ParseService.ParseAsync` (web) and `ParseRunner.Run` (desktop).
-6. **Both solutions pick up the new parser automatically** — rebuild `BidParserLite.sln` on Windows to verify.
+3. **A `ReportTypes` map entry** (keyed by the new slug) in `src/BidParser.Domain/Constants/ReportTypes.cs` if the format needs report-type guidance in the result popup; omit it to show none. Both products read it.
+4. **One fixture + golden** under `samples/inputs/` and `samples/outputs/`, plus a test case. Add a `SAMPLE_FILES` entry + file under `frontend/public/samples/` (`FileTypeSelect.tsx`).
+5. **Optionally a spec** `docs/<vendor>_<format>.md`, linked from `docs/project_memory.md`.
+6. **New CRM template** → new writer in `src/BidParser.Output/`, dispatch `case` in both `ParseService.ParseAsync` (web) and `ParseRunner.Run` (desktop).
+7. **Both solutions pick up the new parser automatically** — rebuild `BidParserLite.sln` on Windows to verify.
 
 **Parser-specific error modals**: throw `ParseError("currency", hint, message)` (or another stage name) from the parser; the API returns HTTP 422 with `{ detail: { stage, hint, message } }`. To show a dedicated modal for a specific stage, add a `isCurrencyError`-style helper in `DashboardPage.tsx` and a matching modal component — the existing `CurrencyErrorModal` (AUD validation) is the pattern to follow. **Reserved stages:** `"detect"` is the wrong-file-type signal (recognition failure — see "Wrong file-type handling"); it is reclassified to `"file_type"` by `ParseService` and rendered by `FileTypeErrorModal`. Use `"detect"` only for "this file isn't my format" failures, never for genuine extraction errors.
 

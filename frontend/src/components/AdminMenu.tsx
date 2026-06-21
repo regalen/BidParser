@@ -1,4 +1,4 @@
-import { Activity, BarChart3, FileText, Settings, Users } from 'lucide-react';
+import { Activity, BarChart3, Settings, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,7 +12,6 @@ interface MenuItem {
 
 const ITEMS: MenuItem[] = [
   { label: 'Users', path: '/admin/users', icon: Users },
-  { label: 'Report Types', path: '/admin/report-types', icon: FileText },
   { label: 'Metrics', path: '/admin/metrics', icon: BarChart3 },
   { label: 'Monitoring', path: '/admin/monitoring', icon: Activity },
 ];

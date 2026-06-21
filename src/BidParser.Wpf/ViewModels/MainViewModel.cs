@@ -61,6 +61,8 @@ public sealed class MainViewModel : ViewModelBase
     private string _resultOutputFolder = string.Empty;
     private IReadOnlyList<string> _cancelledLinesDisplay = [];
     private bool _hasCancelledLines;
+    private string _resultReportType = string.Empty;
+    private bool _hasResultReportType;
 
     public MainViewModel()
     {
@@ -286,6 +288,11 @@ public sealed class MainViewModel : ViewModelBase
     public IReadOnlyList<string> CancelledLinesDisplay => _cancelledLinesDisplay;
     public bool HasCancelledLines => _hasCancelledLines;
 
+    // Report type to tell the customer, from the hardcoded ReportTypes map keyed
+    // by the parsed file type (mirrors the web result popup). Blank slugs hide it.
+    public string ResultReportType => _resultReportType;
+    public bool HasResultReportType => _hasResultReportType;
+
     // ── Commands ──────────────────────────────────────────────────────────────
 
     public AsyncRelayCommand ConvertCommand => _convertCommand;
@@ -396,6 +403,9 @@ public sealed class MainViewModel : ViewModelBase
             .ToList();
         _hasCancelledLines = _cancelledLinesDisplay.Count > 0;
 
+        _resultReportType = _selectedParser is { } p ? ReportTypes.For(p.Slug) ?? string.Empty : string.Empty;
+        _hasResultReportType = _resultReportType.Length > 0;
+
         OnPropertyChanged(nameof(ResultComputedTotal));
         OnPropertyChanged(nameof(ResultQuotedTotal));
         OnPropertyChanged(nameof(ResultTotalsMatch));
@@ -404,6 +414,8 @@ public sealed class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(ResultOutputFolder));
         OnPropertyChanged(nameof(CancelledLinesDisplay));
         OnPropertyChanged(nameof(HasCancelledLines));
+        OnPropertyChanged(nameof(ResultReportType));
+        OnPropertyChanged(nameof(HasResultReportType));
 
         var hasMismatch = !v.Matches && v.QuotedTotal.HasValue;
         State = (hasMismatch || _hasCancelledLines) ? ParseState.Warning : ParseState.Success;

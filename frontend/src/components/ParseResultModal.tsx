@@ -99,7 +99,7 @@ export function ParseResultModal({
             </div>
           )}
 
-          {/* Report-type guidance — only shown when an admin has configured one. */}
+          {/* Report-type guidance — from the hardcoded per-file-type mapping. */}
           {reportType && reportType.trim().length > 0 && (
             <div className="mt-5 flex items-start gap-3 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3">
               <FileText className="mt-0.5 h-5 w-5 shrink-0 text-sky-500" aria-hidden="true" />

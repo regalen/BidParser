@@ -335,6 +335,17 @@
                             <Run Text="{Binding ResultOutputPath, Mode=OneWay}" FontFamily="Consolas" FontSize="11" Foreground="#111827"/>
                         </TextBlock>
 
+                        <!-- Report-type guidance (hardcoded per file type) -->
+                        <Border CornerRadius="6" Background="#F0F9FF" BorderBrush="#BAE6FD" BorderThickness="1"
+                                Padding="12,8" Margin="0,0,0,12"
+                                Visibility="{Binding HasResultReportType, Converter={StaticResource BoolToVis}}">
+                            <TextBlock TextWrapping="Wrap" Foreground="#374151" FontSize="12">
+                                <Run Text="When sending this quote to the customer, use the "/>
+                                <Run Text="{Binding ResultReportType, Mode=OneWay}" FontWeight="SemiBold" Foreground="#0C4A6E"/>
+                                <Run Text=" report type."/>
+                            </TextBlock>
+                        </Border>
+
                         <StackPanel Orientation="Horizontal">
                             <Button Content="Open Folder" Command="{Binding OpenFolderCommand}"
                                     Style="{StaticResource SecondaryButton}"/>
@@ -400,6 +411,17 @@
                             <Run Text="Saved to  "/>
                             <Run Text="{Binding ResultOutputPath, Mode=OneWay}" FontFamily="Consolas" FontSize="11" Foreground="#111827"/>
                         </TextBlock>
+
+                        <!-- Report-type guidance (hardcoded per file type) -->
+                        <Border CornerRadius="6" Background="#F0F9FF" BorderBrush="#BAE6FD" BorderThickness="1"
+                                Padding="12,8" Margin="0,0,0,12"
+                                Visibility="{Binding HasResultReportType, Converter={StaticResource BoolToVis}}">
+                            <TextBlock TextWrapping="Wrap" Foreground="#374151" FontSize="12">
+                                <Run Text="When sending this quote to the customer, use the "/>
+                                <Run Text="{Binding ResultReportType, Mode=OneWay}" FontWeight="SemiBold" Foreground="#0C4A6E"/>
+                                <Run Text=" report type."/>
+                            </TextBlock>
+                        </Border>
 
                         <StackPanel Orientation="Horizontal">
                             <Button Content="Open Folder" Command="{Binding OpenFolderCommand}"

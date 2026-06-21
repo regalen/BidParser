@@ -45,6 +45,13 @@ public sealed class MigrationTests
             var migrationIds = (await db.Database.GetAppliedMigrationsAsync()).ToList();
             migrationIds.Should().Contain(id => id.EndsWith("_InitialCreate"));
             migrationIds.Should().Contain(id => id.EndsWith("_AddReportTypeConfig"));
+            migrationIds.Should().Contain(id => id.EndsWith("_RemoveReportTypeConfig"));
+
+            // The report-type mapping is now hardcoded; its table is dropped.
+            var reportTypeTableCount = await db.Database.SqlQueryRaw<int>(
+                "SELECT COUNT(*) AS Value FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'report_type_configs'")
+                .SingleAsync();
+            reportTypeTableCount.Should().Be(0);
 
             // Verify CI collation on username and source_filename via INFORMATION_SCHEMA
             var usernameCollation = await db.Database.SqlQueryRaw<string>(
