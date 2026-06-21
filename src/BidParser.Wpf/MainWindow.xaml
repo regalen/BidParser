@@ -128,6 +128,13 @@
     </Window.Resources>
 
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ── Main content: settings rail + result pane ──────────────────── -->
+        <Grid Grid.Row="0">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="280"/>
             <ColumnDefinition Width="*"/>
@@ -217,6 +224,13 @@
                             Command="{Binding ConvertCommand}"
                             Style="{StaticResource PrimaryButton}"
                             Margin="0,16,0,0"/>
+
+                    <!-- Reset to defaults -->
+                    <Button Content="Reset"
+                            Command="{Binding ResetCommand}"
+                            Style="{StaticResource SecondaryButton}"
+                            HorizontalAlignment="Stretch"
+                            Margin="0,8,0,0"/>
                 </StackPanel>
             </ScrollViewer>
         </Border>
@@ -465,5 +479,24 @@
 
             </Grid>
         </Grid>
+        </Grid>
+
+        <!-- ── Footer: version · GitHub · copyright ────────────────────────── -->
+        <Border Grid.Row="1" Background="#FFFFFF"
+                BorderBrush="#E5E7EB" BorderThickness="0,1,0,0"
+                Padding="20,8">
+            <Grid>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <TextBlock Text="BidParser" Foreground="#6B7280" FontSize="11" FontWeight="Medium"/>
+                    <TextBlock Text="{Binding AppVersionDisplay}" Foreground="#6B7280" FontSize="11" Margin="6,0,0,0"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Content="GitHub" Command="{Binding OpenReleasesCommand}"
+                            Style="{StaticResource LinkButton}" FontSize="11" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding CopyrightText}" Foreground="#9CA3AF" FontSize="11"
+                               VerticalAlignment="Center" Margin="16,0,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

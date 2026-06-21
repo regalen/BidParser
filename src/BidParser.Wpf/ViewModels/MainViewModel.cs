@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using BidParser.Core;
 using BidParser.Domain.Abstractions;
 using BidParser.Domain.Constants;
@@ -14,11 +15,14 @@ public enum ParseState { Idle, Running, Success, Warning, Error }
 public sealed class MainViewModel : ViewModelBase
 {
     private const long MaxUploadBytes = 10 * 1024 * 1024; // 10 MB
+    private const string ReleasesUrl = "https://github.com/regalen/BidParser/releases/latest";
 
     private readonly IParserRegistry _registry = new ParserRegistry();
     private readonly AsyncRelayCommand _convertCommand;
     private readonly RelayCommand _openFolderCommand;
     private readonly RelayCommand _openFileCommand;
+    private readonly RelayCommand _resetCommand;
+    private readonly RelayCommand _openReleasesCommand;
 
     // --- selection ---
     private IReadOnlyList<string> _vendors = [];
@@ -69,6 +73,8 @@ public sealed class MainViewModel : ViewModelBase
         _convertCommand = new AsyncRelayCommand(ExecuteConvertAsync, () => GetCanConvert());
         _openFolderCommand = new RelayCommand(_ => OpenFolder(), _ => !string.IsNullOrEmpty(_resultOutputFolder));
         _openFileCommand = new RelayCommand(_ => OpenFile(), _ => !string.IsNullOrEmpty(_resultOutputPath));
+        _resetCommand = new RelayCommand(_ => Reset());
+        _openReleasesCommand = new RelayCommand(_ => OpenReleases());
 
         Vendors = _registry.Parsers
             .Select(p => p.Vendor)
@@ -298,6 +304,29 @@ public sealed class MainViewModel : ViewModelBase
     public AsyncRelayCommand ConvertCommand => _convertCommand;
     public RelayCommand OpenFolderCommand => _openFolderCommand;
     public RelayCommand OpenFileCommand => _openFileCommand;
+    public RelayCommand ResetCommand => _resetCommand;
+    public RelayCommand OpenReleasesCommand => _openReleasesCommand;
+
+    // ── Footer ────────────────────────────────────────────────────────────────
+
+    // Version comes from the assembly's informational version, which the release
+    // pipeline stamps via `-p:Version=` on publish; local builds fall back to the
+    // csproj default. Rendered as "vX.Y.Z" when numeric.
+    public string AppVersionDisplay { get; } = ResolveVersion();
+
+    // Year is resolved at launch so the copyright stays current without a code change.
+    public string CopyrightText { get; } = $"Copyright © {DateTime.Now.Year} Ingram Micro. All rights reserved.";
+
+    private static string ResolveVersion()
+    {
+        var info = Assembly.GetEntryAssembly()
+            ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion;
+        if (string.IsNullOrWhiteSpace(info)) return "dev";
+        var version = info.Split('+')[0]; // drop any "+<git-sha>" build-metadata suffix
+        if (version.Length == 0) return "dev";
+        return char.IsDigit(version[0]) ? $"v{version}" : version;
+    }
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
@@ -421,6 +450,37 @@ public sealed class MainViewModel : ViewModelBase
         State = (hasMismatch || _hasCancelledLines) ? ParseState.Warning : ParseState.Success;
     }
 
+    // Restore the app to its launch defaults: clear the file, numeric inputs, and
+    // any result/error, then reset the vendor → file-type → template selection.
+    private void Reset()
+    {
+        _inputFilePath = null;
+        _inputFileName = string.Empty;
+        _inputFileSizeDisplay = string.Empty;
+        OnPropertyChanged(nameof(InputFilePath));
+        OnPropertyChanged(nameof(InputFileName));
+        OnPropertyChanged(nameof(InputFileSizeDisplay));
+        OnPropertyChanged(nameof(HasInputFile));
+
+        FxRate = string.Empty;
+        Margin = string.Empty;
+        ImPercent = string.Empty;
+        OnCostPercent = string.Empty;
+
+        ErrorMessage = null;
+        ErrorStage = null;
+        State = ParseState.Idle;
+
+        // Re-pick the defaults. Each assignment no-ops when already at the default,
+        // so this restores the full cascade whether the vendor, parser, or template
+        // was the one changed.
+        SelectedVendor = Vendors.FirstOrDefault();
+        SelectedParser = Parsers.FirstOrDefault();
+        SelectedTemplate = Templates.FirstOrDefault();
+
+        _convertCommand.RaiseCanExecuteChanged();
+    }
+
     private void OpenFolder()
     {
         if (string.IsNullOrEmpty(_resultOutputFolder)) return;
@@ -431,6 +491,20 @@ public sealed class MainViewModel : ViewModelBase
     {
         if (string.IsNullOrEmpty(_resultOutputPath)) return;
         Process.Start(new ProcessStartInfo(_resultOutputPath) { UseShellExecute = true });
+    }
+
+    // Opens the GitHub releases page in the default browser so users can grab the
+    // latest build. Best-effort: a missing browser must never crash the app.
+    private static void OpenReleases()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(ReleasesUrl) { UseShellExecute = true });
+        }
+        catch
+        {
+            // No default browser / blocked — nothing useful to do, so swallow it.
+        }
     }
 
     private static bool TryParsePositive(string s, out decimal v)

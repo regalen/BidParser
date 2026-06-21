@@ -5,6 +5,8 @@
     <OutputType>WinExe</OutputType>
     <AssemblyName>BidParserLite</AssemblyName>
     <RootNamespace>BidParser.Wpf</RootNamespace>
+    <!-- Local/dev default; the release pipeline overrides this with -p:Version=<tag>. -->
+    <Version>0.0.0-dev</Version>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
