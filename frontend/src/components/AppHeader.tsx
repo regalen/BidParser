@@ -1,4 +1,3 @@
-import { FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { AccountChip } from './AccountChip';
@@ -8,9 +7,7 @@ export function AppHeader({ bare = false }: { bare?: boolean }) {
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-8 shadow-sm">
       <Link to="/dashboard" className="flex items-center gap-3 transition-opacity hover:opacity-80">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent shadow-lg shadow-accent/20">
-          <FileText className="h-5 w-5 text-white" />
-        </div>
+        <img src="/logo.png" alt="" className="h-8 w-8 rounded-lg shadow-lg shadow-accent/20" />
         <h1 className="text-lg font-semibold tracking-tight text-slate-900">BidParser</h1>
       </Link>
       {!bare && (

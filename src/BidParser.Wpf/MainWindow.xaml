@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:conv="clr-namespace:BidParser.Wpf.Converters"
         Title="BidParser Lite"
+        Icon="Assets/app.ico"
         MinWidth="820" MinHeight="560"
         Width="1020" Height="680"
         WindowStartupLocation="CenterScreen"
@@ -141,9 +142,13 @@
                 <StackPanel Margin="20,24,20,20" IsEnabled="{Binding IsNotRunning}">
 
                     <!-- App title -->
-                    <TextBlock Text="BidParser Lite"
-                               FontSize="18" FontWeight="Bold"
-                               Foreground="#111827" Margin="0,0,0,4"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <Image Source="Assets/logo.png" Width="28" Height="28"
+                               VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock Text="BidParser Lite"
+                                   FontSize="18" FontWeight="Bold"
+                                   Foreground="#111827" VerticalAlignment="Center"/>
+                    </StackPanel>
                     <TextBlock Text="Quote → Parsed XLSX"
                                FontSize="11" Foreground="#9CA3AF" Margin="0,0,0,24"/>
 

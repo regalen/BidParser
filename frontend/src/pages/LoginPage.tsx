@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, LogIn } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 import { ApiError } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
@@ -40,9 +40,7 @@ export function LoginPage() {
           className="w-full max-w-md space-y-6 rounded-xl border border-slate-200 bg-white p-8 shadow-xl"
         >
           <div className="space-y-2 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-accent">
-              <LogIn className="h-6 w-6 text-white" />
-            </div>
+            <img src="/logo.png" alt="" className="mx-auto mb-4 h-12 w-12 rounded-xl" />
             <h1 className="text-2xl font-bold text-slate-900">Welcome Back</h1>
             <p className="text-sm text-slate-500">Sign in to BidParser</p>
           </div>
