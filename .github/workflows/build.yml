@@ -2,9 +2,10 @@ name: Build & Push Docker Image
 
 on:
   push:
-    branches: ["**"]
+    branches: [main, testing]
     tags: ["v*"]
   pull_request:
+    branches: [testing, main]
 
 env:
   REGISTRY: ghcr.io
@@ -37,10 +38,11 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     needs: [test]
-    # Image builds run only for v* tag pushes — branch pushes (e.g. to main)
-    # still execute the test job above, but do not produce a duplicate image
-    # for a SHA that is about to be tagged for release.
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    if: >-
+      github.event_name == 'push' && (
+        github.ref == 'refs/heads/testing' ||
+        startsWith(github.ref, 'refs/tags/v')
+      )
     permissions:
       contents: read
       packages: write
@@ -74,9 +76,10 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=sha,prefix=sha-,format=short
-            type=semver,pattern={{version}}
-            type=raw,value=latest
+            type=raw,value=testing,enable=${{ github.ref == 'refs/heads/testing' }}
+            type=sha,prefix=sha-,format=short,enable=${{ github.ref == 'refs/heads/testing' }}
+            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
       - name: Resolve app version
         id: app_version
@@ -103,7 +106,11 @@ jobs:
   publish-windows:
     runs-on: windows-latest
     needs: [test]
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    if: >-
+      github.event_name == 'push' && (
+        github.ref == 'refs/heads/testing' ||
+        startsWith(github.ref, 'refs/tags/v')
+      )
 
     steps:
       - name: Checkout
@@ -117,7 +124,14 @@ jobs:
       - name: Resolve version
         id: ver
         shell: bash
-        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" =~ ^v[0-9] ]]; then
+            echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+            echo "label=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=0.0.0-dev" >> "$GITHUB_OUTPUT"
+            echo "label=testing" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Publish single-file exe
         run: >
@@ -127,7 +141,7 @@ jobs:
 
       - name: Rename to versioned asset
         shell: bash
-        run: mv publish/BidParserLite.exe "BidParserLite-${{ steps.ver.outputs.value }}-win-x64.exe"
+        run: mv publish/BidParserLite.exe "BidParserLite-${{ steps.ver.outputs.label }}-win-x64.exe"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
