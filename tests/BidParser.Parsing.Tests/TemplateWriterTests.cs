@@ -53,6 +53,27 @@ public sealed class TemplateWriterTests
         WorkbookComparer.AssertEqual(actualPath, Path.Combine(root, "samples", "outputs", expectedName));
     }
 
+    // ── AnzGenericWriter (HPE No Calculation / Uplift) ───────────────────────
+
+    [Theory]
+    [InlineData("HPE_Deal_1601962887_v2.xlsx", "HPE_Deal_1601962887_v2_NoCalculation_parsed.xlsx", false)]
+    [InlineData("HPE_Deal_1601962887_v2.xlsx", "HPE_Deal_1601962887_v2_Uplift_parsed.xlsx",         true)]
+    [InlineData("HPE_Deal_1602186424_v1.xlsx", "HPE_Deal_1602186424_v1_NoCalculation_parsed.xlsx", false)]
+    [InlineData("HPE_Deal_1602186424_v1.xlsx", "HPE_Deal_1602186424_v1_Uplift_parsed.xlsx",         true)]
+    public void AnzGenericWriterMatchesGoldenWorkbookCells_Hpe(string inputName, string expectedName, bool includeMargin)
+    {
+        var root = FindRepoRoot();
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpeBidXlsx);
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", inputName));
+        using var tempDirectory = new TempDirectory();
+        var actualPath = Path.Combine(tempDirectory.Path, expectedName);
+
+        var sheetName = includeMargin ? "Uplift" : "No Calculation";
+        AnzGenericWriter.Write(result.LineItems, actualPath, sheetName, includeMargin, margin: 5.00m, vendorName: "HPE");
+
+        WorkbookComparer.AssertEqual(actualPath, Path.Combine(root, "samples", "outputs", expectedName));
+    }
+
     // ── AnzGenericWriter (Lenovo No Calculation) ─────────────────────────────
 
     [Fact]

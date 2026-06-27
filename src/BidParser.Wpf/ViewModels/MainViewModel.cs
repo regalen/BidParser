@@ -354,6 +354,7 @@ public sealed class MainViewModel : ViewModelBase
         var template = EffectiveTemplate;
         var isZebra = parser?.Vendor == VendorNames.Zebra;
         var isHp = parser?.Vendor == VendorNames.Hp;
+        var isHpe = parser?.Vendor == VendorNames.Hpe;
         var isLenovo = parser?.Vendor == VendorNames.Lenovo;
         var isNutanix = parser?.Vendor == VendorNames.Nutanix;
         var isMultiTemplate = parser is { } p && p.AvailableTemplates.Count > 1;
@@ -362,6 +363,7 @@ public sealed class MainViewModel : ViewModelBase
         ShowFxRate = isNutanix;
         ShowMargin = isNutanix
             || (isHp && template is CrmTemplates.Uplift or CrmTemplates.PercentOffWithUplift)
+            || (isHpe && template == CrmTemplates.Uplift)
             || (isZebra && template == CrmTemplates.Uplift)
             || (isLenovo && template == CrmTemplates.Uplift);
         ShowImPercent = isHp && template == CrmTemplates.PercentOffWithUplift;

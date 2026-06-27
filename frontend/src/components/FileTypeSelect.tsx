@@ -10,6 +10,7 @@ const SAMPLE_FILES: Record<string, string> = {
   hp_bid_xlsx: 'Deals20260518T034809_HPI.xlsx',
   hp_global_bid_xlsx: 'translate_quote_47500427_v25_all.xlsx',
   hp_oneconfig_xlsx: '55648855.xlsx',
+  hpe_bid_xlsx: 'HPE_Deal_1601962887_v2.xlsx',
   lenovo_brda_dcg_pdf: 'BRDAS010260417V1.pdf',
   lenovo_brda_dcg_xlsx: 'BRDAD010458440.xls',
   zebra_price_concession_pdf: 'Zebra_PC_81391641.pdf',

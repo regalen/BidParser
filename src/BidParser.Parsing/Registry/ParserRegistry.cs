@@ -2,6 +2,7 @@ using BidParser.Domain.Abstractions;
 using BidParser.Parsing.Hp.BidXlsx;
 using BidParser.Parsing.Hp.GlobalBidXlsx;
 using BidParser.Parsing.Hp.OneConfigXlsx;
+using BidParser.Parsing.Hpe.BidXlsx;
 using BidParser.Parsing.Lenovo.BrdaDcgPdf;
 using BidParser.Parsing.Lenovo.BrdaDcgXlsx;
 using BidParser.Parsing.Nutanix.HardwareOnlyPdf;
@@ -27,6 +28,7 @@ public sealed class ParserRegistry : IParserRegistry
         new HpBidXlsxParser(),
         new HpGlobalBidXlsxParser(),
         new HpOneConfigXlsxParser(),
+        new HpeBidXlsxParser(),
         new LenovoBrdaDcgPdfParser(),
         new LenovoBrdaDcgXlsxParser(),
         new ZebraPriceConcessionPdfParser(),
