@@ -14,7 +14,7 @@ HP Global Bid export workbooks (filename pattern `translate_quote_<deal>_v<versi
 
 | File | Deal Number | Items | Notes |
 |---|---|---|---|
-| `translate_quote_47500427_v25_all.xlsx` | 47500427 | 24 | AUD computed total 34,746,055.00 |
+| `translate_quote_47500427_v25_all.xlsx` | 47500427 | 24 | Qty always 1; AUD computed total 35,233.34 |
 
 ### Structure
 
@@ -36,14 +36,11 @@ Required column labels (exact, as they appear after `TextCleaner.Clean`):
 | `Product number` | `vpn` |
 | `Description` | `description` |
 | `Converted net price [AUD]` | `cost` |
-| `Aggregated item quantity` | `qty` |
 | `Remaining qty` | used in `comments` |
 
-Optional column:
-
-| Column label | Field |
-|---|---|
-| `Full term (Months)` | used in `comments` |
+`qty` is **not** read from a source column — it is always `1`. `Aggregated item quantity`
+and `Full term (Months)` are **no longer parsed** (the column may still be present in the
+file; it is simply ignored — its value remains available in `Raw`).
 
 **AUD validation:** if `Converted net price [AUD]` is absent from the header row, the parser throws `ParseError("currency", "Quote is not denominated in AUD.", …)`. This prevents non-AUD Global Bid files from being silently mis-parsed (they use a different cost column header).
 
@@ -56,7 +53,7 @@ Optional column:
 3. `WorkbookReader.FindCell(sheet, "Product number")` → `headerCell`; throws `ParseError("detect", …)` if not found.
 4. `WorkbookReader.HeaderMap(sheet, headerCell.Address.RowNumber)` → `headerMap`.
 5. Check `headerMap.Columns.ContainsKey("Converted net price [AUD]")`; throw `ParseError("currency", …)` if absent.
-6. `WorkbookReader.RequireLabels(headerMap, …)` for the five required columns.
+6. `WorkbookReader.RequireLabels(headerMap, …)` for the four required columns.
 7. Iterate rows from `headerMap.RowNumber + 1` to `lastRow`; **break on the first wholly-empty row**.
 8. For each row: skip if `Product number` is blank. Otherwise extract the line item (see below).
 
@@ -67,10 +64,10 @@ Optional column:
 | `vpn` | `Product number` | Trimmed; skip row if blank |
 | `description` | `Description` | Trimmed |
 | `cost` | `Converted net price [AUD]` | `DecimalCleaner.Parse(text, defaultZero: true)` |
-| `qty` | `Aggregated item quantity` | `DecimalCleaner.ParseOptionalInt` → default 0 |
-| `comments` | `Remaining qty` + optional `Full term (Months)` | `"{term} Months \| {remaining} Remaining"` when `term > 0`; `"{remaining} Remaining"` otherwise |
+| `qty` | — | Always `1` (`Aggregated item quantity` is no longer read) |
+| `comments` | `Remaining qty` | `"{remaining} Remaining"` |
 | `msrp` | — | Always `null` |
-| `term` | — | Not written to `LineItem.Term`; term value used only in `comments` |
+| `term` | — | `Full term (Months)` is no longer parsed or written anywhere |
 | `line_sequence` | — | Not set by parser; `AnzGenericWriter` auto-increments from 1 |
 
 ### Quote number
@@ -88,7 +85,7 @@ No quoted total exists in Global Bid files. `ValidationResult` is constructed di
 Matches = true
 Difference = 0
 QuotedTotal = null
-ComputedTotal = Σ(cost × qty), rounded to 2 dp (MidpointRounding.AwayFromZero)
+ComputedTotal = Σ(cost × qty), rounded to 2 dp (MidpointRounding.AwayFromZero); qty is always 1
 ```
 
 Do **not** call `ParseValidation.Validate(items, null)` — that would return `Matches = false` and trigger the mismatch modal.
@@ -103,15 +100,15 @@ First 5 items:
 
 | Seq | VPN | Description | Cost | Qty | Comments |
 |---|---|---|---|---|---|
-| 1 | D95A8UC | … | 1,900.95 | 2,500 | `620 Remaining` |
-| 2 | 9E0G5AA | … | 347.56 | 1,000 | `… Remaining` |
-| 3 | 8X223AA | … | 161.51 | 100 | `24 Months \| 20 Remaining` |
-| 4 | 9D9V7AA | … | 269.54 | 1,000 | `… Remaining` |
-| 5 | A4LZ8AA | … | 5,325.12 | 25 | `… Remaining` |
+| 1 | D95A8UC | … | 1,900.95 | 1 | `620 Remaining` |
+| 2 | 9E0G5AA | … | 347.56 | 1 | `… Remaining` |
+| 3 | 8X223AA | … | 161.51 | 1 | `20 Remaining` |
+| 4 | 9D9V7AA | … | 269.54 | 1 | `… Remaining` |
+| 5 | A4LZ8AA | … | 5,325.12 | 1 | `… Remaining` |
 
-7 of 24 items have a term value and use the pipe-separated comment format. All items have `msrp = null`.
+Qty is `1` for every item; comments are always `"{remaining} Remaining"`. All items have `msrp = null`.
 
-Computed total: `AUD 34,746,055.00` (no quoted total).
+Computed total: `AUD 35,233.34` (no quoted total).
 
 ---
 
@@ -125,11 +122,11 @@ Uses the same `AnzGenericWriter` and ANZ-GENERIC 27-column layout as HP Bid. Dif
 | B | Vendor Name | `"HP"` | |
 | D | Vendor Part Number | `vpn` | |
 | E | Description | `description` | |
-| F | Qty. | `qty` | |
+| F | Qty. | `qty` | Always `1` |
 | H | MSRP | blank | Always null |
 | I | Cost | `cost` | Non-zero; no `0.0001` sentinel needed (Global Bid rows always have a price) |
 | K | Margin | `margin` (Uplift only) | |
-| R | Comments | `comments` | Term + remaining, or remaining only |
+| R | Comments | `comments` | `"{remaining} Remaining"` |
 | W | Min Order Qty | blank | Not extracted |
 
 Call: `AnzGenericWriter.Write(items, outputPath, crmTemplate, includeMargin: crmTemplate == "Uplift", margin, vendorName: "HP")`

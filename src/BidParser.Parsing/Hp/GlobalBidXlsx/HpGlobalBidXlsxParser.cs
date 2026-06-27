@@ -61,8 +61,7 @@ public sealed class HpGlobalBidXlsxParser : IParser
             "Product number",
             "Description",
             "Converted net price [AUD]",
-            "Remaining qty",
-            "Aggregated item quantity");
+            "Remaining qty");
 
         var items = new List<LineItem>();
         var lastRow = productNumberSheet.LastRowUsed()?.RowNumber() ?? headerMap.RowNumber;
@@ -83,27 +82,18 @@ public sealed class HpGlobalBidXlsxParser : IParser
             var costText = CellText(productNumberSheet, row, headerMap, "Converted net price [AUD]");
             var cost = DecimalCleaner.Parse(costText, defaultZero: true);
 
-            var qty = DecimalCleaner.ParseOptionalInt(
-                CellText(productNumberSheet, row, headerMap, "Aggregated item quantity")) ?? 0;
-
             var remainingQtyText = CellText(productNumberSheet, row, headerMap, "Remaining qty");
             var remainingQty = DecimalCleaner.ParseOptionalInt(remainingQtyText) ?? 0;
 
-            var termText = headerMap.Columns.ContainsKey("Full term (Months)")
-                ? CellText(productNumberSheet, row, headerMap, "Full term (Months)")
-                : string.Empty;
-            var term = DecimalCleaner.ParseOptionalInt(termText);
-
-            var comments = term is > 0
-                ? $"{term} Months | {remainingQty} Remaining"
-                : $"{remainingQty} Remaining";
+            var comments = $"{remainingQty} Remaining";
 
             items.Add(new LineItem
             {
                 Vpn = vpn,
                 Description = CellText(productNumberSheet, row, headerMap, "Description"),
                 Cost = cost,
-                Qty = qty,
+                // Qty is always 1; "Aggregated item quantity" is intentionally not used.
+                Qty = 1,
                 Comments = comments,
                 Raw = WorkbookReader.BuildRawDict(productNumberSheet, row, headerMap)
             });

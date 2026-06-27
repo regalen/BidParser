@@ -134,10 +134,10 @@ Same 27-column layout. Differences from HP Bid:
 | B | Vendor Name | `"HP"` | |
 | D | Vendor Part Number | `vpn` | Source col B `"Product number"` |
 | E | Description | `description` | Source col E `"Description"` |
-| F | Qty. | `qty` | Source col V `"Aggregated item quantity"` |
+| F | Qty. | `qty` | Always `1` (`"Aggregated item quantity"` is no longer read) |
 | I | Cost | `cost` | Source col G `"Converted net price [AUD]"` (AUD prefix stripped by `DecimalCleaner`) |
 | K | Margin | `margin` (Uplift only) | |
-| R | Comments | `comments` | `"{term} Months \| {remaining} Remaining"` when term present; `"{remaining} Remaining"` otherwise. `remaining` = col H `"Remaining qty"`. |
+| R | Comments | `comments` | `"{remaining} Remaining"`. `remaining` = `"Remaining qty"`. (`"Full term (Months)"` is no longer parsed.) |
 
 **AUD validation:** parser throws `ParseError` (category `"currency"`) if the header row does not contain `"Converted net price [AUD]"` — prevents non-AUD quotes from being silently mis-parsed.
 

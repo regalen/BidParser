@@ -55,7 +55,7 @@ endpoint contracts.
 | `Deals20260518T034809_HPI.xlsx` | HP Bid (XLSX) | 479 items: Part Number × 3, Bundle × 14, Bundle Detail × 462; includes `#`-concatenated Option Code example |
 | `Deals20260518T043243_HPI.xlsx` | HP Bid (XLSX) | 5 Part Number rows only; Part-Number-only file |
 | `55648855.xlsx`                  | HP OneConfig (XLSX) | 1 Config + 30 components; AUD 6,042.77 Total Price |
-| `translate_quote_47500427_v25_all.xlsx` | HP Global Bid (XLSX) | 24 items; deal 47500427 v.25; AUD computed total 34,746,055.00 |
+| `translate_quote_47500427_v25_all.xlsx` | HP Global Bid (XLSX) | 24 items; deal 47500427 v.25; qty always 1; AUD computed total 35,233.34 |
 | `BRDAS010260417V1.pdf` | Lenovo BRDA DCG (PDF) | 152 items: 2 configs, 13 parents, 137 children (self-component dedup); AUD 393,231.78 |
 | `BRDAS010545504V1.pdf` | Lenovo BRDA DCG (PDF) | Simple variant (no CONFIGURATION DETAILS); 3 top-level items with real unit prices; AUD 77,545.95 |
 | `BRDAS010546096V1.pdf` | Lenovo BRDA DCG (PDF) | Simple variant; 1 top-level item; AUD 38,896.08 |
@@ -484,7 +484,7 @@ Out of scope: multi-file batch upload, CSV formats, review/approve gate, multi-t
 - `docs/nutanix_hardware_only_pdf.md` — Hardware Only (PDF), multi-quote PDF; parse Quote D only.
 - `docs/nutanix_hardware_only_xlsx.md` — Hardware Only (XLSX), multi-quote workbook; parse Quote D only.
 - `docs/hp_bid_xlsx.md` — HP Bid (XLSX). Deal-export workbooks with Part Number, Bundle, and Bundle Detail rows; no quoted total; available templates `No Calculation` and `Uplift`.
-- `docs/hp_global_bid_xlsx.md` — HP Global Bid (XLSX). `Product numbers` sheet; header anchor `"Product number"`; AUD-only (`Converted net price [AUD]` column required, else `ParseError("currency")`); comments encode term + remaining qty; no quoted total; available templates `No Calculation` and `Uplift`.
+- `docs/hp_global_bid_xlsx.md` — HP Global Bid (XLSX). `Product numbers` sheet; header anchor `"Product number"`; AUD-only (`Converted net price [AUD]` column required, else `ParseError("currency")`); qty always 1; comments encode remaining qty (`"{remaining} Remaining"`; `Full term (Months)` no longer parsed); no quoted total; available templates `No Calculation` and `Uplift`.
 - `docs/hp_oneconfig_xlsx.md` — HP OneConfig (XLSX). Single Config per file, parent VPN from `Config ID`, MSRP from `Total Price`, 30 children zeroed. Output `% Off RRP with Uplift`; requires `margin` + `im_percent`.
 - `docs/lenovo_brda_dcg_xlsx.md` — Lenovo BRDA DCG (XLS). Legacy `.xls` (OLE Compound Document) read via ExcelDataReader; PARENT/CHILD classified by whether the unit-price cell is `> 0` (explicit `0.0` is a child — `5374CM1` "Configuration Instruction" rows depend on this). LineSequence integer for parents (`"1"`, `"2"`), `parent.NN` for children (`"1.01"`). Quoted total from the `Total:` row's unit-price column, rounded 2 dp.
 - `docs/lenovo_brda_dcg_pdf.md` — Lenovo BRDA DCG (PDF). Two variants: complex (PRODUCT AND SERVICE DETAILS + CONFIGURATION DETAILS — CONFIGs/PARENTs/children, detect 0.85) and simple (PRODUCT AND SERVICE DETAILS only — numbered parent items with real unit prices, no children, detect 0.75). Quirks: X1+1-based column boundaries for Part Number/Description; floating-point 1 pt offset for No/Qty in section 2; pre-description buffering; section 2 absent → empty children map.

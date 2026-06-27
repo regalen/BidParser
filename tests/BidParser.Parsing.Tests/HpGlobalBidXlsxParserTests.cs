@@ -50,7 +50,8 @@ public sealed class HpGlobalBidXlsxParserTests
         result.Validation.Matches.Should().BeTrue();
         result.Validation.QuotedTotal.Should().BeNull();
         result.Validation.Difference.Should().Be(0m);
-        result.Validation.ComputedTotal.Should().Be(34746055.00m);
+        // Qty is always 1, so the computed total is the sum of the line costs.
+        result.Validation.ComputedTotal.Should().Be(35233.34m);
     }
 
     [Fact]
@@ -70,16 +71,27 @@ public sealed class HpGlobalBidXlsxParserTests
 
         var result = parser.Parse(SamplePath());
 
+        // Qty is always 1 (the source "Aggregated item quantity" is no longer used).
         result.LineItems
             .Take(5)
             .Select(i => (i.Vpn, i.Cost, i.Qty))
             .Should()
             .Equal(
-                ("D95A8UC", 1900.95m, 2500),
-                ("9E0G5AA",  347.56m, 1000),
-                ("8X223AA",  161.51m,  100),
-                ("9D9V7AA",  269.54m, 1000),
-                ("A4LZ8AA", 5325.12m,   25));
+                ("D95A8UC", 1900.95m, 1),
+                ("9E0G5AA",  347.56m, 1),
+                ("8X223AA",  161.51m, 1),
+                ("9D9V7AA",  269.54m, 1),
+                ("A4LZ8AA", 5325.12m, 1));
+    }
+
+    [Fact]
+    public void AllItems_HaveQtyOfOne()
+    {
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpGlobalBidXlsx);
+
+        var result = parser.Parse(SamplePath());
+
+        result.LineItems.Should().OnlyContain(i => i.Qty == 1);
     }
 
     [Fact]
@@ -95,27 +107,29 @@ public sealed class HpGlobalBidXlsxParserTests
     }
 
     [Fact]
-    public void Comments_CombinesTermAndRemaining_WhenTermPresent()
+    public void Comments_RemainingOnly_EvenWhenTermPresent()
     {
         var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpGlobalBidXlsx);
 
         var result = parser.Parse(SamplePath());
 
-        // 8X223AA has Full term (Months) = 24 and Remaining qty = 20
+        // 8X223AA has a Full term (Months) value, but the term is no longer parsed —
+        // comments are just the remaining qty (Remaining qty = 20).
         var item = result.LineItems.First(i => i.Vpn == "8X223AA");
-        item.Comments.Should().Be("24 Months | 20 Remaining");
+        item.Comments.Should().Be("20 Remaining");
     }
 
     [Fact]
-    public void ItemsWithTerm_AllHavePipeSeparatedComments()
+    public void Comments_NeverContainTermOrPipe()
     {
         var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpGlobalBidXlsx);
 
         var result = parser.Parse(SamplePath());
 
-        var termItems = result.LineItems.Where(i => i.Comments != null && i.Comments.Contains("Months")).ToList();
-        termItems.Should().HaveCount(7);
-        termItems.Should().OnlyContain(i => i.Comments!.Contains(" | ") && i.Comments.Contains("Remaining"));
+        // Full term (Months) is no longer parsed, so no comment carries a term or pipe.
+        result.LineItems.Should().OnlyContain(i =>
+            i.Comments != null && i.Comments.EndsWith(" Remaining")
+            && !i.Comments.Contains("Months") && !i.Comments.Contains("|"));
     }
 
     [Fact]
