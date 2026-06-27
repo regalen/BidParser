@@ -342,26 +342,28 @@ public sealed class MainViewModel : ViewModelBase
             : _selectedParser?.CrmTemplate ?? string.Empty;
 
     // Field visibility is vendor-driven, mirroring the web ParseSettingsCard branches:
-    //   Zebra            → template dropdown + On Cost % (optional); Uplift adds the Uplift field
-    //   HP (multi/single)→ HpSettingsBlock: Uplift/PercentOff add Uplift; PercentOff adds Discount Off MSRP
-    //   Nutanix / Lenovo → NutanixSettingsBlock: FX Rate + Uplift, regardless of CRM template
-    // NOTE: Lenovo's CRM template is "No Calculation", but it still shows FX Rate + Uplift like
-    // Nutanix (the NoCalculation writer ignores them) — so visibility keys off the vendor, not
-    // the template. A purely template-driven rule would wrongly hide both fields for Lenovo.
+    //   Zebra   → template dropdown + On Cost % (optional); Uplift adds the Uplift field
+    //   HP      → HpSettingsBlock: Uplift/PercentOff add Uplift; PercentOff adds Discount Off MSRP
+    //   Lenovo  → template dropdown; No Calculation needs no fields, Uplift adds the Uplift field
+    //   Nutanix → FX Rate + Uplift (its ForeignUplift writer converts foreign currency)
+    // FX Rate is Nutanix-only — Lenovo's No Calculation / Uplift writers never use it, so
+    // visibility for Lenovo is template-driven exactly like HP/Zebra.
     private void UpdateConditionalFields()
     {
         var parser = _selectedParser;
         var template = EffectiveTemplate;
         var isZebra = parser?.Vendor == VendorNames.Zebra;
         var isHp = parser?.Vendor == VendorNames.Hp;
+        var isLenovo = parser?.Vendor == VendorNames.Lenovo;
+        var isNutanix = parser?.Vendor == VendorNames.Nutanix;
         var isMultiTemplate = parser is { } p && p.AvailableTemplates.Count > 1;
-        var isNutanixBlock = parser is not null && !isZebra && !isHp;
 
         ShowTemplateDropdown = isMultiTemplate;
-        ShowFxRate = isNutanixBlock;
-        ShowMargin = isNutanixBlock
+        ShowFxRate = isNutanix;
+        ShowMargin = isNutanix
             || (isHp && template is CrmTemplates.Uplift or CrmTemplates.PercentOffWithUplift)
-            || (isZebra && template == CrmTemplates.Uplift);
+            || (isZebra && template == CrmTemplates.Uplift)
+            || (isLenovo && template == CrmTemplates.Uplift);
         ShowImPercent = isHp && template == CrmTemplates.PercentOffWithUplift;
         ShowOnCostPercent = isZebra;
         CrmTemplateDisplay = template;
