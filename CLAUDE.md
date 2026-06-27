@@ -25,7 +25,7 @@ pluggable `IParser` registry so a new format is one parser class + fixtures + on
 registry entry, and both products pick it up automatically.
 
 Backend was re-platformed from Python/FastAPI to ASP.NET Core 10. All tests pass:
-`dotnet test BidParser.sln` (239: 161 parsing + 78 API integration). API tests
+`dotnet test BidParser.sln` (256: 178 parsing + 78 API integration). API tests
 need a running Docker daemon (SQL Server testcontainer).
 
 ## Project layout
@@ -47,7 +47,7 @@ need a running Docker daemon (SQL Server testcontainer).
 - `src/BidParser.Api/` — Minimal API. Endpoints `/auth/*`, `/me`, `/users`, `/parsers`, `/parse`, `/history`, `/metrics/*`, `/monitoring/*`, health. Cookie auth, CSRF, rate limiters, `GlobalExceptionHandler`, `SecurityHeadersMiddleware`, locked-down `ForwardedHeaders`. Typed response records in `Contracts/`, decimal converters in `Serialization/`. Hosts the SPA from `wwwroot/`.
 - `src/BidParser.Domain/` — `LineItem`, `QuoteMetadata`, `ValidationResult`, `ParseResult`, `ParseError`, `IParser`, `IParserRegistry`. `Constants/` centralises `Vendors.*`, `CrmTemplates.*`, `ParserSlugs.*`, and `ReportTypes.*` (the hardcoded slug → report-type map, see below).
 - `src/BidParser.Infrastructure/` — `AppDbContext` (EF Core + SQL Server, `AddDbContextPool`), entities (`User`, `ParseJob`, `ParseMetric`, `FailedParseJob`), migrations, `FileStorage`, `ParseService`, `FailedParseJobRecorder`, `RetentionService`.
-- `src/BidParser.Parsing/` — PDF helpers via PdfPig (`Pdf/`), XLSX helpers via ClosedXML (`Xlsx/`), legacy `.xls` via ExcelDataReader, six Nutanix + three HP + two Lenovo + two Zebra parsers, explicit `Registry/ParserRegistry.cs`.
+- `src/BidParser.Parsing/` — PDF helpers via PdfPig (`Pdf/`), XLSX helpers via ClosedXML (`Xlsx/`), legacy `.xls` via ExcelDataReader, six Nutanix + three HP + one HPE + two Lenovo + two Zebra parsers, explicit `Registry/ParserRegistry.cs`.
 - `src/BidParser.Output/` — `ForeignUpliftWriter`, `AnzGenericWriter`, `PercentOffWithUpliftWriter`, shared `TemplateLayout`, `OutputNaming`.
 - `src/BidParser.Core/` (**desktop only**) — `ParseRunner`: the pure parse→write orchestration lifted from `ParseService` with all DB/auth/User code removed. Returns `ParseOutcome { Validation, Currency, CancelledLines, OutputPath }`. Also defines `CancelledLine` and `ParseValidationException`.
 - `src/BidParser.Wpf/` (**desktop only**, `net10.0-windows`) — WPF shell. `MainViewModel` ports the web SPA's state: vendor/file-type/template pickers and the **vendor-driven** conditional-field matrix from `ParseSettingsCard.tsx` + the settings blocks (FX Rate, Uplift, Discount Off MSRP, On Cost %), plus `canSubmit` enablement and wrong-file-type / currency / generic error branching from `DashboardPage.tsx`, with success / warning result panels (each showing the hardcoded report type). A **Reset** button (`ResetCommand`) restores the launch defaults (file, numeric inputs, result/error, and the vendor→file-type→template selection). A footer shows the app version (`AppVersionDisplay`, from the assembly's `InformationalVersion` — stamped by the release `-p:Version=`, `0.0.0-dev` locally), a **GitHub** link (`OpenReleasesCommand` opens the releases page in the browser), and a dynamic-year `Ingram Micro` copyright. On Convert a Windows **Save As** dialog (View-side `SaveFilePrompt` delegate) lets the user name/place the output, pre-filled with the `OutputNaming` default beside the input; cancelling aborts before any parse. Brand assets in `Assets/` (`app.ico` is the exe `<ApplicationIcon>` + `Window.Icon`; `logo.png` is the in-window header logo) — both bundled as `<Resource>`. No DI, no config files, no persistent storage. (Full field matrix in `docs/project_memory.md`.)
@@ -113,7 +113,7 @@ Parsers detect *source* labels (`"Net Unit Price"`, `"List Unit Price"`, …) as
 
 ## Commands
 
-- `dotnet test BidParser.sln` — full suite (239 tests; API tests need Docker).
+- `dotnet test BidParser.sln` — full suite (256 tests; API tests need Docker).
 - `dotnet build BidParser.Core` — verify the shared orchestrator compiles (no Docker needed).
 - `dotnet run --project src/BidParser.Api` — backend dev server (`http://localhost:5000`).
 - `cd frontend && npm run dev` — Vite dev server, proxies `/api` to `http://127.0.0.1:5000` (`VITE_API_PROXY_TARGET=…` to point elsewhere).

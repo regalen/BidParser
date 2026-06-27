@@ -120,6 +120,35 @@ All other columns: blank.
 
 ---
 
+## HPE (ANZ-GENERIC — No Calculation / Uplift)
+
+**Parser:** `HpeBidXlsxParser` (`hpe_bid_xlsx`)  
+**Template / Writer:** same as HP Bid above — `AnzGenericWriter.Write(..., vendorName: "HPE")`  
+**Source anchor:** `"LineType"` (one word); metadata block is key (col A) / value (col B)
+
+Same 27-column ANZ-GENERIC layout. Differences from HP Bid:
+
+| Col | Header | HPE value | Notes |
+|---|---|---|---|
+| A | Item | `LineSequence` | `"1"`, `"2"`, `"1.01"`, … (Bundle opens a child group; `BundleDetails` nest as `parent.NN`) |
+| B | Vendor Name | `"HPE"` | |
+| D | Vendor Part Number | `vpn` | `ProductNumber` (Part Number) / `BundleID` (Bundle) / `ComponentID` (BundleDetails). **`OptionCode` is not appended.** |
+| E | Description | `description` | `ProductDescription` |
+| F | Qty. | `qty` | From the **`Quantity`** column (`0 → 1`) — *not* Min Order Qty as in HP Bid |
+| H | MSRP | `msrp` | **Populated** from `ListPrcEst` (Part Number/Bundle); `0` → `0.0001` sentinel. BundleDetails = sentinel. |
+| I | Cost | `cost` | `Offering` (Part Number/Bundle); `0` → `0.0001` sentinel. BundleDetails = sentinel (component price dropped onto the Bundle parent). |
+| K | Margin | `margin` (Uplift only) | Written only when `includeMargin = true` |
+| R | Comments | `comments` | `"Max Qty: {MaxDealQty}"` for Part Number / Bundle; blank for BundleDetails |
+| W | Min Order Qty | `min_qty` | From `MinOrderQty` (`0 → 1`) |
+
+**Key differences vs HP Bid:**
+- MSRP (col H) is populated from `ListPrcEst` — HP Bid leaves col H blank. The `0 → 0.0001`
+  sentinel now also applies to MSRP (via `AnzGenericWriter`/`TemplateLayout.NonZeroPrice`).
+- Qty comes from `Quantity`, not Min Order Qty.
+- `Matches = true` always (no quoted total). See `docs/hpe_bid_xlsx.md`.
+
+---
+
 ## HP Global Bid (ANZ-GENERIC — No Calculation / Uplift)
 
 **Parser:** `HpGlobalBidXlsxParser` (`hp_global_bid_xlsx`)  

@@ -22,6 +22,7 @@ public sealed class ParserRegistryTests
                 "hp_bid_xlsx",
                 "hp_global_bid_xlsx",
                 "hp_oneconfig_xlsx",
+                "hpe_bid_xlsx",
                 "lenovo_brda_dcg_pdf",
                 "lenovo_brda_dcg_xlsx",
                 "zebra_price_concession_pdf",

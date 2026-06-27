@@ -24,6 +24,7 @@ public static class ReportTypes
         [ParserSlugs.HpBidXlsx] = HardwareSoh,
         [ParserSlugs.HpGlobalBidXlsx] = HardwareSoh,
         [ParserSlugs.HpOneConfigXlsx] = Standard,
+        [ParserSlugs.HpeBidXlsx] = HardwareSoh,
         [ParserSlugs.LenovoBrdaDcgPdf] = HardwareSoh,
         [ParserSlugs.LenovoBrdaDcgXlsx] = HardwareSoh,
         [ParserSlugs.ZebraPriceConcessionPdf] = HardwareSoh,

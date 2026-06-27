@@ -71,9 +71,11 @@ public static class AnzGenericWriter
                 sheet.Cell(rowNumber, 6).Value = item.Qty;
 
                 // Col H — MSRP (written when the parser populates it; blank for HP/Lenovo).
+                // 0 → sentinel, same as Cost: HPE BundleDetails components carry no msrp and
+                // the downstream import rejects a literal 0.
                 if (item.Msrp is not null)
                 {
-                    sheet.Cell(rowNumber, 8).Value = item.Msrp.Value;
+                    sheet.Cell(rowNumber, 8).Value = TemplateLayout.NonZeroPrice(item.Msrp.Value);
                 }
 
                 // Col I — Cost (0 → sentinel; Bundle Detail components carry no price and the
