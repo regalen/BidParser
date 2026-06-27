@@ -50,9 +50,10 @@ public sealed class HpBidXlsxParserTests
 
         result.Validation.Matches.Should().BeTrue();
         result.Validation.QuotedTotal.Should().BeNull();
-        // Bundle Detail components contribute 0 (their price lives on the Bundle parent),
-        // so the computed total counts only Part Number and Bundle lines.
-        result.Validation.ComputedTotal.Should().Be(14788828.99m);
+        // Qty for Part Number / Bundle lines derives from Min Order Qty (all 0 → 1 in this
+        // file), and Bundle Detail components contribute 0 (their price lives on the Bundle
+        // parent), so the computed total is the sum of Part Number + Bundle costs × 1.
+        result.Validation.ComputedTotal.Should().Be(34402.45m);
     }
 
     [Fact]
@@ -74,14 +75,15 @@ public sealed class HpBidXlsxParserTests
 
         var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals20260518T034809_HPI.xlsx"));
 
+        // Qty now comes from Min Order Qty (0 → 1); Max Deal Qty (2012) moves to Comments.
         result.LineItems
             .Take(3)
-            .Select(i => (i.LineSequence, i.Vpn, i.Cost, i.Qty, i.MinQty))
+            .Select(i => (i.LineSequence, i.Vpn, i.Cost, i.Qty, i.MinQty, i.Comments))
             .Should()
             .Equal(
-                ("1", "9D9L6UT", 213.92m, 2012, 1),
-                ("2", "9D9L6A9", 184.78m, 2012, 1),
-                ("3", "9D9V7AA", 240m,    2012, 1));
+                ("1", "9D9L6UT", 213.92m, 1, 1, "Max Qty: 2012"),
+                ("2", "9D9L6A9", 184.78m, 1, 1, "Max Qty: 2012"),
+                ("3", "9D9V7AA", 240m,    1, 1, "Max Qty: 2012"));
     }
 
     [Fact]
@@ -92,12 +94,14 @@ public sealed class HpBidXlsxParserTests
 
         var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals20260518T034809_HPI.xlsx"));
 
-        // Item 4 is the first Bundle
+        // Item 4 is the first Bundle. Qty comes from Min Order Qty (0 → 1); the Max Deal
+        // Qty (880) is surfaced in Comments.
         var bundle = result.LineItems.First(i => i.LineSequence == "4");
         bundle.Vpn.Should().Be("55623728");
         bundle.Cost.Should().Be(2387.94m);
-        bundle.Qty.Should().Be(880);
+        bundle.Qty.Should().Be(1);
         bundle.MinQty.Should().Be(1);
+        bundle.Comments.Should().Be("Max Qty: 880");
     }
 
     [Fact]
@@ -116,6 +120,8 @@ public sealed class HpBidXlsxParserTests
         child1.Cost.Should().Be(0m);
         child1.Qty.Should().Be(1);
         child1.MinQty.Should().Be(1);
+        // Bundle Detail rows have no Max Deal Qty, so Comments stays blank.
+        child1.Comments.Should().BeNull();
 
         // The 6th child — has Option Code so vpn gets #-concatenated
         var child6 = result.LineItems.First(i => i.LineSequence == "4.06");
@@ -192,15 +198,16 @@ public sealed class HpBidXlsxParserTests
 
         result.LineItems.Should().HaveCount(5);
 
+        // Qty comes from Min Order Qty (all 0 → 1); Max Deal Qty moves to Comments.
         result.LineItems
-            .Select(i => (i.LineSequence, i.Vpn, i.Cost, i.Qty, i.MinQty))
+            .Select(i => (i.LineSequence, i.Vpn, i.Cost, i.Qty, i.MinQty, i.Comments))
             .Should()
             .Equal(
-                ("1", "5TW10AA",  165.83m,  100, 1),
-                ("2", "9D9S0UT",  336.70m,  100, 1),
-                ("3", "BV2Q6PT", 3393.88m,  100, 1),
-                ("4", "BQ4E3PT", 2258.18m,  500, 1),
-                ("5", "BV8B6PT", 2160.00m,  250, 1));
+                ("1", "5TW10AA",  165.83m,  1, 1, "Max Qty: 100"),
+                ("2", "9D9S0UT",  336.70m,  1, 1, "Max Qty: 100"),
+                ("3", "BV2Q6PT", 3393.88m,  1, 1, "Max Qty: 100"),
+                ("4", "BQ4E3PT", 2258.18m,  1, 1, "Max Qty: 500"),
+                ("5", "BV8B6PT", 2160.00m,  1, 1, "Max Qty: 250"));
     }
 
     [Fact]
@@ -211,7 +218,8 @@ public sealed class HpBidXlsxParserTests
 
         var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals20260518T043243_HPI.xlsx"));
 
-        result.Validation.ComputedTotal.Should().Be(2058731.00m);
+        // Qty is 1 for every line (Min Order Qty 0 → 1), so the total is the sum of costs.
+        result.Validation.ComputedTotal.Should().Be(8314.59m);
         result.Validation.Matches.Should().BeTrue();
     }
 

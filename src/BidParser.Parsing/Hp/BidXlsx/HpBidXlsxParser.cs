@@ -74,6 +74,7 @@ public sealed class HpBidXlsxParser : IParser
             int qty;
             int rawMinQty;
             decimal cost;
+            string? comments = null;
 
             switch (lineType)
             {
@@ -81,9 +82,16 @@ public sealed class HpBidXlsxParser : IParser
                 case "Bundle":
                     lineCounter++;
                     lineSequence = lineCounter.ToString();
-                    qty = Int(sheet, row, headerMap, "Max Deal Qty");
+                    // Qty now derives from Min Order Qty (0 → 1); Max Deal Qty is no longer
+                    // the quantity — it is surfaced in the Comments column instead.
                     rawMinQty = Int(sheet, row, headerMap, "Min Order Qty");
+                    qty = rawMinQty == 0 ? 1 : rawMinQty;
                     cost = DecimalCleaner.Parse(Text(sheet, row, headerMap, "Price"), defaultZero: true);
+                    var maxDealQty = DecimalCleaner.ParseOptionalInt(Text(sheet, row, headerMap, "Max Deal Qty"));
+                    if (maxDealQty is not null)
+                    {
+                        comments = $"Max Qty: {maxDealQty}";
+                    }
                     if (lineType == "Bundle")
                     {
                         // A Bundle opens a child group: subsequent Bundle Detail rows
@@ -103,7 +111,8 @@ public sealed class HpBidXlsxParser : IParser
                     // the total price, so the component's own Price is dropped to avoid
                     // double-counting. The writer emits the 0.0001 sentinel (the
                     // downstream import rejects a literal 0). The source Price is still
-                    // captured in Raw["Price"].
+                    // captured in Raw["Price"]. Bundle Detail rows carry no Max Deal Qty,
+                    // so Comments stays blank.
                     cost = 0m;
                     break;
 
@@ -127,6 +136,7 @@ public sealed class HpBidXlsxParser : IParser
                 Qty = qty,
                 MinQty = minQty,
                 LineSequence = lineSequence,
+                Comments = comments,
                 Raw = WorkbookReader.BuildRawDict(sheet, row, headerMap)
             });
         }

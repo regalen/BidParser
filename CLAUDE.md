@@ -94,7 +94,7 @@ Display headers (Title Case, UI + chat tables) and field names (snake_case, mode
 | Subscription end | `End Date` | `end_date` | |
 | Minimum order quantity | `Min Order Qty` | `min_qty` | HP only; null for Nutanix |
 | Output line sequence | `Item` | `line_sequence` | HP only; col A of ANZ-GENERIC templates |
-| Output comments | `Comments` | `comments` | col R of ANZ-GENERIC templates; set by parsers that need it (e.g. Global Bid writes `"{term} Months \| {remaining} Remaining"`); null = blank |
+| Output comments | `Comments` | `comments` | col R of ANZ-GENERIC templates; set by parsers that need it (e.g. Global Bid writes `"{term} Months \| {remaining} Remaining"`; HP Bid writes `"Max Qty: {Max Deal Qty}"` on Part Number/Bundle lines); null = blank |
 
 Parsers detect *source* labels (`"Net Unit Price"`, `"List Unit Price"`, …) as extraction anchors; the source label is captured in `raw[source_label]`, the cleaned value written to the canonical field.
 

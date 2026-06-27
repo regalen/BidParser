@@ -100,11 +100,12 @@ HP writes to the **local** columns of the 27-column layout. No FX rate, no forei
 | B | Vendor Name | `"HP"` | Upper-case vendor label |
 | D | Vendor Part Number | `vpn` | `"Product Number/ID"` or `"Product Number/ID#Option Code"` |
 | E | Description | `description` | `"Product Description"` from the source row |
-| F | Qty. | `qty` | `Max Deal Qty` (Part Number/Bundle) or `Bundle Detail Qty` (Bundle Detail) |
+| F | Qty. | `qty` | `Min Order Qty` after `0 → 1` (Part Number/Bundle) or `Bundle Detail Qty` (Bundle Detail) |
 | H | MSRP | **blank** | HP has no MSRP source column |
 | I | Cost | `cost` | Part Number / Bundle: `Price` from the source row. Bundle Detail: `0` (component price dropped — the Bundle parent holds the total), exported as the `0.0001` sentinel. |
 | K | Margin | `margin` (Uplift only) | Written only when `includeMargin = true`; blank for No Calculation |
-| W | Min Order Qty | `min_qty` | After `0 → 1` substitution |
+| R | Comments | `comments` | Part Number / Bundle: `"Max Qty: {Max Deal Qty}"` (blank when `Max Deal Qty` is absent). Bundle Detail: blank (no `Max Deal Qty`). |
+| W | Min Order Qty | `min_qty` | After `0 → 1` substitution (same value as Qty for Part Number/Bundle) |
 
 All other columns: blank.
 
@@ -113,7 +114,8 @@ All other columns: blank.
 **Key differences vs ForeignUplift:**
 - Item col A holds the `LineSequence` string (`"1.01"` etc.) rather than a running integer
 - Zero costs export as the `0.0001` sentinel in column I (every Bundle Detail, whose price is dropped onto its Bundle parent); non-zero Part Number / Bundle costs are written as-is
-- No term, date, serial number, or FX columns populated (for HP Bid — Global Bid populates R)
+- Comments col R holds `"Max Qty: {Max Deal Qty}"` for Part Number / Bundle lines (the deal quantity, no longer used as Qty); blank for Bundle Detail
+- No term, date, serial number, or FX columns populated
 - `Matches = true` always (HP files have no quoted total to compare against)
 
 ---
