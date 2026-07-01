@@ -73,10 +73,15 @@ public static class ParseEndpoints
         // passed as nullable decimals to ParseService so that omitting a value doesn't
         // clobber the user's saved default. The writer-side defaults (fxRate=1, margin=0)
         // are applied inside ParseService when null.
+        // NumberStyles.Number (not .Any) rejects currency symbols, parenthesised
+        // negatives, and exponents; a further < 0 check keeps these consistent with
+        // /me/settings, which enforces non-negative. A negative margin would flow
+        // straight into the output workbook and the metrics ledger otherwise.
         decimal? fxRate = null;
         if (!string.IsNullOrEmpty(fxRateStr))
         {
-            if (!decimal.TryParse(fxRateStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedFxRate))
+            if (!decimal.TryParse(fxRateStr, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsedFxRate)
+                || parsedFxRate < 0)
             {
                 return Results.Json(new ApiError("Invalid fx_rate."), statusCode: 400);
             }
@@ -86,7 +91,8 @@ public static class ParseEndpoints
         decimal? margin = null;
         if (!string.IsNullOrEmpty(marginStr))
         {
-            if (!decimal.TryParse(marginStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedMargin))
+            if (!decimal.TryParse(marginStr, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsedMargin)
+                || parsedMargin < 0)
             {
                 return Results.Json(new ApiError("Invalid margin."), statusCode: 400);
             }
@@ -96,7 +102,8 @@ public static class ParseEndpoints
         decimal? imPercent = null;
         if (!string.IsNullOrEmpty(imPercentStr))
         {
-            if (!decimal.TryParse(imPercentStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedImPercent))
+            if (!decimal.TryParse(imPercentStr, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsedImPercent)
+                || parsedImPercent < 0)
             {
                 return Results.Json(new ApiError("Invalid im_percent."), statusCode: 400);
             }
@@ -106,7 +113,8 @@ public static class ParseEndpoints
         decimal? onCostPct = null;
         if (!string.IsNullOrEmpty(onCostPctStr))
         {
-            if (!decimal.TryParse(onCostPctStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedOnCostPct))
+            if (!decimal.TryParse(onCostPctStr, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsedOnCostPct)
+                || parsedOnCostPct < 0)
             {
                 return Results.Json(new ApiError("Invalid on_cost_pct."), statusCode: 400);
             }

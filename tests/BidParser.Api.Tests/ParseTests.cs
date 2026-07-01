@@ -432,6 +432,67 @@ public sealed class ParseTests
         good.StatusCode.Should().Be(HttpStatusCode.OK);
         var json = await good.Content.ReadFromJsonAsync<JsonElement>();
         json.GetProperty("default_vendor").GetString().Should().Be("Nutanix");
+
+        // L1: HPE and Zebra were previously missing from the allowlist and would 400.
+        foreach (var vendor in new[] { "HPE", "Zebra" })
+        {
+            var res = await ApiTestFixture.PatchJsonWithCsrfAsync(client, "/api/me/settings",
+                new { default_vendor = vendor });
+            res.StatusCode.Should().Be(HttpStatusCode.OK);
+            (await res.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("default_vendor").GetString().Should().Be(vendor);
+        }
+
+        // L1: string decimals parse and echo at fixed scale.
+        var fx = await ApiTestFixture.PatchJsonWithCsrfAsync(client, "/api/me/settings",
+            new { fx_rate = "1.2345" });
+        fx.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await fx.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("fx_rate").GetString().Should().Be("1.2345");
+    }
+
+    [Fact]
+    public async Task ParseRejectsNegativeMargin()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        // Rejected at input validation before the parser runs, so minimal bytes suffice.
+        using var response = await PostParseAsync(client, MinimalPdfBytes(), "test.pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "1.0", "-5");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await ApiTestFixture.DetailAsync(response)).Should().Be("Invalid margin.");
+    }
+
+    [Fact]
+    public async Task ParseRejectsCurrencyNotationFxRate()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        // NumberStyles.Number rejects currency symbols/grouping like "$1,000".
+        using var response = await PostParseAsync(client, MinimalPdfBytes(), "test.pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "$1,000", "5.0");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await ApiTestFixture.DetailAsync(response)).Should().Be("Invalid fx_rate.");
+    }
+
+    [Fact]
+    public async Task ParseAcceptsZeroMargin()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var root = FindRepoRoot();
+        var bytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "XQ-4076249.pdf"));
+
+        using var response = await PostParseAsync(client, bytes, "XQ-4076249.pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "0.7400", "0");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

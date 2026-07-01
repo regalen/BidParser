@@ -24,8 +24,10 @@ export function LoginPage() {
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 429) {
         setError(`Too many attempts. Try again in ${caught.retryAfter ?? '60'} seconds.`);
-      } else {
+      } else if (caught instanceof ApiError && caught.status === 401) {
         setError('Invalid username or password.');
+      } else {
+        setError('Could not sign in. Please try again.');
       }
     } finally {
       setBusy(false);

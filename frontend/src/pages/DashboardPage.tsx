@@ -11,10 +11,14 @@ import { ParseResultModal } from '../components/ParseResultModal';
 import { ParseSettingsCard } from '../components/ParseSettingsCard';
 import { RecentUploadsTable } from '../components/RecentUploadsTable';
 import { ToastStack, type ToastMessage } from '../components/Toast';
-import { CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT, CRM_TEMPLATE_UPLIFT, VENDOR_ZEBRA } from '../constants';
+import {
+  CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT,
+  CRM_TEMPLATE_UPLIFT,
+  MAX_UPLOAD_BYTES,
+  MAX_UPLOAD_MB,
+  VENDOR_ZEBRA,
+} from '../constants';
 import type { ApiErrorDetail, HistoryRow, ParserInfo } from '../types';
-
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 export function DashboardPage() {
   const { user, refresh } = useAuth();
@@ -52,6 +56,12 @@ export function DashboardPage() {
     reportType: string | null;
   } | null>(null);
 
+  const pushToast = useCallback((toast: Omit<ToastMessage, 'id'>) => {
+    const id = Date.now();
+    setToasts((items) => [...items, { ...toast, id }]);
+    window.setTimeout(() => setToasts((items) => items.filter((item) => item.id !== id)), 6000);
+  }, []);
+
   const loadHistory = useCallback(async () => {
     const response = await api.history(pageSize, page * pageSize, debouncedQuery);
     setHistory(response.rows);
@@ -70,24 +80,49 @@ export function DashboardPage() {
   );
 
   useEffect(() => {
-    api.parsers().then((items) => {
-      setParsers(items);
-      const vendors = Array.from(new Set(items.map((item) => item.vendor)));
-      const preferredVendor = user?.default_vendor && vendors.includes(user.default_vendor) ? user.default_vendor : vendors.length === 1 ? vendors[0] : '';
-      if (preferredVendor) {
-        setVendor(preferredVendor);
-        const preferredParsers = items.filter((item) => item.vendor === preferredVendor);
-        if (preferredParsers.length === 1) {
-          setParserSlug(preferredParsers[0].slug);
-          setSelectedTemplate(preferredParsers[0].available_templates[0] ?? '');
+    let active = true;
+    api
+      .parsers()
+      .then((items) => {
+        if (!active) return;
+        setParsers(items);
+        const vendors = Array.from(new Set(items.map((item) => item.vendor)));
+        const preferredVendor = user?.default_vendor && vendors.includes(user.default_vendor) ? user.default_vendor : vendors.length === 1 ? vendors[0] : '';
+        if (preferredVendor) {
+          setVendor(preferredVendor);
+          const preferredParsers = items.filter((item) => item.vendor === preferredVendor);
+          if (preferredParsers.length === 1) {
+            setParserSlug(preferredParsers[0].slug);
+            setSelectedTemplate(preferredParsers[0].available_templates[0] ?? '');
+          }
         }
-      }
-    });
-  }, [user?.default_vendor]);
+      })
+      .catch(() => {
+        if (active) pushToast({ tone: 'error', title: 'Could not load file types' });
+      });
+    return () => {
+      active = false;
+    };
+  }, [user?.default_vendor, pushToast]);
 
+  // Inline + guarded (rather than calling loadHistory) so a slow page-1 response
+  // can't overwrite a fast page-2 response while typing in the search box.
   useEffect(() => {
-    void loadHistory();
-  }, [loadHistory]);
+    let active = true;
+    api
+      .history(pageSize, page * pageSize, debouncedQuery)
+      .then((response) => {
+        if (!active) return;
+        setHistory(response.rows);
+        setTotal(response.total);
+      })
+      .catch(() => {
+        if (active) pushToast({ tone: 'error', title: 'Could not load history' });
+      });
+    return () => {
+      active = false;
+    };
+  }, [page, pageSize, debouncedQuery, pushToast]);
 
   useEffect(() => {
     const handle = window.setTimeout(() => setDebouncedQuery(query), 250);
@@ -119,12 +154,6 @@ export function DashboardPage() {
     return Boolean(fxRate && margin);
   }, [vendor, parserSlug, fxRate, margin, imPercent, selectedTemplate, file, uploadState, selectedParser]);
 
-  const pushToast = useCallback((toast: Omit<ToastMessage, 'id'>) => {
-    const id = Date.now();
-    setToasts((items) => [...items, { ...toast, id }]);
-    window.setTimeout(() => setToasts((items) => items.filter((item) => item.id !== id)), 6000);
-  }, []);
-
   const handleFile = useCallback((next: File) => {
     if (!next.name.match(/\.(pdf|xlsx|xls)$/i)) {
       setDropError('Only PDF, XLSX, and XLS files are supported.');
@@ -132,7 +161,7 @@ export function DashboardPage() {
       return;
     }
     if (next.size > MAX_UPLOAD_BYTES) {
-      setDropError('File is larger than the 10 MB limit.');
+      setDropError(`File is larger than the ${MAX_UPLOAD_MB} MB limit.`);
       setFile(null);
       return;
     }
