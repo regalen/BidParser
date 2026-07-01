@@ -13,6 +13,11 @@ export interface User {
   created_at?: string | null;
 }
 
+export interface UserWithTempPassword {
+  user: User;
+  temp_password: string | null;
+}
+
 export interface ParserInfo {
   slug: string;
   display_name: string;

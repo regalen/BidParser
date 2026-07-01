@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using BidParser.Api.Auth;
 using BidParser.Api.Contracts;
 using BidParser.Infrastructure.Entities;
@@ -56,12 +57,13 @@ public static class UsersEndpoints
         }
 
         var admin = await EndpointHelpers.CurrentUserAsync(context, db, ct);
+        var tempPassword = NewTempPassword();
         var user = new User
         {
             Username = username,
             Name = name,
             Role = ParseUserRole(body.Value.Role),
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("changeme", workFactor: 12),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword, workFactor: 12),
             MustChangePassword = true
         };
 
@@ -85,7 +87,7 @@ public static class UsersEndpoints
             "Create",
             user.Id,
             admin?.Id);
-        return Results.Ok(UserPublic.FromEntity(user));
+        return Results.Ok(new UserWithTempPassword(UserPublic.FromEntity(user), tempPassword));
     }
 
     private static async Task<IResult> UpdateUserAsync(
@@ -156,9 +158,11 @@ public static class UsersEndpoints
             }
         }
 
+        string? tempPassword = null;
         if (body.Value.ResetPassword)
         {
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword("changeme", workFactor: 12);
+            tempPassword = NewTempPassword();
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword, workFactor: 12);
             user.MustChangePassword = true;
         }
 
@@ -169,7 +173,7 @@ public static class UsersEndpoints
             "Update",
             user.Id,
             admin?.Id);
-        return Results.Ok(UserPublic.FromEntity(user));
+        return Results.Ok(new UserWithTempPassword(UserPublic.FromEntity(user), tempPassword));
     }
 
     private static async Task<IResult> DeleteUserAsync(
@@ -209,6 +213,11 @@ public static class UsersEndpoints
             admin?.Id);
         return Results.Ok(new OkResponse());
     }
+
+    // 10 hex chars of CSPRNG output — typed once, then forced to change via
+    // MustChangePassword. Replaces the old fixed "changeme" credential.
+    private static string NewTempPassword() =>
+        Convert.ToHexString(RandomNumberGenerator.GetBytes(5));
 
     private static Task<bool> UsernameExistsAsync(AppDbContext db, string username, CancellationToken ct)
     {

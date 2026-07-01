@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
 using BidParser.Infrastructure.Entities;
 using BidParser.Infrastructure.Persistence;
 using ClosedXML.Excel;
@@ -54,12 +56,13 @@ public sealed class MetricsExportTests
 
         var create = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/users", new { username = "normal", name = "Normal", role = "user" });
         create.EnsureSuccessStatusCode();
+        var normalTemp = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("temp_password").GetString()!;
 
         await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/auth/logout", new { });
-        var login = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/auth/login", new { username = "normal", password = "changeme" });
+        var login = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/auth/login", new { username = "normal", password = normalTemp });
         login.EnsureSuccessStatusCode();
 
-        var change = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/auth/change-password", new { old_password = "changeme", new_password = "User123!" });
+        var change = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/auth/change-password", new { old_password = normalTemp, new_password = "User123!" });
         change.EnsureSuccessStatusCode();
 
         var response = await client.GetAsync("/api/metrics/export");

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using BidParser.Infrastructure.Entities;
 using BidParser.Infrastructure.Persistence;
 using FluentAssertions;
@@ -86,12 +87,13 @@ public sealed class MetricsEndpointsTests
 
         var create = await ApiTestFixture.PostJsonWithCsrfAsync(adminClient, "/api/users", new { username = "normal", name = "Normal", role = "user" });
         create.EnsureSuccessStatusCode();
+        var normalTemp = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("temp_password").GetString()!;
 
         using var normalClient = fixture.Factory.CreateClient();
-        var login = await ApiTestFixture.PostJsonWithCsrfAsync(normalClient, "/api/auth/login", new { username = "normal", password = "changeme" });
+        var login = await ApiTestFixture.PostJsonWithCsrfAsync(normalClient, "/api/auth/login", new { username = "normal", password = normalTemp });
         login.EnsureSuccessStatusCode();
 
-        var change = await ApiTestFixture.PostJsonWithCsrfAsync(normalClient, "/api/auth/change-password", new { old_password = "changeme", new_password = "User123!" });
+        var change = await ApiTestFixture.PostJsonWithCsrfAsync(normalClient, "/api/auth/change-password", new { old_password = normalTemp, new_password = "User123!" });
         change.EnsureSuccessStatusCode();
 
         var response = await normalClient.GetAsync("/api/metrics/summary");

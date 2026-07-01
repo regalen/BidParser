@@ -25,7 +25,7 @@ pluggable `IParser` registry so a new format is one parser class + fixtures + on
 registry entry, and both products pick it up automatically.
 
 Backend was re-platformed from Python/FastAPI to ASP.NET Core 10. All tests pass:
-`dotnet test BidParser.sln` (259: 178 parsing + 81 API integration). API tests
+`dotnet test BidParser.sln` (261: 178 parsing + 83 API integration). API tests
 need a running Docker daemon (SQL Server testcontainer).
 
 ## Project layout
@@ -113,7 +113,7 @@ Parsers detect *source* labels (`"Net Unit Price"`, `"List Unit Price"`, …) as
 
 ## Commands
 
-- `dotnet test BidParser.sln` — full suite (259 tests; API tests need Docker).
+- `dotnet test BidParser.sln` — full suite (261 tests; API tests need Docker).
 - `dotnet build BidParser.Core` — verify the shared orchestrator compiles (no Docker needed).
 - `dotnet run --project src/BidParser.Api` — backend dev server (`http://localhost:5000`).
 - `cd frontend && npm run dev` — Vite dev server, proxies `/api` to `http://127.0.0.1:5000` (`VITE_API_PROXY_TARGET=…` to point elsewhere).

@@ -1,12 +1,10 @@
 using System.Security.Claims;
-using System.Text.Json;
 using System.Text.Encodings.Web;
 using System.Globalization;
 using BidParser.Api.Contracts;
 using BidParser.Api.Options;
 using BidParser.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -16,7 +14,7 @@ public sealed class SessionCookieAuthHandler : AuthenticationHandler<Authenticat
 {
     public const string SchemeName = "SessionCookie";
     public const string CookieName = "bidparser_session";
-    private readonly IDataProtector _protector;
+    private readonly SessionTokenService _tokens;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly AppOptions _appOptions;
 
@@ -24,20 +22,14 @@ public sealed class SessionCookieAuthHandler : AuthenticationHandler<Authenticat
         IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
         UrlEncoder encoder,
-        IDataProtectionProvider dataProtectionProvider,
+        SessionTokenService tokens,
         IServiceScopeFactory scopeFactory,
         AppOptions appOptions)
         : base(options, logger, encoder)
     {
-        _protector = dataProtectionProvider.CreateProtector("bidparser-session");
+        _tokens = tokens;
         _scopeFactory = scopeFactory;
         _appOptions = appOptions;
-    }
-
-    public string CreateSessionToken(int userId)
-    {
-        var payload = JsonSerializer.Serialize(new SessionPayload(userId, DateTimeOffset.UtcNow.ToUnixTimeSeconds()));
-        return _protector.Protect(payload);
     }
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -47,16 +39,7 @@ public sealed class SessionCookieAuthHandler : AuthenticationHandler<Authenticat
             return AuthenticateResult.NoResult();
         }
 
-        SessionPayload? payload;
-        try
-        {
-            payload = JsonSerializer.Deserialize<SessionPayload>(_protector.Unprotect(cookie));
-        }
-        catch (Exception)
-        {
-            return AuthenticateResult.Fail("Invalid session.");
-        }
-
+        var payload = _tokens.TryParse(cookie);
         if (payload is null)
         {
             return AuthenticateResult.Fail("Invalid session.");
@@ -76,6 +59,13 @@ public sealed class SessionCookieAuthHandler : AuthenticationHandler<Authenticat
         if (user is null)
         {
             return AuthenticateResult.Fail("User not found.");
+        }
+
+        // Sessions are bound to a fingerprint of the password hash; a password
+        // change or admin reset revokes every existing session for the user.
+        if (payload.Stamp != SessionTokenService.StampFor(user.PasswordHash))
+        {
+            return AuthenticateResult.Fail("Session revoked.");
         }
 
         List<Claim> claims =
@@ -109,6 +99,4 @@ public sealed class SessionCookieAuthHandler : AuthenticationHandler<Authenticat
 
         return Response.WriteAsJsonAsync(new ApiError(detail));
     }
-
-    private sealed record SessionPayload(int UserId, long IssuedAt);
 }

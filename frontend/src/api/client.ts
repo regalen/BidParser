@@ -4,6 +4,7 @@ import type {
   MonitoringRunsResponse,
   ParserInfo,
   User,
+  UserWithTempPassword,
 } from '../types';
 
 export class ApiError extends Error {
@@ -137,15 +138,15 @@ export const api = {
     return request<MonitoringRunsResponse>(`/monitoring/runs?${params.toString()}`);
   },
 
-  createUser(payload: { username: string; name: string; role: 'admin' | 'user' }): Promise<User> {
-    return request<User>('/users', {
+  createUser(payload: { username: string; name: string; role: 'admin' | 'user' }): Promise<UserWithTempPassword> {
+    return request<UserWithTempPassword>('/users', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   },
 
-  updateUser(id: number, payload: { username?: string; name?: string; role?: 'admin' | 'user'; reset_password?: boolean }): Promise<User> {
-    return request<User>(`/users/${id}`, {
+  updateUser(id: number, payload: { username?: string; name?: string; role?: 'admin' | 'user'; reset_password?: boolean }): Promise<UserWithTempPassword> {
+    return request<UserWithTempPassword>(`/users/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
     });

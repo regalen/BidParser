@@ -18,8 +18,9 @@ public sealed class UsersAdminTests
         var create = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/users", new { username = "salesperson1", name = "Sales Person", role = "user" });
         create.StatusCode.Should().Be(HttpStatusCode.OK);
         var created = await create.Content.ReadFromJsonAsync<JsonElement>();
-        var userId = created.GetProperty("id").GetInt32();
-        created.GetProperty("must_change_password").GetBoolean().Should().BeTrue();
+        var userId = created.GetProperty("user").GetProperty("id").GetInt32();
+        created.GetProperty("user").GetProperty("must_change_password").GetBoolean().Should().BeTrue();
+        created.GetProperty("temp_password").GetString().Should().HaveLength(10);
 
         var users = await client.GetFromJsonAsync<JsonElement[]>("/api/users");
         users.Should().NotBeNull();
@@ -36,14 +37,17 @@ public sealed class UsersAdminTests
         var update = await ApiTestFixture.PatchJsonWithCsrfAsync(client, $"/api/users/{userId}", new { username = "salesperson2", name = "Sales Updated", role = "admin" });
         update.StatusCode.Should().Be(HttpStatusCode.OK);
         var updated = await update.Content.ReadFromJsonAsync<JsonElement>();
-        updated.GetProperty("username").GetString().Should().Be("salesperson2");
-        updated.GetProperty("name").GetString().Should().Be("Sales Updated");
-        updated.GetProperty("role").GetString().Should().Be("admin");
+        updated.GetProperty("user").GetProperty("username").GetString().Should().Be("salesperson2");
+        updated.GetProperty("user").GetProperty("name").GetString().Should().Be("Sales Updated");
+        updated.GetProperty("user").GetProperty("role").GetString().Should().Be("admin");
+        // No reset requested → no temp password returned.
+        updated.GetProperty("temp_password").ValueKind.Should().Be(JsonValueKind.Null);
 
         var reset = await ApiTestFixture.PatchJsonWithCsrfAsync(client, $"/api/users/{userId}", new { reset_password = true });
         reset.StatusCode.Should().Be(HttpStatusCode.OK);
         var resetJson = await reset.Content.ReadFromJsonAsync<JsonElement>();
-        resetJson.GetProperty("must_change_password").GetBoolean().Should().BeTrue();
+        resetJson.GetProperty("user").GetProperty("must_change_password").GetBoolean().Should().BeTrue();
+        resetJson.GetProperty("temp_password").GetString().Should().HaveLength(10);
 
         var delete = await ApiTestFixture.DeleteWithCsrfAsync(client, $"/api/users/{userId}");
         delete.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -63,7 +67,7 @@ public sealed class UsersAdminTests
         var create = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/users", new { username = "salesperson1", name = "Sales Person", role = "user" });
         create.StatusCode.Should().Be(HttpStatusCode.OK);
         var created = await create.Content.ReadFromJsonAsync<JsonElement>();
-        var userId = created.GetProperty("id").GetInt32();
+        var userId = created.GetProperty("user").GetProperty("id").GetInt32();
 
         var duplicateUpdate = await ApiTestFixture.PatchJsonWithCsrfAsync(client, $"/api/users/{userId}", new { username = "ADMIN" });
         duplicateUpdate.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -79,13 +83,15 @@ public sealed class UsersAdminTests
 
         var create = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/users", new { username = "salesperson1", name = "Sales Person", role = "user" });
         create.StatusCode.Should().Be(HttpStatusCode.OK);
+        var created = await create.Content.ReadFromJsonAsync<JsonElement>();
+        var tempPassword = created.GetProperty("temp_password").GetString()!;
 
         var logout = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/auth/logout", new { });
         logout.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var login = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/auth/login", new { username = "salesperson1", password = "changeme" });
+        var login = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/auth/login", new { username = "salesperson1", password = tempPassword });
         login.StatusCode.Should().Be(HttpStatusCode.OK);
-        var changed = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/auth/change-password", new { old_password = "changeme", new_password = "Sales123!" });
+        var changed = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/auth/change-password", new { old_password = tempPassword, new_password = "Sales123!" });
         changed.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var users = await client.GetAsync("/api/users");

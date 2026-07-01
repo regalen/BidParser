@@ -59,12 +59,13 @@ public sealed class HistoryTests
         var create = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/users",
             new { username = "user2", name = "User Two", role = "user" });
         create.EnsureSuccessStatusCode();
+        var createTemp = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("temp_password").GetString()!;
 
         using var client2 = fixture.Factory.CreateClient();
         await ApiTestFixture.PostJsonWithCsrfAsync(client2, "/api/auth/login",
-            new { username = "user2", password = "changeme" });
+            new { username = "user2", password = createTemp });
         await ApiTestFixture.PostJsonWithCsrfAsync(client2, "/api/auth/change-password",
-            new { old_password = "changeme", new_password = "User2Pass1!" });
+            new { old_password = createTemp, new_password = "User2Pass1!" });
         await PostParseAsync(client2, pdfBytes, "user2_quote.pdf", "application/pdf",
             "Nutanix", "nutanix_software_only_pdf", "1.0", "5.0");
 
@@ -202,13 +203,14 @@ public sealed class HistoryTests
         var adminJobId = history.GetProperty("rows").EnumerateArray().First().GetProperty("id").GetInt32();
 
         // Create user2 and log them in
-        await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/users",
+        var create2 = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/users",
             new { username = "user2", name = "User Two", role = "user" });
+        var create2Temp = (await create2.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("temp_password").GetString()!;
         using var client2 = fixture.Factory.CreateClient();
         await ApiTestFixture.PostJsonWithCsrfAsync(client2, "/api/auth/login",
-            new { username = "user2", password = "changeme" });
+            new { username = "user2", password = create2Temp });
         await ApiTestFixture.PostJsonWithCsrfAsync(client2, "/api/auth/change-password",
-            new { old_password = "changeme", new_password = "User2Pass1!" });
+            new { old_password = create2Temp, new_password = "User2Pass1!" });
 
         // User2 can't see or download admin's job
         var sourceResponse = await client2.GetAsync($"/api/history/{adminJobId}/source");
