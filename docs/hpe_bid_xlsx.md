@@ -68,7 +68,7 @@ Three distinct values: **`Part Number`**, **`Bundle`**, **`BundleDetails`** (one
 
 | Field | `Part Number` | `Bundle` | `BundleDetails` |
 |---|---|---|---|
-| **Line sequence** → Item col A | top-level counter (`1`, `2`, …) | top-level counter; also opens a child group (reset child counter) | `{parentSeq}.{childCounter:D2}` (`1.01`, `1.02`, …) |
+| **Line sequence** → Item col A | next number in one running sequence (`1`, `2`, `3`, …) | next number in the same running sequence | next number in the same running sequence (no longer sub-numbered as `parent.NN`) |
 | **vpn** | `ProductNumber` | `BundleID` | `ComponentID` |
 | **description** | `ProductDescription` | `ProductDescription` | `ProductDescription` |
 | **msrp** | `ListPrcEst` (default 0 when blank) | `ListPrcEst` | **0** — component msrp dropped (parent carries it) |
@@ -121,11 +121,12 @@ which is **not** appended.
 | Seq | Line Type | VPN | MSRP | Cost | Qty | Comments |
 |---|---|---|---|---|---|---|
 | 1 | Bundle | 52080474 | 87995.00 | 26632.75 | 1 | Max Qty: 1 |
-| 1.01 | BundleDetails | AK379B | 0 → `0.0001` | 0 → `0.0001` | 1 | _(blank)_ |
-| 1.02 | BundleDetails | R6Q75A | 0 → `0.0001` | 0 → `0.0001` | 2 | _(blank)_ |
+| 2 | BundleDetails | AK379B | 0 → `0.0001` | 0 → `0.0001` | 1 | _(blank)_ |
+| 3 | BundleDetails | R6Q75A | 0 → `0.0001` | 0 → `0.0001` | 2 | _(blank)_ |
 | … | … | … | … | … | … | … |
-| 2 | Bundle | 52079278 | 320784.00 | 58842.80 | 1 | Max Qty: 1 |
-| 3 | Bundle | 52079277 | 299357.36 | 46237.81 | 1 | Max Qty: 1 |
+| 11 | Bundle | 52079278 | 320784.00 | 58842.80 | 1 | Max Qty: 1 |
+| … | … | … | … | … | … | … |
+| 23 | Bundle | 52079277 | 299357.36 | 46237.81 | 1 | Max Qty: 1 |
 
 Bundle `vpn` comes from `BundleID` (the numeric bundle id), not the row's `ProductNumber`.
 Computed total: `131713.36` (Σ Bundle cost × qty; BundleDetails contribute 0; no quoted total).

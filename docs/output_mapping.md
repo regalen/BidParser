@@ -130,7 +130,7 @@ Same 27-column ANZ-GENERIC layout. Differences from HP Bid:
 
 | Col | Header | HPE value | Notes |
 |---|---|---|---|
-| A | Item | `LineSequence` | `"1"`, `"2"`, `"1.01"`, … (Bundle opens a child group; `BundleDetails` nest as `parent.NN`) |
+| A | Item | `LineSequence` | `"1"`, `"2"`, `"3"`, … — single running sequence across Bundle and BundleDetails lines |
 | B | Vendor Name | `"HPE"` | |
 | D | Vendor Part Number | `vpn` | `ProductNumber` (Part Number) / `BundleID` (Bundle) / `ComponentID` (BundleDetails). **`OptionCode` is not appended.** |
 | E | Description | `description` | `ProductDescription` |
