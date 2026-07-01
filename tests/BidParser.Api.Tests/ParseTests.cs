@@ -339,6 +339,83 @@ public sealed class ParseTests
     }
 
     [Fact]
+    public async Task ParseNonAsciiFilenameRoundtrips()
+    {
+        // Regression (H1): a filename with a non-ASCII character (en-dash, common in
+        // files saved from Outlook/Windows) must not blow up the response — Kestrel
+        // rejects non-ASCII in raw header values, so the download name has to go
+        // through fileDownloadName's RFC 6266 filename*/filename encoding.
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var root = FindRepoRoot();
+        var bytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "XQ-4076249.pdf"));
+
+        using var response = await PostParseAsync(client, bytes, "Quote – Test.pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "0.7400", "7.50");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentDisposition.Should().NotBeNull();
+        // fileDownloadName emits filename*=UTF-8'' for non-ASCII names; the .NET
+        // client surfaces the decoded value via FileNameStar.
+        response.Content.Headers.ContentDisposition!.FileNameStar.Should().Be("Quote – Test_parsed.xlsx");
+        (await response.Content.ReadAsByteArrayAsync()).Length.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task ParseFilenameWithQuoteRoundtrips()
+    {
+        // Regression (H1): a double-quote in the filename previously corrupted the
+        // manually-built Content-Disposition header. fileDownloadName escapes it.
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var root = FindRepoRoot();
+        var bytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "XQ-4076249.pdf"));
+
+        using var response = await PostParseAsync(client, bytes, "Quote \"A\".pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "0.7400", "7.50");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentDisposition.Should().NotBeNull();
+        (await response.Content.ReadAsByteArrayAsync()).Length.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task HistoryDownloadsNonAsciiFilenameRoundtrip()
+    {
+        // Regression (H1): the same job's history source/output downloads must not
+        // 500 on a non-ASCII source filename.
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var root = FindRepoRoot();
+        var bytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "XQ-4076249.pdf"));
+
+        using var parseResponse = await PostParseAsync(client, bytes, "Quote – Test.pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "0.7400", "7.50");
+        parseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        int jobId;
+        using (var scope = fixture.Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            jobId = (await db.ParseJobs.OrderByDescending(j => j.Id).FirstAsync()).Id;
+        }
+
+        using var source = await client.GetAsync($"/api/history/{jobId}/source");
+        source.StatusCode.Should().Be(HttpStatusCode.OK);
+        source.Content.Headers.ContentDisposition!.FileNameStar.Should().Be("Quote – Test.pdf");
+
+        using var output = await client.GetAsync($"/api/history/{jobId}/output");
+        output.StatusCode.Should().Be(HttpStatusCode.OK);
+        output.Content.Headers.ContentDisposition!.FileNameStar.Should().Be("Quote – Test_parsed.xlsx");
+    }
+
+    [Fact]
     public async Task DefaultVendorValidationTest()
     {
         using var fixture = await ApiTestFixture.CreateAsync();

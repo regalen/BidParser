@@ -192,10 +192,9 @@ public static class ParseEndpoints
             context.Response.Headers["X-Quoted-Total"] = new StringValues(new string[] { "" });
         }
 
-        context.Response.Headers["Content-Disposition"] =
-            $"attachment; filename=\"{result.OutputFilename}\"";
         return Results.File(
             new FileStream(result.OutputPath, FileMode.Open, FileAccess.Read, FileShare.Read),
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            fileDownloadName: result.OutputFilename);
     }
 }

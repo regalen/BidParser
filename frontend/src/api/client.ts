@@ -19,6 +19,22 @@ export class ApiError extends Error {
   }
 }
 
+// Content-Disposition from ASP.NET's fileDownloadName emits `filename=` (quoted
+// only when needed) plus `filename*=UTF-8''…` for non-ASCII names. Prefer the
+// RFC 5987 form, then fall back to the plain (quoted or bare) form.
+function filenameFromDisposition(disposition: string): string | null {
+  const star = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  if (star) {
+    try {
+      return decodeURIComponent(star);
+    } catch {
+      /* fall through to the plain form */
+    }
+  }
+  const plain = disposition.match(/filename="([^"]*)"|filename=([^;]+)/i);
+  return plain?.[1] ?? plain?.[2]?.trim() ?? null;
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   if (!(init.body instanceof FormData) && !headers.has('Content-Type')) {
@@ -159,7 +175,7 @@ export const api = {
       throw new ApiError(response.status, detail, response.headers.get('Retry-After'));
     }
     const disposition = response.headers.get('Content-Disposition') ?? '';
-    const filename = disposition.match(/filename="?([^"]+)"?/)?.[1] ?? 'parsed.xlsx';
+    const filename = filenameFromDisposition(disposition) ?? 'parsed.xlsx';
 
     // Parse the X-Cancelled-Lines header: "line:VPN;line:VPN;..."
     const cancelledRaw = response.headers.get('X-Cancelled-Lines') ?? '';
