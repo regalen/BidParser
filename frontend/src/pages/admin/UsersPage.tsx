@@ -62,6 +62,9 @@ export function UsersPage() {
   }
 
   async function removeUser(target: User) {
+    if (!window.confirm(`Delete @${target.username}? Their parse history and files are removed permanently.`)) {
+      return;
+    }
     setError('');
     try {
       await api.deleteUser(target.id);

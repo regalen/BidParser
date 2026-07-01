@@ -3,6 +3,7 @@ using BidParser.Api.Auth;
 using BidParser.Api.Contracts;
 using BidParser.Infrastructure.Entities;
 using BidParser.Infrastructure.Persistence;
+using BidParser.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 
 namespace BidParser.Api.Endpoints;
@@ -180,6 +181,7 @@ public static class UsersEndpoints
         int userId,
         HttpContext context,
         AppDbContext db,
+        FileStorage storage,
         ILogger<Program> logger,
         CancellationToken ct)
     {
@@ -204,8 +206,24 @@ public static class UsersEndpoints
             .Where(m => m.UserId == userId)
             .ExecuteUpdateAsync(s => s.SetProperty(m => m.UserId, (int?)null), ct);
 
+        // Snapshot the file paths before the cascade removes the ParseJob rows —
+        // RetentionService discovers files via those rows, so once they're gone
+        // the uploads/outputs would be orphaned in UPLOAD_DIR forever.
+        var paths = await db.ParseJobs
+            .Where(j => j.UserId == userId)
+            .Select(j => new { j.SourcePath, j.OutputPath })
+            .ToListAsync(ct);
+
         db.Users.Remove(user);
         await db.SaveChangesAsync(ct);
+
+        // Delete files only after the DB commit succeeds.
+        foreach (var p in paths)
+        {
+            storage.TryDelete(p.SourcePath);
+            storage.TryDelete(p.OutputPath);
+        }
+
         logger.LogInformation(
             "Admin {Action} user {TargetUserId} by {AdminUserId}",
             "Delete",

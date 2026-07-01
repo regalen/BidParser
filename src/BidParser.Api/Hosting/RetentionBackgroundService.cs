@@ -23,16 +23,9 @@ public sealed class RetentionBackgroundService : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            // sleep first — mirrors Python's _retention_loop() pattern
-            try
-            {
-                await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                break;
-            }
-
+            // Cleanup first, then sleep — otherwise a restart more frequent than
+            // the 24h interval (e.g. every deploy) resets the timer and expired
+            // jobs/files never get purged.
             try
             {
                 await using var scope = _scopeFactory.CreateAsyncScope();
@@ -50,6 +43,15 @@ public sealed class RetentionBackgroundService : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Retention cleanup failed");
+            }
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
             }
         }
     }
