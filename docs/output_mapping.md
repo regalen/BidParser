@@ -96,7 +96,7 @@ HP writes to the **local** columns of the 27-column layout. No FX rate, no forei
 
 | Col | Header | HP value | Notes |
 |---|---|---|---|
-| A | Item | `LineSequence` | String: `"1"`, `"2"`, `"1.01"`, `"1.02"`, … |
+| A | Item | `LineSequence` | String: `"1"`, `"2"`, `"3"`, … — single running sequence across Part Number, Bundle, and Bundle Detail lines |
 | B | Vendor Name | `"HP"` | Upper-case vendor label |
 | D | Vendor Part Number | `vpn` | `"Product Number/ID"` or `"Product Number/ID#Option Code"` |
 | E | Description | `description` | `"Product Description"` from the source row |
@@ -112,7 +112,7 @@ All other columns: blank.
 **End-loop sentinel row:** after the last line item — col B = `"*"`, col D = `EndLoopWarning` constant.
 
 **Key differences vs ForeignUplift:**
-- Item col A holds the `LineSequence` string (`"1.01"` etc.) rather than a running integer
+- Item col A holds the `LineSequence` string — a single running sequence (`"1"`, `"2"`, `"3"`, …) across every line type
 - Zero costs export as the `0.0001` sentinel in column I (every Bundle Detail, whose price is dropped onto its Bundle parent); non-zero Part Number / Bundle costs are written as-is
 - Comments col R holds `"Max Qty: {Max Deal Qty}"` for Part Number / Bundle lines (the deal quantity, no longer used as Qty); blank for Bundle Detail
 - No term, date, serial number, or FX columns populated
@@ -184,7 +184,7 @@ Used by **HP OneConfig (XLSX)** only. Unlike the No Calculation / Uplift writers
 
 | Col | Header | OneConfig value | Notes |
 |---|---|---|---|
-| A | Item | `LineSequence` | `"1"` (parent), `"1.01"`, `"1.02"`, … (children) |
+| A | Item | `LineSequence` | `"1"` (parent), then `"2"`, `"3"`, … (children) |
 | B | Vendor Name | `"HP"` | Upper-case vendor label |
 | D | Vendor Part Number | `vpn` | Parent: `Config ID`; children: `Part Number` |
 | E | Description | `description` | Parent: `Config Name`; children: source `Description` |

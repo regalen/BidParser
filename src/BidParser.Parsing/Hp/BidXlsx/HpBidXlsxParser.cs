@@ -53,9 +53,10 @@ public sealed class HpBidXlsxParser : IParser
         var items = new List<LineItem>();
         var lastRow = sheet.LastRowUsed()?.RowNumber() ?? headerMap.RowNumber;
 
+        // Every emitted line — Part Number, Bundle, and Bundle Detail alike — takes the next
+        // number in a single running sequence: 1, 2, 3, … Bundle Detail rows are no longer
+        // sub-numbered under their parent bundle.
         var lineCounter = 0;
-        var bundleParentSeq = 0;
-        var bundleChildCounter = 0;
 
         for (var row = headerMap.RowNumber + 1; row <= lastRow; row++)
         {
@@ -92,19 +93,11 @@ public sealed class HpBidXlsxParser : IParser
                     {
                         comments = $"Max Qty: {maxDealQty}";
                     }
-                    if (lineType == "Bundle")
-                    {
-                        // A Bundle opens a child group: subsequent Bundle Detail rows
-                        // sub-sequence under it (4.01, 4.02, …). A plain Part Number is
-                        // never a parent, so it leaves the child counter untouched.
-                        bundleParentSeq = lineCounter;
-                        bundleChildCounter = 0;
-                    }
                     break;
 
                 case "Bundle Detail":
-                    bundleChildCounter++;
-                    lineSequence = $"{bundleParentSeq}.{bundleChildCounter:D2}";
+                    lineCounter++;
+                    lineSequence = lineCounter.ToString();
                     qty = Int(sheet, row, headerMap, "Bundle Detail Qty");
                     rawMinQty = qty;
                     // A Bundle Detail is a component of its Bundle; the Bundle line carries

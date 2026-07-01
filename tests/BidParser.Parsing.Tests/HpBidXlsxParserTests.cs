@@ -112,10 +112,10 @@ public sealed class HpBidXlsxParserTests
 
         var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals20260518T034809_HPI.xlsx"));
 
-        // The first child of Bundle 4. Bundle Detail components carry no price (the
-        // Bundle parent holds the total), so Cost is dropped to 0 — the writer then
-        // emits the 0.0001 sentinel on export.
-        var child1 = result.LineItems.First(i => i.LineSequence == "4.01");
+        // The first child of Bundle 4. Under flat numbering it follows the bundle as line 5.
+        // Bundle Detail components carry no price (the Bundle parent holds the total), so Cost
+        // is dropped to 0 — the writer then emits the 0.0001 sentinel on export.
+        var child1 = result.LineItems.First(i => i.LineSequence == "5");
         child1.Vpn.Should().Be("C89FGAV");
         child1.Cost.Should().Be(0m);
         child1.Qty.Should().Be(1);
@@ -123,8 +123,8 @@ public sealed class HpBidXlsxParserTests
         // Bundle Detail rows have no Max Deal Qty, so Comments stays blank.
         child1.Comments.Should().BeNull();
 
-        // The 6th child — has Option Code so vpn gets #-concatenated
-        var child6 = result.LineItems.First(i => i.LineSequence == "4.06");
+        // The 6th child — line 10 — has an Option Code so vpn gets #-concatenated.
+        var child6 = result.LineItems.First(i => i.LineSequence == "10");
         child6.Vpn.Should().Be("4SS11AV#ABG");
     }
 

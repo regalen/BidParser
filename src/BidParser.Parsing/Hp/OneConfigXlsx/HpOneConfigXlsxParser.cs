@@ -77,10 +77,15 @@ public sealed class HpOneConfigXlsxParser : IParser
 
         var items = new List<LineItem>();
 
+        // Every emitted line takes the next number in a single running sequence: the Config
+        // (parent) row is 1, and its components follow as 2, 3, 4, … rather than being
+        // sub-numbered under the parent (1.01, 1.02, …).
+        var lineCounter = 1;
+
         // Parent (Config) row
         items.Add(new LineItem
         {
-            LineSequence = "1",
+            LineSequence = lineCounter.ToString(),
             Vpn = configId,
             Description = configName,
             Qty = 1,
@@ -90,7 +95,6 @@ public sealed class HpOneConfigXlsxParser : IParser
         });
 
         // Child (component) rows
-        var childCounter = 0;
         var lastRow = sheet.LastRowUsed()?.RowNumber() ?? componentsHeaderRow;
         for (var row = componentsHeaderRow + 1; row <= lastRow; row++)
         {
@@ -105,14 +109,14 @@ public sealed class HpOneConfigXlsxParser : IParser
                 continue;
             }
 
-            childCounter++;
+            lineCounter++;
             var description = WorkbookReader.CellText(sheet.Cell(row, componentsHeaderMap.Require("Description")));
             var qtyText = WorkbookReader.CellText(sheet.Cell(row, componentsHeaderMap.Require("Quantity")));
             var qty = DecimalCleaner.ParseOptionalInt(qtyText) ?? 1;
 
             items.Add(new LineItem
             {
-                LineSequence = $"1.{childCounter:D2}",
+                LineSequence = lineCounter.ToString(),
                 Vpn = partNumber,
                 Description = description,
                 Qty = qty,
