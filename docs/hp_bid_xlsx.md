@@ -57,7 +57,7 @@ Three distinct values: **`Part Number`**, **`Bundle`**, **`Bundle Detail`**.
 
 | Field | `Part Number` / `Bundle` | `Bundle Detail` |
 |---|---|---|
-| **Line sequence** → Item col A | Increment top-level counter (`1`, `2`, …). For `Bundle`, also reset child counter. | `{parentSeq}.{childCounter:D2}` (`1.01`, `1.02`, …) |
+| **Line sequence** → Item col A | Next number in one running sequence (`1`, `2`, `3`, …). | Next number in the same running sequence (no longer sub-numbered under the Bundle). |
 | **vpn** | `Product Number/ID`; if `Option Code` non-empty: `"Product Number/ID#Option Code"` | same rule |
 | **description** | `Product Description` | `Product Description` |
 | **cost** | `Price` (default 0 when blank) | **0** — the component price is dropped (the Bundle parent line carries the total). Source `Price` is still kept in `Raw["Price"]`. |

@@ -42,9 +42,10 @@ public sealed class HpeBidXlsxParser : IParser
         var items = new List<LineItem>();
         var lastRow = sheet.LastRowUsed()?.RowNumber() ?? headerMap.RowNumber;
 
+        // Every emitted line (Bundle, Part Number, and BundleDetails alike) takes the next
+        // number in a single running sequence: 1, 2, 3, … to the end. BundleDetails rows are
+        // no longer sub-numbered under their parent bundle.
         var lineCounter = 0;
-        var bundleParentSeq = 0;
-        var bundleChildCounter = 0;
 
         for (var row = headerMap.RowNumber + 1; row <= lastRow; row++)
         {
@@ -84,18 +85,11 @@ public sealed class HpeBidXlsxParser : IParser
                     {
                         comments = $"Max Qty: {maxDealQty}";
                     }
-                    if (lineType == "Bundle")
-                    {
-                        // A Bundle opens a child group: subsequent BundleDetails rows
-                        // sub-sequence under it (1.01, 1.02, …).
-                        bundleParentSeq = lineCounter;
-                        bundleChildCounter = 0;
-                    }
                     break;
 
                 case "BundleDetails":
-                    bundleChildCounter++;
-                    lineSequence = $"{bundleParentSeq}.{bundleChildCounter:D2}";
+                    lineCounter++;
+                    lineSequence = lineCounter.ToString();
                     vpn = Text(sheet, row, headerMap, "ComponentID");
                     // A BundleDetails line is a component of its Bundle; the Bundle line
                     // carries the total price, so the component's own msrp/cost are dropped to

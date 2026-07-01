@@ -85,40 +85,40 @@ public sealed class HpeBidXlsxParserTests
     {
         var result = Parse("HPE_Deal_1601962887_v2.xlsx");
 
-        // First child of Bundle 1: VPN from ComponentID; msrp/cost dropped to 0 (the writer
-        // emits the 0.0001 sentinel); qty from Quantity; no comment.
-        var child1 = result.LineItems.First(i => i.LineSequence == "1.01");
+        // First child of the first Bundle: it follows Bundle 1, so under flat numbering it is
+        // line 2. VPN from ComponentID; msrp/cost dropped to 0 (the writer emits the 0.0001
+        // sentinel); qty from Quantity; no comment.
+        var child1 = result.LineItems.First(i => i.LineSequence == "2");
         child1.Vpn.Should().Be("AK379B");
         child1.Msrp.Should().Be(0m);
         child1.Cost.Should().Be(0m);
         child1.Qty.Should().Be(1);
         child1.Comments.Should().BeNull();
 
-        // Second child takes its qty from the Quantity column (2, not 1).
-        var child2 = result.LineItems.First(i => i.LineSequence == "1.02");
+        // Second child is line 3; it takes its qty from the Quantity column (2, not 1).
+        var child2 = result.LineItems.First(i => i.LineSequence == "3");
         child2.Vpn.Should().Be("R6Q75A");
         child2.Qty.Should().Be(2);
     }
 
     [Fact]
-    public void File1_BundlesOpenChildGroups_SequencesNest()
+    public void File1_LinesAreFlatlyNumbered()
     {
         var result = Parse("HPE_Deal_1601962887_v2.xlsx");
 
-        // Three Bundle parents, sequenced 1, 2, 3.
+        // Every line — Bundle and BundleDetails alike — is numbered in one running sequence
+        // 1, 2, 3 … 66. No line uses the old nested "parent.NN" form.
         result.LineItems
-            .Where(i => !i.LineSequence!.Contains('.'))
+            .Select(i => i.LineSequence)
+            .Should()
+            .Equal(Enumerable.Range(1, 66).Select(n => n.ToString()));
+
+        // The three Bundle parents fall wherever the running counter lands (1, 11, 23).
+        result.LineItems
+            .Where(i => i.Comments == "Max Qty: 1")
             .Select(i => (i.LineSequence, i.Vpn))
             .Should()
-            .Equal(("1", "52080474"), ("2", "52079278"), ("3", "52079277"));
-
-        // Every child sub-sequences under a parent (parent.NN).
-        result.LineItems
-            .Where(i => i.LineSequence!.Contains('.'))
-            .Should()
-            .OnlyContain(i => i.LineSequence!.StartsWith("1.")
-                || i.LineSequence!.StartsWith("2.")
-                || i.LineSequence!.StartsWith("3."));
+            .Equal(("1", "52080474"), ("11", "52079278"), ("23", "52079277"));
     }
 
     [Fact]

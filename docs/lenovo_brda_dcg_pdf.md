@@ -109,9 +109,9 @@ Scan for `"Quote"` followed by a word starting `"No"` on the same y-band (≤ 5 
 
 ### Assembly
 
-1. Iterate section 1 entries in order, assigning a global monotonically increasing sequence number.
+1. Iterate section 1 entries in order, assigning every emitted line the next number in a single running sequence (`1`, `2`, `3`, …).
 2. CONFIG entries → top-level item; description = config's own VPN.
-3. PARENT entries → top-level item; look up `children[entry.LineNo]` from the section 2 results and emit each child with sequence `"{parentSeq}.{childIdx:D2}"`.
+3. PARENT entries → top-level item; look up `children[entry.LineNo]` from the section 2 results and emit each child as the next number in the same running sequence (children are no longer sub-numbered as `parent.NN`).
 
 ---
 

@@ -87,7 +87,7 @@ public sealed class HpOneConfigXlsxParserTests
         var result = parser.Parse(SamplePath("55648855.xlsx"));
         var child = result.LineItems[1];
 
-        child.LineSequence.Should().Be("1.01");
+        child.LineSequence.Should().Be("2");
         child.Vpn.Should().Be("C6SL9AV");
         child.Qty.Should().Be(1);
         child.Msrp.Should().Be(0m);
@@ -95,13 +95,14 @@ public sealed class HpOneConfigXlsxParserTests
     }
 
     [Fact]
-    public void LastChild_HasSequence_1_30()
+    public void LastChild_HasFlatSequence_31()
     {
         var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpOneConfigXlsx);
 
         var result = parser.Parse(SamplePath("55648855.xlsx"));
 
-        result.LineItems[^1].LineSequence.Should().Be("1.30");
+        // Parent (1) + 30 children flattened to 2…31.
+        result.LineItems[^1].LineSequence.Should().Be("31");
     }
 
     [Fact]
@@ -122,10 +123,10 @@ public sealed class HpOneConfigXlsxParserTests
         var result = parser.Parse(SamplePath("55648855.xlsx"));
 
         result.LineItems[0].LineSequence.Should().Be("1");
-        result.LineItems[1].LineSequence.Should().Be("1.01");
-        result.LineItems[9].LineSequence.Should().Be("1.09");
-        result.LineItems[10].LineSequence.Should().Be("1.10");
-        result.LineItems[30].LineSequence.Should().Be("1.30");
+        result.LineItems[1].LineSequence.Should().Be("2");
+        result.LineItems[9].LineSequence.Should().Be("10");
+        result.LineItems[10].LineSequence.Should().Be("11");
+        result.LineItems[30].LineSequence.Should().Be("31");
     }
 
     [Fact]

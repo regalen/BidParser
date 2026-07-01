@@ -46,7 +46,7 @@ Iterate rows below the Components header. Stop at the first wholly-empty row (or
 
 For each kept row, emit a child `LineItem`:
 
-- `LineSequence = "1.NN"` where `NN` is a two-digit zero-padded counter (`1.01`, `1.02`, …, `1.30`)
+- `LineSequence` continues the single running sequence after the parent (`2`, `3`, …, `31`); components are no longer sub-numbered as `1.NN`
 - `vpn` ← `Part Number` (trimmed)
 - `description` ← `Description` (trimmed)
 - `qty` ← `Quantity` → `DecimalCleaner.ParseOptionalInt` (defaults to 1)
@@ -67,7 +67,7 @@ Writer: `PercentOffWithUpliftWriter`. Column mapping:
 
 | Col | Header | Value |
 |---|---|---|
-| A | `Item` | `LineSequence` (`1`, `1.01`, …) |
+| A | `Item` | `LineSequence` (`1`, `2`, `3`, …) |
 | B | `Vendor Name` | `HP` |
 | D | `Vendor Part Number` | `vpn` |
 | E | `Description` | `description` |

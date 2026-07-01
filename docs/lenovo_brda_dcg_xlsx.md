@@ -48,7 +48,7 @@ The footer carries `Total:` in the unit-price column and the AUD total in the ex
 
 ## Line sequence numbering
 
-Parents are numbered as integers from 1 in document order. Children are numbered `parent.NN` where `NN` is the 1-based index of the child within its parent (`5.01`, `5.02`, …). `LineSequence` is a string — `AnzGenericWriter` writes it to column A verbatim.
+Every emitted line — parent and child alike — takes the next number in a single running sequence (`1`, `2`, `3`, …) in document order; children are no longer sub-numbered as `parent.NN`. Because the sequence no longer encodes the hierarchy, parent vs child is distinguished by cost (parents carry the real unit price; children carry the dropped 0). `LineSequence` is a string — `AnzGenericWriter` writes it to column A verbatim.
 
 ## Edge cases the tests cover
 
