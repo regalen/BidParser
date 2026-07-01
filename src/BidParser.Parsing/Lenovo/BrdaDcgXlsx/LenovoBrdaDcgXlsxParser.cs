@@ -146,8 +146,11 @@ public sealed partial class LenovoBrdaDcgXlsxParser : IParser
         ColumnMap cols)
     {
         var items = new List<LineItem>();
-        var parentIndex = 0;
-        var childIndex = 0;
+        // Every emitted line — parent and child alike — takes the next number in a single
+        // running sequence: 1, 2, 3, … Children are no longer sub-numbered as parent.NN.
+        // `sawParent` still gates orphan children that appear before any parent.
+        var lineSeq = 0;
+        var sawParent = false;
         decimal? quotedTotal = null;
 
         for (var rowIndex = firstBodyRow; rowIndex < rows.Count; rowIndex++)
@@ -217,20 +220,20 @@ public sealed partial class LenovoBrdaDcgXlsxParser : IParser
             decimal cost;
             if (isParent)
             {
-                parentIndex++;
-                childIndex = 0;
-                lineSequence = parentIndex.ToString(CultureInfo.InvariantCulture);
+                sawParent = true;
+                lineSeq++;
+                lineSequence = lineSeq.ToString(CultureInfo.InvariantCulture);
                 cost = unitPrice!.Value;
             }
             else
             {
-                if (parentIndex == 0)
+                if (!sawParent)
                 {
                     // Orphan child before any parent — skip rather than crash.
                     continue;
                 }
-                childIndex++;
-                lineSequence = $"{parentIndex}.{childIndex:D2}";
+                lineSeq++;
+                lineSequence = lineSeq.ToString(CultureInfo.InvariantCulture);
                 cost = 0m;
             }
 

@@ -385,18 +385,21 @@ public sealed class LenovoBrdaDcgPdfParser : IParser
     private static List<LineItem> Assemble(List<Section1Entry> entries, Dictionary<int, List<ChildItem>> children)
     {
         var items = new List<LineItem>();
-        var globalSeq = 0;
+        // Every emitted line — parent config and child component alike — takes the next number
+        // in a single running sequence: 1, 2, 3, … Children are no longer sub-numbered under
+        // their parent (parent.NN).
+        var lineSeq = 0;
 
         foreach (var entry in entries)
         {
-            globalSeq++;
+            lineSeq++;
             items.Add(new LineItem
             {
                 Vpn = entry.Vpn,
                 Description = entry.Description,
                 Qty = entry.Qty,
                 Cost = entry.Cost,
-                LineSequence = globalSeq.ToString(),
+                LineSequence = lineSeq.ToString(),
                 Term = null,
                 Msrp = null,
                 MinQty = null,
@@ -405,25 +408,24 @@ public sealed class LenovoBrdaDcgPdfParser : IParser
 
             if (entry.Type == Section1EntryType.Parent && children.TryGetValue(entry.LineNo, out var childList))
             {
-                var childIdx = 0;
                 foreach (var child in childList)
                 {
                     // Skip the redundant "self" component: when a child's VPN matches its parent's VPN,
                     // the row is the parent unit re-listed inside its own component breakdown. Including
-                    // it produces duplicate lines (e.g. 2 and 2.01 with the same VPN).
+                    // it produces duplicate lines with the same VPN.
                     if (string.Equals(child.Vpn, entry.Vpn, StringComparison.OrdinalIgnoreCase))
                     {
                         continue;
                     }
 
-                    childIdx++;
+                    lineSeq++;
                     items.Add(new LineItem
                     {
                         Vpn = child.Vpn,
                         Description = child.Description,
                         Qty = child.Qty,
                         Cost = 0m,
-                        LineSequence = $"{globalSeq}.{childIdx:D2}",
+                        LineSequence = lineSeq.ToString(),
                         Term = null,
                         Msrp = null,
                         MinQty = null,

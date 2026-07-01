@@ -64,7 +64,8 @@ public sealed class LenovoBrdaDcgPdfParserTests
         configs.Should().HaveCount(2);
         configs.Should().AllSatisfy(c =>
         {
-            c.LineSequence.Should().NotContain(".", "configs are top-level and must not have a dot");
+            // Flat numbering: every line (configs included) is a plain integer, never dotted.
+            c.LineSequence.Should().NotContain(".");
             c.Cost.Should().BeGreaterThan(0);
         });
     }
@@ -82,30 +83,29 @@ public sealed class LenovoBrdaDcgPdfParserTests
     }
 
     [Fact]
-    public void Parent_rows_have_zero_cost()
+    public void NonConfig_rows_have_zero_cost()
     {
         var result = ParseSample();
 
-        var parents = result.LineItems
-            .Where(i => !i.LineSequence!.Contains('.') && i.Cost == 0)
-            .ToList();
+        // Everything that is not a priced config (13 parents + 137 children = 150) carries the
+        // dropped 0 cost. Flat numbering no longer distinguishes parent from child in the
+        // sequence, so they are counted together here by cost.
+        var nonConfig = result.LineItems.Where(i => i.Cost == 0m).ToList();
 
-        parents.Should().HaveCount(13, "there are 7 parents per config × 2 configs");
-        parents.Should().AllSatisfy(p => p.Cost.Should().Be(0m));
+        nonConfig.Should().HaveCount(150);
+        nonConfig.Should().AllSatisfy(p => p.Cost.Should().Be(0m));
     }
 
     [Fact]
-    public void Children_have_dotted_sequence_and_zero_cost()
+    public void All_sequences_are_flat_1_to_N()
     {
         var result = ParseSample();
 
-        var children = result.LineItems.Where(i => i.LineSequence!.Contains('.')).ToList();
-        children.Should().HaveCount(137);
-        children.Should().AllSatisfy(c =>
-        {
-            c.Cost.Should().Be(0m);
-            c.LineSequence.Should().MatchRegex(@"^\d+\.\d{2}$");
-        });
+        // Single running sequence 1..152; no line uses the old dotted "parent.NN" form.
+        result.LineItems
+            .Select(i => i.LineSequence)
+            .Should()
+            .Equal(Enumerable.Range(1, 152).Select(n => n.ToString()));
     }
 
     // ── Config 1 spot checks ─────────────────────────────────────────────────
@@ -152,11 +152,17 @@ public sealed class LenovoBrdaDcgPdfParserTests
     {
         var items = ParseSample().LineItems;
 
-        // Parent 2 (7DG9CTO1WW for config 1) has 56 children after deduping the
-        // redundant self-component row (the original PDF lists the server VPN itself
-        // as the first component of its own configuration).
-        var children = items.Where(i => i.LineSequence!.StartsWith("2.")).ToList();
+        // Parent at line 2 (7DG9CTO1WW for config 1) is followed by 56 children (lines 3..58)
+        // after deduping the redundant self-component row (the original PDF lists the server
+        // VPN itself as the first component of its own configuration).
+        var children = items.Where(i =>
+        {
+            var n = int.Parse(i.LineSequence!);
+            return n >= 3 && n <= 58;
+        }).ToList();
         children.Should().HaveCount(56);
+        children.Should().OnlyContain(c => c.Cost == 0m);
+        children.Select(c => c.Vpn).Should().NotContain("7DG9CTO1WW");
     }
 
     [Fact]
@@ -164,18 +170,11 @@ public sealed class LenovoBrdaDcgPdfParserTests
     {
         var items = ParseSample().LineItems;
 
-        var parents = items.Where(i => !i.LineSequence!.Contains('.') && i.Cost == 0).ToList();
-        foreach (var parent in parents)
-        {
-            var prefix = parent.LineSequence + ".";
-            var childrenVpns = items
-                .Where(i => i.LineSequence!.StartsWith(prefix))
-                .Select(i => i.Vpn)
-                .ToList();
-
-            childrenVpns.Should().NotContain(parent.Vpn,
-                $"parent {parent.LineSequence} ({parent.Vpn}) should not list itself as a child component");
-        }
+        // The self-component dedup means a server/parent VPN appears exactly once per config
+        // (as the parent) and never again inside its own component breakdown. Both configs
+        // list the same two servers, so each appears exactly twice across the whole quote.
+        items.Count(i => i.Vpn == "7DG9CTO1WW").Should().Be(2);
+        items.Count(i => i.Vpn == "5641PX3").Should().Be(2);
     }
 
     [Fact]
@@ -183,13 +182,17 @@ public sealed class LenovoBrdaDcgPdfParserTests
     {
         var items = ParseSample().LineItems;
 
-        // XClarity Pro parent (5641PX3) in config 1 has 2 children after deduping the
-        // redundant self-component row.
-        var parent = items.Single(i => i.LineSequence == "3");
+        // XClarity Pro parent (5641PX3) in config 1 sits at line 59 and is followed by 2
+        // children (lines 60..61) after deduping the redundant self-component row.
+        var parent = items.Single(i => i.LineSequence == "59");
         parent.Vpn.Should().Be("5641PX3");
         parent.Qty.Should().Be(8);
 
-        var children = items.Where(i => i.LineSequence!.StartsWith("3.")).ToList();
+        var children = items.Where(i =>
+        {
+            var n = int.Parse(i.LineSequence!);
+            return n >= 60 && n <= 61;
+        }).ToList();
         children.Should().HaveCount(2);
         children.Select(c => c.Vpn).Should().NotContain("5641PX3");
     }
@@ -201,11 +204,17 @@ public sealed class LenovoBrdaDcgPdfParserTests
     {
         var items = ParseSample().LineItems;
 
-        var parent = items.Single(i => i.LineSequence == "9");
+        // Config 2's main server (7DG9CTO1WW, qty 2) sits at line 77, followed by its 56
+        // children (lines 78..133).
+        var parent = items.Single(i => i.LineSequence == "77");
         parent.Vpn.Should().Be("7DG9CTO1WW");
         parent.Qty.Should().Be(2);
 
-        var children = items.Where(i => i.LineSequence!.StartsWith("9.")).ToList();
+        var children = items.Where(i =>
+        {
+            var n = int.Parse(i.LineSequence!);
+            return n >= 78 && n <= 133;
+        }).ToList();
         children.Should().HaveCount(56);
     }
 

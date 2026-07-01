@@ -55,9 +55,11 @@ public sealed class LenovoBrdaDcgXlsxParserTests
         var result = Parse();
 
         result.LineItems.Should().HaveCount(62);
-        // Parent rows have integer LineSequence (no '.'); children carry 'N.NN'.
-        var parents = result.LineItems.Where(item => !item.LineSequence!.Contains('.')).ToList();
-        var children = result.LineItems.Where(item => item.LineSequence!.Contains('.')).ToList();
+        // Line sequencing is a flat 1..N run, so parent/child is distinguished by cost, not by
+        // a dotted sequence: parents carry the real unit cost (> 0); children carry the dropped
+        // 0 (exported as the 0.0001 sentinel).
+        var parents = result.LineItems.Where(item => item.Cost > 0m).ToList();
+        var children = result.LineItems.Where(item => item.Cost == 0m).ToList();
         parents.Should().HaveCount(8);
         children.Should().HaveCount(54);
     }
@@ -66,8 +68,10 @@ public sealed class LenovoBrdaDcgXlsxParserTests
     public void ParentsHaveRealCosts()
     {
         var result = Parse();
-        var parents = result.LineItems.Where(item => !item.LineSequence!.Contains('.')).ToList();
+        var parents = result.LineItems.Where(item => item.Cost > 0m).ToList();
 
+        // Under flat numbering a parent's LineSequence is its position in the whole 1..N run
+        // (children in between push later parents up), not a "1, 2, 3…" parent index.
         parents[0].Vpn.Should().Be("7D7ACTO1WW");
         parents[0].Cost.Should().Be(36399.96m);
         parents[0].Qty.Should().Be(1);
@@ -76,7 +80,7 @@ public sealed class LenovoBrdaDcgXlsxParserTests
 
         parents[1].Vpn.Should().Be("7S0XCTO5WW");
         parents[1].Cost.Should().Be(322.14m);
-        parents[1].LineSequence.Should().Be("2");
+        parents[1].LineSequence.Should().Be("28");
 
         parents[2].Vpn.Should().Be("5PS7C00099");
         parents[2].Cost.Should().Be(236.31m);
@@ -86,28 +90,30 @@ public sealed class LenovoBrdaDcgXlsxParserTests
 
         parents[4].Vpn.Should().Be("7D7ACTO1WW");
         parents[4].Cost.Should().Be(49742.85m);
-        parents[4].LineSequence.Should().Be("5");
+        parents[4].LineSequence.Should().Be("32");
         parents[4].Description.Should().Be("512GB ThinkSystem ST650 V3 3yr Base Warranty");
 
         parents[7].Vpn.Should().Be("5WS7C00090");
         parents[7].Cost.Should().Be(9402.50m);
-        parents[7].LineSequence.Should().Be("8");
+        parents[7].LineSequence.Should().Be("62");
     }
 
     [Fact]
     public void ChildrenCarrySentinelZeroCost()
     {
         var result = Parse();
-        var children = result.LineItems.Where(item => item.LineSequence!.Contains('.')).ToList();
+        var children = result.LineItems.Where(item => item.Cost == 0m).ToList();
 
-        children.Should().OnlyContain(item => item.Cost == 0m);
+        children.Should().HaveCount(54);
 
-        var firstChild = result.LineItems.Single(item => item.LineSequence == "1.01");
+        // First child follows the first parent (line 1) as line 2.
+        var firstChild = result.LineItems.Single(item => item.LineSequence == "2");
         firstChild.Vpn.Should().Be("BNW0");
         firstChild.Description.Should().Be("ThinkSystem ST650 V3 - 2.5\" Chassis Base");
         firstChild.Qty.Should().Be(1);
 
-        var rdimm = result.LineItems.Single(item => item.LineSequence == "5.06");
+        // The qty-8 RDIMM under the second ST650 config lands at line 38 in the flat run.
+        var rdimm = result.LineItems.Single(item => item.LineSequence == "38");
         rdimm.Vpn.Should().Be("BNF9");
         rdimm.Qty.Should().Be(8);
     }
@@ -122,7 +128,8 @@ public sealed class LenovoBrdaDcgXlsxParserTests
         var rows = result.LineItems.Where(item => item.Vpn == "5374CM1").ToList();
 
         rows.Should().HaveCount(2);
-        rows.Should().OnlyContain(item => item.LineSequence!.Contains('.'));
+        // A child is marked by the dropped 0 cost (the sentinel on export), not by a dotted
+        // sequence — so a zero cost here proves it was not promoted to a priced parent.
         rows.Should().OnlyContain(item => item.Cost == 0m);
     }
 
