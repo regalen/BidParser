@@ -49,7 +49,10 @@ public sealed class AuthFlowTests
         // M1: sessions are bound to a fingerprint of the password hash. Changing
         // the password re-issues the acting session's cookie (it survives) while
         // every other session for that user is revoked.
-        using var fixture = await ApiTestFixture.CreateAsync();
+        // This scenario makes 6 auth-endpoint calls from one shared client IP (admin
+        // unlock login+change, s1 login+change, s2 login, s1's second change), so the
+        // default per-minute auth limit of 5 would trip on the last change-password.
+        using var fixture = await ApiTestFixture.CreateAsync(authRateLimitPerMin: 100);
         using var admin = fixture.Factory.CreateClient();
         await ApiTestFixture.UnlockAdminAsync(admin);
 
@@ -311,7 +314,10 @@ internal sealed class ApiTestFixture : IDisposable
         return await client.SendAsync(request);
     }
 
-    public static async Task<ApiTestFixture> CreateAsync()
+    // authRateLimitPerMin defaults to the production value (5); auth-heavy tests that
+    // exercise several logins/password-changes in one app instance (all sharing the
+    // same client IP partition) raise it so the limiter doesn't trip mid-scenario.
+    public static async Task<ApiTestFixture> CreateAsync(int authRateLimitPerMin = 5)
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"bidparser-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
@@ -323,7 +329,7 @@ internal sealed class ApiTestFixture : IDisposable
             ["SESSION_SECRET"] = $"test-secret-{Guid.NewGuid():N}",
             ["ADMIN_USERNAME"] = "admin",
             ["ADMIN_PASSWORD"] = "changeme",
-            ["RATE_LIMIT_AUTH_PER_MIN"] = "5"
+            ["RATE_LIMIT_AUTH_PER_MIN"] = authRateLimitPerMin.ToString(System.Globalization.CultureInfo.InvariantCulture)
         });
 
         var factory = new WebApplicationFactory<Program>();
