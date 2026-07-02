@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using BidParser.Api.Auth;
@@ -510,7 +511,24 @@ public sealed class ParseTests
         var form = new MultipartFormDataContent();
         var fileContent = new ByteArrayContent(fileBytes);
         fileContent.Headers.ContentType = new(contentType);
-        form.Add(fileContent, "file", filename);
+        if (filename.Contains('"'))
+        {
+            // MultipartFormDataContent.Add(..., fileName) routes through
+            // ContentDispositionHeaderValue.SetName, whose EncodeAndQuoteMime rejects an
+            // embedded double-quote outright (it only RFC2047-encodes non-ASCII, it won't
+            // escape a quote). Build the file part's Content-Disposition as an escaped
+            // quoted-string — exactly what a browser sends on the wire — so the H1 server
+            // path actually receives the quote.
+            var disposition = new ContentDispositionHeaderValue("form-data") { Name = "file" };
+            disposition.Parameters.Add(new NameValueHeaderValue(
+                "filename", "\"" + filename.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\""));
+            fileContent.Headers.ContentDisposition = disposition;
+            form.Add(fileContent);
+        }
+        else
+        {
+            form.Add(fileContent, "file", filename);
+        }
         form.Add(new StringContent(vendor), "vendor");
         form.Add(new StringContent(parserSlug), "parser_slug");
         form.Add(new StringContent(fxRate), "fx_rate");
