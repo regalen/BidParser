@@ -44,6 +44,75 @@ public sealed class AuthFlowTests
     }
 
     [Fact]
+    public async Task PasswordChangeRevokesOtherSessionsButKeepsCurrent()
+    {
+        // M1: sessions are bound to a fingerprint of the password hash. Changing
+        // the password re-issues the acting session's cookie (it survives) while
+        // every other session for that user is revoked.
+        // This scenario makes 6 auth-endpoint calls from one shared client IP (admin
+        // unlock login+change, s1 login+change, s2 login, s1's second change), so the
+        // default per-minute auth limit of 5 would trip on the last change-password.
+        using var fixture = await ApiTestFixture.CreateAsync(authRateLimitPerMin: 100);
+        using var admin = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(admin);
+
+        var create = await ApiTestFixture.PostJsonWithCsrfAsync(admin, "/api/users",
+            new { username = "userb", name = "User B", role = "user" });
+        create.EnsureSuccessStatusCode();
+        var temp = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("temp_password").GetString()!;
+
+        // Session 1: log in with the temp password and set a real one.
+        using var s1 = fixture.Factory.CreateClient();
+        (await ApiTestFixture.PostJsonWithCsrfAsync(s1, "/api/auth/login", new { username = "userb", password = temp }))
+            .EnsureSuccessStatusCode();
+        (await ApiTestFixture.PostJsonWithCsrfAsync(s1, "/api/auth/change-password",
+            new { old_password = temp, new_password = "UserB123!" })).EnsureSuccessStatusCode();
+        (await s1.GetAsync("/api/me")).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Session 2: a separate login with the current password.
+        using var s2 = fixture.Factory.CreateClient();
+        (await ApiTestFixture.PostJsonWithCsrfAsync(s2, "/api/auth/login", new { username = "userb", password = "UserB123!" }))
+            .EnsureSuccessStatusCode();
+        (await s2.GetAsync("/api/me")).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Session 1 changes the password again: its own cookie is re-issued and
+        // survives; session 2's cookie is bound to the now-stale hash → revoked.
+        (await ApiTestFixture.PostJsonWithCsrfAsync(s1, "/api/auth/change-password",
+            new { old_password = "UserB123!", new_password = "UserB456!" })).EnsureSuccessStatusCode();
+        (await s1.GetAsync("/api/me")).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await s2.GetAsync("/api/me")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task AdminPasswordResetRevokesUserSession()
+    {
+        // M1: an admin password reset changes the user's hash, so the user's
+        // existing session is revoked on its next request.
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var admin = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(admin);
+
+        var create = await ApiTestFixture.PostJsonWithCsrfAsync(admin, "/api/users",
+            new { username = "userb", name = "User B", role = "user" });
+        create.EnsureSuccessStatusCode();
+        var created = await create.Content.ReadFromJsonAsync<JsonElement>();
+        var userId = created.GetProperty("user").GetProperty("id").GetInt32();
+        var temp = created.GetProperty("temp_password").GetString()!;
+
+        using var userClient = fixture.Factory.CreateClient();
+        (await ApiTestFixture.PostJsonWithCsrfAsync(userClient, "/api/auth/login", new { username = "userb", password = temp }))
+            .EnsureSuccessStatusCode();
+        (await ApiTestFixture.PostJsonWithCsrfAsync(userClient, "/api/auth/change-password",
+            new { old_password = temp, new_password = "UserB123!" })).EnsureSuccessStatusCode();
+        (await userClient.GetAsync("/api/me")).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var reset = await ApiTestFixture.PatchJsonWithCsrfAsync(admin, $"/api/users/{userId}", new { reset_password = true });
+        reset.EnsureSuccessStatusCode();
+
+        (await userClient.GetAsync("/api/me")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task LoginIsCaseInsensitiveAndSettingsPreserveDecimalScale()
     {
         using var fixture = await ApiTestFixture.CreateAsync();
@@ -224,11 +293,14 @@ internal sealed class ApiTestFixture : IDisposable
             createUserRes = await PostJsonWithCsrfAsync(client, "/api/users", new { username = "user1", name = "User One", role = "user" });
             await PostJsonWithCsrfAsync(client, "/api/auth/logout", new { });
         }
-        
-        var login = await PostJsonWithCsrfAsync(client, "/api/auth/login", new { username = "user1", password = "changeme" });
+
+        var createdJson = await createUserRes.Content.ReadFromJsonAsync<JsonElement>();
+        var tempPassword = createdJson.GetProperty("temp_password").GetString()!;
+
+        var login = await PostJsonWithCsrfAsync(client, "/api/auth/login", new { username = "user1", password = tempPassword });
         login.EnsureSuccessStatusCode();
 
-        var changed = await PostJsonWithCsrfAsync(client, "/api/auth/change-password", new { old_password = "changeme", new_password = "User123!" });
+        var changed = await PostJsonWithCsrfAsync(client, "/api/auth/change-password", new { old_password = tempPassword, new_password = "User123!" });
         changed.EnsureSuccessStatusCode();
     }
 
@@ -242,7 +314,10 @@ internal sealed class ApiTestFixture : IDisposable
         return await client.SendAsync(request);
     }
 
-    public static async Task<ApiTestFixture> CreateAsync()
+    // authRateLimitPerMin defaults to the production value (5); auth-heavy tests that
+    // exercise several logins/password-changes in one app instance (all sharing the
+    // same client IP partition) raise it so the limiter doesn't trip mid-scenario.
+    public static async Task<ApiTestFixture> CreateAsync(int authRateLimitPerMin = 5)
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"bidparser-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
@@ -254,7 +329,7 @@ internal sealed class ApiTestFixture : IDisposable
             ["SESSION_SECRET"] = $"test-secret-{Guid.NewGuid():N}",
             ["ADMIN_USERNAME"] = "admin",
             ["ADMIN_PASSWORD"] = "changeme",
-            ["RATE_LIMIT_AUTH_PER_MIN"] = "5"
+            ["RATE_LIMIT_AUTH_PER_MIN"] = authRateLimitPerMin.ToString(System.Globalization.CultureInfo.InvariantCulture)
         });
 
         var factory = new WebApplicationFactory<Program>();

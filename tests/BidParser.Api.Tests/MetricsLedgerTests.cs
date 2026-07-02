@@ -139,13 +139,14 @@ public sealed class MetricsLedgerTests
         var createUserRes = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/users", new { username = "user2", name = "User Two", role = "user" });
         createUserRes.EnsureSuccessStatusCode();
         var user2 = await createUserRes.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
-        var user2Id = user2.GetProperty("id").GetInt32();
+        var user2Id = user2.GetProperty("user").GetProperty("id").GetInt32();
+        var user2Temp = user2.GetProperty("temp_password").GetString()!;
 
         await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/auth/logout", new { });
-        var loginRes2 = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/auth/login", new { username = "user2", password = "changeme" });
+        var loginRes2 = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/auth/login", new { username = "user2", password = user2Temp });
         loginRes2.EnsureSuccessStatusCode();
 
-        var changeRes = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/auth/change-password", new { old_password = "changeme", new_password = "NewPassword1!" });
+        var changeRes = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/auth/change-password", new { old_password = user2Temp, new_password = "NewPassword1!" });
         changeRes.EnsureSuccessStatusCode();
 
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));

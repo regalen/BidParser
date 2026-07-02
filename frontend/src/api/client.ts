@@ -4,6 +4,7 @@ import type {
   MonitoringRunsResponse,
   ParserInfo,
   User,
+  UserWithTempPassword,
 } from '../types';
 
 export class ApiError extends Error {
@@ -17,6 +18,22 @@ export class ApiError extends Error {
     this.detail = detail;
     this.retryAfter = retryAfter;
   }
+}
+
+// Content-Disposition from ASP.NET's fileDownloadName emits `filename=` (quoted
+// only when needed) plus `filename*=UTF-8''…` for non-ASCII names. Prefer the
+// RFC 5987 form, then fall back to the plain (quoted or bare) form.
+function filenameFromDisposition(disposition: string): string | null {
+  const star = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  if (star) {
+    try {
+      return decodeURIComponent(star);
+    } catch {
+      /* fall through to the plain form */
+    }
+  }
+  const plain = disposition.match(/filename="([^"]*)"|filename=([^;]+)/i);
+  return plain?.[1] ?? plain?.[2]?.trim() ?? null;
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -92,13 +109,6 @@ export const api = {
     return request<User>('/me');
   },
 
-  updateSettings(payload: { default_vendor?: string; fx_rate?: string; margin?: string; im_percent?: string }): Promise<User> {
-    return request<User>('/me/settings', {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    });
-  },
-
   parsers(): Promise<ParserInfo[]> {
     return request<ParserInfo[]>('/parsers');
   },
@@ -121,15 +131,15 @@ export const api = {
     return request<MonitoringRunsResponse>(`/monitoring/runs?${params.toString()}`);
   },
 
-  createUser(payload: { username: string; name: string; role: 'admin' | 'user' }): Promise<User> {
-    return request<User>('/users', {
+  createUser(payload: { username: string; name: string; role: 'admin' | 'user' }): Promise<UserWithTempPassword> {
+    return request<UserWithTempPassword>('/users', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   },
 
-  updateUser(id: number, payload: { username?: string; name?: string; role?: 'admin' | 'user'; reset_password?: boolean }): Promise<User> {
-    return request<User>(`/users/${id}`, {
+  updateUser(id: number, payload: { username?: string; name?: string; role?: 'admin' | 'user'; reset_password?: boolean }): Promise<UserWithTempPassword> {
+    return request<UserWithTempPassword>(`/users/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
     });
@@ -159,7 +169,7 @@ export const api = {
       throw new ApiError(response.status, detail, response.headers.get('Retry-After'));
     }
     const disposition = response.headers.get('Content-Disposition') ?? '';
-    const filename = disposition.match(/filename="?([^"]+)"?/)?.[1] ?? 'parsed.xlsx';
+    const filename = filenameFromDisposition(disposition) ?? 'parsed.xlsx';
 
     // Parse the X-Cancelled-Lines header: "line:VPN;line:VPN;..."
     const cancelledRaw = response.headers.get('X-Cancelled-Lines') ?? '';

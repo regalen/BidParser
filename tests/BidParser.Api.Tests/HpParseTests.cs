@@ -1,7 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using BidParser.Infrastructure.Persistence;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace BidParser.Api.Tests;
@@ -219,6 +222,18 @@ public sealed class HpParseTests
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await ApiTestFixture.DetailAsync(response)).Should().Be("IM% is required for OneConfig (XLSX).");
+
+        // L2: a user-input 400 is not a genuine parse failure — it must not be
+        // recorded as a FailedParseJob, and the stored upload must be cleaned up.
+        using var scope = fixture.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        (await db.FailedParseJobs.AnyAsync()).Should().BeFalse();
+        (await db.ParseJobs.AnyAsync()).Should().BeFalse();
+        var originalsDir = Path.Combine(fixture.UploadDir, "originals");
+        if (Directory.Exists(originalsDir))
+        {
+            Directory.GetFiles(originalsDir, "*", SearchOption.AllDirectories).Should().BeEmpty();
+        }
     }
 
     [Fact]

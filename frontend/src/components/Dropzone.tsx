@@ -1,6 +1,7 @@
 import { UploadCloud, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 
+import { MAX_UPLOAD_MB } from '../constants';
 import { ProgressPanel } from './ProgressPanel';
 
 export type UploadState = 'idle' | 'parsing' | 'parsed';
@@ -53,7 +54,7 @@ export function Dropzone({
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        accept=".pdf,.xlsx,.xls,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
         className="hidden"
         onChange={(event) => {
           const next = event.currentTarget.files?.[0];
@@ -83,7 +84,7 @@ export function Dropzone({
         <>
           <UploadCloud className="h-12 w-12 text-slate-400" strokeWidth={1.7} />
           <div className="mt-3 text-base font-semibold tracking-tight text-slate-900">Drop quote file here</div>
-          <div className="mt-1 text-[11px] tracking-wide text-slate-500">PDF or XLSX · max 10 MB</div>
+          <div className="mt-1 text-[11px] tracking-wide text-slate-500">PDF, XLSX or XLS · max {MAX_UPLOAD_MB} MB</div>
         </>
       )}
       {error && <div className="mt-3 max-w-xl text-xs font-semibold text-red-600">{error}</div>}

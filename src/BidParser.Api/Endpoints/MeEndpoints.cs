@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using BidParser.Api.Auth;
 using BidParser.Api.Contracts;
 using BidParser.Domain.Constants;
@@ -7,7 +8,12 @@ namespace BidParser.Api.Endpoints;
 
 public static class MeEndpoints
 {
-    private static readonly HashSet<string> KnownVendors = new(StringComparer.Ordinal) { Vendors.Nutanix, Vendors.Hp, Vendors.Lenovo };
+    // Built from the Vendors constants so a new vendor can't silently drift out of
+    // the allowlist (this previously omitted HPE and Zebra).
+    private static readonly HashSet<string> KnownVendors = new(StringComparer.Ordinal)
+    {
+        Vendors.Nutanix, Vendors.Hp, Vendors.Hpe, Vendors.Lenovo, Vendors.Zebra
+    };
 
     public static IEndpointRouteBuilder MapMeEndpoints(this IEndpointRouteBuilder app)
     {
@@ -95,5 +101,11 @@ public static class MeEndpoints
         return Results.Ok(UserPublic.FromEntity(user));
     }
 
-    private sealed record SettingsUpdateRequest(string? DefaultVendor, decimal? FxRate, decimal? Margin, decimal? ImPercent);
+    // Decimal fields carry the same string-decimal converters as the response
+    // convention, so a string like "1.2345" parses regardless of global options.
+    private sealed record SettingsUpdateRequest(
+        string? DefaultVendor,
+        [property: JsonConverter(typeof(FxRateConverter))] decimal? FxRate,
+        [property: JsonConverter(typeof(MarginConverter))] decimal? Margin,
+        [property: JsonConverter(typeof(MarginConverter))] decimal? ImPercent);
 }

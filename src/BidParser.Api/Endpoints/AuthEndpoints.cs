@@ -1,16 +1,20 @@
 using System.Globalization;
-using System.Text.Json;
 using BidParser.Api.Auth;
 using BidParser.Api.Contracts;
 using BidParser.Api.Options;
 using BidParser.Infrastructure.Persistence;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 
 namespace BidParser.Api.Endpoints;
 
 public static class AuthEndpoints
 {
+    // A fixed valid BCrypt hash to verify against when the username is unknown,
+    // so login costs one BCrypt verification either way and doesn't leak which
+    // usernames exist via response timing (L3).
+    private static readonly string DummyHash =
+        BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString(), workFactor: 12);
+
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/auth").AddEndpointFilter<RequireCsrfHeader>();
@@ -28,7 +32,7 @@ public static class AuthEndpoints
         AppDbContext db,
         AuthRateLimiter rateLimiter,
         AppOptions options,
-        IDataProtectionProvider dataProtectionProvider,
+        SessionTokenService tokens,
         ILogger<Program> logger,
         CancellationToken ct)
     {
@@ -51,15 +55,29 @@ public static class AuthEndpoints
         }
 
         var user = await db.Users.SingleOrDefaultAsync(candidate => candidate.Username == usernameKey, ct);
-        if (user is null || !BCrypt.Net.BCrypt.Verify(body.Value.Password, user.PasswordHash))
+        var passwordOk = user is not null && BCrypt.Net.BCrypt.Verify(body.Value.Password, user.PasswordHash);
+        if (user is null)
+        {
+            // Spend one BCrypt verification even for unknown usernames so timing
+            // doesn't distinguish them from wrong passwords (L3).
+            BCrypt.Net.BCrypt.Verify(body.Value.Password, DummyHash);
+        }
+        if (!passwordOk)
         {
             logger.LogWarning("Login failed {Username}", usernameKey);
             return Results.Json(new ApiError("Invalid username or password."), statusCode: StatusCodes.Status401Unauthorized);
         }
 
-        var protector = dataProtectionProvider.CreateProtector("bidparser-session");
-        var payload = JsonSerializer.Serialize(new SessionPayload(user.Id, DateTimeOffset.UtcNow.ToUnixTimeSeconds()));
-        response.Cookies.Append(SessionCookieAuthHandler.CookieName, protector.Protect(payload), new CookieOptions
+        AppendSessionCookie(response, request, options, tokens.CreateToken(user!));
+
+        logger.LogInformation("Login success {Username}", user!.Username);
+        return Results.Ok(new LoginResponse(UserPublic.FromEntity(user)));
+    }
+
+    private static void AppendSessionCookie(
+        HttpResponse response, HttpRequest request, AppOptions options, string token)
+    {
+        response.Cookies.Append(SessionCookieAuthHandler.CookieName, token, new CookieOptions
         {
             HttpOnly = true,
             SameSite = SameSiteMode.Lax,
@@ -67,9 +85,6 @@ public static class AuthEndpoints
             MaxAge = TimeSpan.FromHours(options.SessionLifetimeHours),
             Path = "/"
         });
-
-        logger.LogInformation("Login success {Username}", user.Username);
-        return Results.Ok(new LoginResponse(UserPublic.FromEntity(user)));
     }
 
     private static IResult Logout(HttpContext context, HttpResponse response, ILogger<Program> logger)
@@ -84,9 +99,11 @@ public static class AuthEndpoints
     private static async Task<IResult> ChangePasswordAsync(
         HttpContext context,
         HttpRequest request,
+        HttpResponse response,
         AppDbContext db,
         AuthRateLimiter rateLimiter,
         AppOptions options,
+        SessionTokenService tokens,
         ILogger<Program> logger,
         CancellationToken ct)
     {
@@ -124,6 +141,11 @@ public static class AuthEndpoints
         user.MustChangePassword = false;
         await db.SaveChangesAsync(ct);
 
+        // Re-issue the cookie with the new password stamp so the current session
+        // survives its own password change — every OTHER session for this user is
+        // now revoked (their stamp no longer matches the stored hash).
+        AppendSessionCookie(response, request, options, tokens.CreateToken(user));
+
         logger.LogInformation("Change password success user={UserId}", user.Id);
         return Results.Ok(new OkResponse());
     }
@@ -147,7 +169,6 @@ public static class AuthEndpoints
         return request.Headers["X-Forwarded-Proto"].FirstOrDefault() == "https" || request.IsHttps;
     }
 
-    private sealed record SessionPayload(int UserId, long IssuedAt);
     private sealed record LoginRequest(string Username, string Password);
     private sealed record ChangePasswordRequest(string OldPassword, string NewPassword);
 

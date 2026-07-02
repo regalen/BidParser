@@ -1,4 +1,4 @@
-import { AlertCircle, Edit2, KeyRound, Plus, Shield, Trash2, User as UserIcon, X } from 'lucide-react';
+import { AlertCircle, Copy, Edit2, KeyRound, Plus, Shield, Trash2, User as UserIcon, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { api, ApiError } from '../../api/client';
@@ -19,6 +19,7 @@ export function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [modalUser, setModalUser] = useState<User | null | undefined>(undefined);
   const [error, setError] = useState('');
+  const [tempCredential, setTempCredential] = useState<{ username: string; password: string } | null>(null);
 
   async function loadUsers() {
     setUsers(await api.users());
@@ -31,12 +32,13 @@ export function UsersPage() {
   async function saveUser(payload: { username: string; name: string; role: Role }) {
     setError('');
     try {
-      if (modalUser) {
-        await api.updateUser(modalUser.id, payload);
-      } else {
-        await api.createUser(payload);
-      }
+      const result = modalUser
+        ? await api.updateUser(modalUser.id, payload)
+        : await api.createUser(payload);
       setModalUser(undefined);
+      if (result.temp_password) {
+        setTempCredential({ username: result.user.username, password: result.temp_password });
+      }
       await loadUsers();
     } catch (caught) {
       setError(apiErrorMessage(caught, 'Could not save user.'));
@@ -44,11 +46,25 @@ export function UsersPage() {
   }
 
   async function resetPassword(target: User) {
-    await api.updateUser(target.id, { reset_password: true });
-    await loadUsers();
+    if (!window.confirm(`Reset the password for @${target.username}? A new temporary password will be generated.`)) {
+      return;
+    }
+    setError('');
+    try {
+      const result = await api.updateUser(target.id, { reset_password: true });
+      if (result.temp_password) {
+        setTempCredential({ username: result.user.username, password: result.temp_password });
+      }
+      await loadUsers();
+    } catch (caught) {
+      setError(apiErrorMessage(caught, 'Could not reset password.'));
+    }
   }
 
   async function removeUser(target: User) {
+    if (!window.confirm(`Delete @${target.username}? Their parse history and files are removed permanently.`)) {
+      return;
+    }
     setError('');
     try {
       await api.deleteUser(target.id);
@@ -81,6 +97,32 @@ export function UsersPage() {
               type="button"
               className="ml-auto flex h-6 w-6 items-center justify-center rounded-full text-red-400 hover:bg-red-100"
               onClick={() => setError('')}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+
+        {tempCredential && (
+          <div className="mt-6 flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-700">
+            <KeyRound className="h-4 w-4 shrink-0" />
+            <span>
+              Temporary password for <span className="font-bold">@{tempCredential.username}</span>:{' '}
+              <code className="rounded bg-white px-1.5 py-0.5 font-mono text-emerald-900">{tempCredential.password}</code>
+              {' '}— copy it now, it will not be shown again.
+            </span>
+            <button
+              type="button"
+              className="ml-auto flex h-7 items-center gap-1 rounded-md bg-white px-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
+              onClick={() => void navigator.clipboard?.writeText(tempCredential.password)}
+            >
+              <Copy className="h-3 w-3" />
+              Copy
+            </button>
+            <button
+              type="button"
+              className="flex h-6 w-6 items-center justify-center rounded-full text-emerald-400 hover:bg-emerald-100"
+              onClick={() => setTempCredential(null)}
             >
               <X className="h-3 w-3" />
             </button>

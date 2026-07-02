@@ -39,6 +39,55 @@ public sealed class HistoryTests
     }
 
     [Fact]
+    public async Task DeletingUserRemovesTheirParseFiles()
+    {
+        // M3: deleting a user cascades their ParseJob rows; the stored source and
+        // output files must be removed too (RetentionService discovers files via
+        // the rows, so once the rows are gone the files would be orphaned forever).
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var create = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/users",
+            new { username = "user2", name = "User Two", role = "user" });
+        create.EnsureSuccessStatusCode();
+        var created = await create.Content.ReadFromJsonAsync<JsonElement>();
+        var userId = created.GetProperty("user").GetProperty("id").GetInt32();
+        var temp = created.GetProperty("temp_password").GetString()!;
+
+        using var client2 = fixture.Factory.CreateClient();
+        await ApiTestFixture.PostJsonWithCsrfAsync(client2, "/api/auth/login",
+            new { username = "user2", password = temp });
+        await ApiTestFixture.PostJsonWithCsrfAsync(client2, "/api/auth/change-password",
+            new { old_password = temp, new_password = "User2Pass1!" });
+
+        var root = FindRepoRoot();
+        var pdfBytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "XQ-4076249.pdf"));
+        await PostParseAsync(client2, pdfBytes, "user2_quote.pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "1.0", "5.0");
+
+        string sourcePath, outputPath;
+        using (var scope = fixture.Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var job = await db.ParseJobs.SingleAsync(j => j.UserId == userId);
+            sourcePath = job.SourcePath;
+            outputPath = job.OutputPath;
+        }
+        File.Exists(sourcePath).Should().BeTrue();
+        File.Exists(outputPath).Should().BeTrue();
+
+        var delete = await ApiTestFixture.DeleteWithCsrfAsync(client, $"/api/users/{userId}");
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        File.Exists(sourcePath).Should().BeFalse();
+        File.Exists(outputPath).Should().BeFalse();
+
+        var users = await client.GetFromJsonAsync<JsonElement[]>("/api/users");
+        users!.Select(u => u.GetProperty("username").GetString()).Should().NotContain("user2");
+    }
+
+    [Fact]
     public async Task HistoryListUserScopedAndQFilter()
     {
         using var fixture = await ApiTestFixture.CreateAsync();
@@ -59,12 +108,13 @@ public sealed class HistoryTests
         var create = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/users",
             new { username = "user2", name = "User Two", role = "user" });
         create.EnsureSuccessStatusCode();
+        var createTemp = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("temp_password").GetString()!;
 
         using var client2 = fixture.Factory.CreateClient();
         await ApiTestFixture.PostJsonWithCsrfAsync(client2, "/api/auth/login",
-            new { username = "user2", password = "changeme" });
+            new { username = "user2", password = createTemp });
         await ApiTestFixture.PostJsonWithCsrfAsync(client2, "/api/auth/change-password",
-            new { old_password = "changeme", new_password = "User2Pass1!" });
+            new { old_password = createTemp, new_password = "User2Pass1!" });
         await PostParseAsync(client2, pdfBytes, "user2_quote.pdf", "application/pdf",
             "Nutanix", "nutanix_software_only_pdf", "1.0", "5.0");
 
@@ -202,13 +252,14 @@ public sealed class HistoryTests
         var adminJobId = history.GetProperty("rows").EnumerateArray().First().GetProperty("id").GetInt32();
 
         // Create user2 and log them in
-        await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/users",
+        var create2 = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/users",
             new { username = "user2", name = "User Two", role = "user" });
+        var create2Temp = (await create2.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("temp_password").GetString()!;
         using var client2 = fixture.Factory.CreateClient();
         await ApiTestFixture.PostJsonWithCsrfAsync(client2, "/api/auth/login",
-            new { username = "user2", password = "changeme" });
+            new { username = "user2", password = create2Temp });
         await ApiTestFixture.PostJsonWithCsrfAsync(client2, "/api/auth/change-password",
-            new { old_password = "changeme", new_password = "User2Pass1!" });
+            new { old_password = create2Temp, new_password = "User2Pass1!" });
 
         // User2 can't see or download admin's job
         var sourceResponse = await client2.GetAsync($"/api/history/{adminJobId}/source");

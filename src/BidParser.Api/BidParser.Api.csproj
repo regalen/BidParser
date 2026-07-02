@@ -11,4 +11,8 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
   </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="BidParser.Api.Tests" />
+  </ItemGroup>
 </Project>

@@ -196,6 +196,15 @@ public sealed class ParseService(IParserRegistry registry, FileStorage storage, 
 
             throw new ParseError("file_type", message, message);
         }
+        catch (ParseValidationException)
+        {
+            // User-input 400 (unknown/unsupported CRM template, missing IM%) — a
+            // client error, not a genuine parse failure. Drop both files and don't
+            // record a FailedParseJob so it doesn't show up as monitoring noise.
+            storage.TryDelete(outputPath);
+            storage.TryDelete(sourcePath);
+            throw;
+        }
         catch (Exception ex)
         {
             storage.TryDelete(outputPath);

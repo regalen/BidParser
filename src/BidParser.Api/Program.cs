@@ -42,6 +42,7 @@ builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(appOptions.DataProtectionKeysDir))
     .SetApplicationName(appOptions.SessionSecret);
 builder.Services.AddSingleton<AuthRateLimiter>();
+builder.Services.AddSingleton<SessionTokenService>();
 builder.Services.AddAuthentication(SessionCookieAuthHandler.SchemeName)
     .AddScheme<AuthenticationSchemeOptions, SessionCookieAuthHandler>(SessionCookieAuthHandler.SchemeName, _ => { });
 builder.Services.AddAuthorization(options =>

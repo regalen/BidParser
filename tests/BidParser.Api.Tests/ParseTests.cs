@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using BidParser.Api.Auth;
@@ -339,6 +340,83 @@ public sealed class ParseTests
     }
 
     [Fact]
+    public async Task ParseNonAsciiFilenameRoundtrips()
+    {
+        // Regression (H1): a filename with a non-ASCII character (en-dash, common in
+        // files saved from Outlook/Windows) must not blow up the response — Kestrel
+        // rejects non-ASCII in raw header values, so the download name has to go
+        // through fileDownloadName's RFC 6266 filename*/filename encoding.
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var root = FindRepoRoot();
+        var bytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "XQ-4076249.pdf"));
+
+        using var response = await PostParseAsync(client, bytes, "Quote – Test.pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "0.7400", "7.50");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentDisposition.Should().NotBeNull();
+        // fileDownloadName emits filename*=UTF-8'' for non-ASCII names; the .NET
+        // client surfaces the decoded value via FileNameStar.
+        response.Content.Headers.ContentDisposition!.FileNameStar.Should().Be("Quote – Test_parsed.xlsx");
+        (await response.Content.ReadAsByteArrayAsync()).Length.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task ParseFilenameWithQuoteRoundtrips()
+    {
+        // Regression (H1): a double-quote in the filename previously corrupted the
+        // manually-built Content-Disposition header. fileDownloadName escapes it.
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var root = FindRepoRoot();
+        var bytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "XQ-4076249.pdf"));
+
+        using var response = await PostParseAsync(client, bytes, "Quote \"A\".pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "0.7400", "7.50");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentDisposition.Should().NotBeNull();
+        (await response.Content.ReadAsByteArrayAsync()).Length.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task HistoryDownloadsNonAsciiFilenameRoundtrip()
+    {
+        // Regression (H1): the same job's history source/output downloads must not
+        // 500 on a non-ASCII source filename.
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var root = FindRepoRoot();
+        var bytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "XQ-4076249.pdf"));
+
+        using var parseResponse = await PostParseAsync(client, bytes, "Quote – Test.pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "0.7400", "7.50");
+        parseResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        int jobId;
+        using (var scope = fixture.Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            jobId = (await db.ParseJobs.OrderByDescending(j => j.Id).FirstAsync()).Id;
+        }
+
+        using var source = await client.GetAsync($"/api/history/{jobId}/source");
+        source.StatusCode.Should().Be(HttpStatusCode.OK);
+        source.Content.Headers.ContentDisposition!.FileNameStar.Should().Be("Quote – Test.pdf");
+
+        using var output = await client.GetAsync($"/api/history/{jobId}/output");
+        output.StatusCode.Should().Be(HttpStatusCode.OK);
+        output.Content.Headers.ContentDisposition!.FileNameStar.Should().Be("Quote – Test_parsed.xlsx");
+    }
+
+    [Fact]
     public async Task DefaultVendorValidationTest()
     {
         using var fixture = await ApiTestFixture.CreateAsync();
@@ -355,6 +433,67 @@ public sealed class ParseTests
         good.StatusCode.Should().Be(HttpStatusCode.OK);
         var json = await good.Content.ReadFromJsonAsync<JsonElement>();
         json.GetProperty("default_vendor").GetString().Should().Be("Nutanix");
+
+        // L1: HPE and Zebra were previously missing from the allowlist and would 400.
+        foreach (var vendor in new[] { "HPE", "Zebra" })
+        {
+            var res = await ApiTestFixture.PatchJsonWithCsrfAsync(client, "/api/me/settings",
+                new { default_vendor = vendor });
+            res.StatusCode.Should().Be(HttpStatusCode.OK);
+            (await res.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("default_vendor").GetString().Should().Be(vendor);
+        }
+
+        // L1: string decimals parse and echo at fixed scale.
+        var fx = await ApiTestFixture.PatchJsonWithCsrfAsync(client, "/api/me/settings",
+            new { fx_rate = "1.2345" });
+        fx.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await fx.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("fx_rate").GetString().Should().Be("1.2345");
+    }
+
+    [Fact]
+    public async Task ParseRejectsNegativeMargin()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        // Rejected at input validation before the parser runs, so minimal bytes suffice.
+        using var response = await PostParseAsync(client, MinimalPdfBytes(), "test.pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "1.0", "-5");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await ApiTestFixture.DetailAsync(response)).Should().Be("Invalid margin.");
+    }
+
+    [Fact]
+    public async Task ParseRejectsCurrencyNotationFxRate()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        // NumberStyles.Number rejects currency symbols/grouping like "$1,000".
+        using var response = await PostParseAsync(client, MinimalPdfBytes(), "test.pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "$1,000", "5.0");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await ApiTestFixture.DetailAsync(response)).Should().Be("Invalid fx_rate.");
+    }
+
+    [Fact]
+    public async Task ParseAcceptsZeroMargin()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var root = FindRepoRoot();
+        var bytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "XQ-4076249.pdf"));
+
+        using var response = await PostParseAsync(client, bytes, "XQ-4076249.pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "0.7400", "0");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
@@ -372,7 +511,24 @@ public sealed class ParseTests
         var form = new MultipartFormDataContent();
         var fileContent = new ByteArrayContent(fileBytes);
         fileContent.Headers.ContentType = new(contentType);
-        form.Add(fileContent, "file", filename);
+        if (filename.Contains('"'))
+        {
+            // MultipartFormDataContent.Add(..., fileName) routes through
+            // ContentDispositionHeaderValue.SetName, whose EncodeAndQuoteMime rejects an
+            // embedded double-quote outright (it only RFC2047-encodes non-ASCII, it won't
+            // escape a quote). Build the file part's Content-Disposition as an escaped
+            // quoted-string — exactly what a browser sends on the wire — so the H1 server
+            // path actually receives the quote.
+            var disposition = new ContentDispositionHeaderValue("form-data") { Name = "file" };
+            disposition.Parameters.Add(new NameValueHeaderValue(
+                "filename", "\"" + filename.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\""));
+            fileContent.Headers.ContentDisposition = disposition;
+            form.Add(fileContent);
+        }
+        else
+        {
+            form.Add(fileContent, "file", filename);
+        }
         form.Add(new StringContent(vendor), "vendor");
         form.Add(new StringContent(parserSlug), "parser_slug");
         form.Add(new StringContent(fxRate), "fx_rate");
