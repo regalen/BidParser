@@ -28,7 +28,11 @@ public sealed class SessionTokenService
         return _protector.Protect(JsonSerializer.Serialize(payload));
     }
 
-    public SessionPayload? TryParse(string cookie)
+    // Not named TryParse: minimal-API parameter binding treats any type with a
+    // TryParse method as route/query-parseable and validates the (static) signature
+    // before DI service inference, so an instance TryParse here breaks app startup
+    // wherever this service is injected as an endpoint handler parameter.
+    public SessionPayload? TryReadPayload(string cookie)
     {
         try
         {

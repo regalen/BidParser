@@ -39,7 +39,7 @@ public sealed class SessionCookieAuthHandler : AuthenticationHandler<Authenticat
             return AuthenticateResult.NoResult();
         }
 
-        var payload = _tokens.TryParse(cookie);
+        var payload = _tokens.TryReadPayload(cookie);
         if (payload is null)
         {
             return AuthenticateResult.Fail("Invalid session.");
