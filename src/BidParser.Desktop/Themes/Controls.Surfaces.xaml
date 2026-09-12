@@ -1,0 +1,596 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:cfg="clr-namespace:BidParser.Desktop.Configuration"
+                    xmlns:mvvm="clr-namespace:BidParser.Desktop.Mvvm"
+                    xmlns:vm="clr-namespace:BidParser.Desktop.ViewModels">
+
+  <!-- Guidance blocks. The model is already validated; these templates only lay it out. -->
+  <DataTemplate DataType="{x:Type cfg:GuidanceParagraph}">
+    <TextBlock Margin="{StaticResource Space.Bottom4}"
+               Style="{StaticResource Text.BodySecondary}"
+               Foreground="{DynamicResource Brush.InfoText}"
+               TextWrapping="Wrap"
+               mvvm:GuidanceInlines.Runs="{Binding Runs}" />
+  </DataTemplate>
+
+  <DataTemplate DataType="{x:Type cfg:GuidanceListItem}">
+    <Grid Margin="{StaticResource Space.Bottom2}">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <TextBlock Margin="{StaticResource Space.Right8}"
+                 VerticalAlignment="Top"
+                 Style="{StaticResource Text.BodySecondary}"
+                 Foreground="{DynamicResource Brush.InfoText}"
+                 Text="•" />
+      <TextBlock Grid.Column="1"
+                 Style="{StaticResource Text.BodySecondary}"
+                 Foreground="{DynamicResource Brush.InfoText}"
+                 TextWrapping="Wrap"
+                 mvvm:GuidanceInlines.Runs="{Binding Runs}" />
+    </Grid>
+  </DataTemplate>
+
+  <DataTemplate DataType="{x:Type cfg:GuidanceBulletList}">
+    <ItemsControl Margin="{StaticResource Space.Bottom4}" ItemsSource="{Binding Items}" />
+  </DataTemplate>
+  <Style x:Key="Surface.Card" TargetType="Border">
+    <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+    <Setter Property="BorderThickness" Value="{StaticResource Border.All}" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius.Panel}" />
+  </Style>
+
+  <Style x:Key="Surface.MessageBar" TargetType="Border" BasedOn="{StaticResource Surface.Card}">
+    <Setter Property="CornerRadius" Value="{StaticResource Radius.Bar}" />
+    <Setter Property="Padding" Value="{StaticResource Space.MessageBar}" />
+  </Style>
+
+  <Style x:Key="Bar.Info" TargetType="Border" BasedOn="{StaticResource Surface.MessageBar}">
+    <Setter Property="Background" Value="{DynamicResource Brush.InfoWash}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.InfoBorder}" />
+  </Style>
+  <Style x:Key="Bar.Success" TargetType="Border" BasedOn="{StaticResource Surface.MessageBar}">
+    <Setter Property="Background" Value="{DynamicResource Brush.SuccessWash}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.SuccessBorder}" />
+  </Style>
+  <Style x:Key="Bar.Warning" TargetType="Border" BasedOn="{StaticResource Surface.MessageBar}">
+    <Setter Property="Background" Value="{DynamicResource Brush.WarningWash}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.WarningBorder}" />
+  </Style>
+
+  <!-- The drop zone hosts its own state surfaces, so the button itself contributes only the
+       focus ring and the hit area. -->
+  <Style x:Key="Surface.DropZone" TargetType="Button">
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Focusable" Value="True" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Grid>
+            <Border x:Name="FocusRing"
+                    BorderBrush="{DynamicResource Brush.Focus}"
+                    BorderThickness="{StaticResource Border.Focus}"
+                    CornerRadius="{StaticResource Radius.Panel}"
+                    Visibility="Collapsed" />
+            <ContentPresenter Margin="{StaticResource Space.2}" />
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="FocusRing" Property="Visibility" Value="Visible" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Cursor" Value="Arrow" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="Progress.Thin" TargetType="ProgressBar">
+    <Setter Property="Height" Value="{StaticResource Size.Progress}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+    <Setter Property="Background" Value="{DynamicResource Brush.Border}" />
+    <Setter Property="IsIndeterminate" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ProgressBar">
+          <Grid ClipToBounds="True">
+            <Border Background="{TemplateBinding Background}" CornerRadius="{StaticResource Radius.Bar}" />
+            <Border x:Name="PART_Indicator"
+                    HorizontalAlignment="Left"
+                    Background="{TemplateBinding Foreground}"
+                    CornerRadius="{StaticResource Radius.Bar}" />
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style TargetType="ToolTip">
+    <Setter Property="MaxWidth" Value="280" />
+    <Setter Property="Padding" Value="{StaticResource Space.8}" />
+    <Setter Property="Background" Value="{DynamicResource Brush.TextPrimary}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Surface}" />
+    <Setter Property="FontFamily" Value="{StaticResource Font.Primary}" />
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+
+  <Style x:Key="Surface.Dialog" TargetType="Border" BasedOn="{StaticResource Surface.Card}">
+    <Setter Property="Width" Value="{StaticResource Size.DialogWidth}" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius.Dialog}" />
+    <Setter Property="Padding" Value="{StaticResource Space.20}" />
+  </Style>
+
+  <!-- The single dialog host: scrim plus a centred dialog, drawn over the whole window rather
+       than in a second Window, so Esc handling and focus stay in one place. -->
+  <Style x:Key="Overlay.DialogHost" TargetType="ContentControl">
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ContentControl">
+          <Border Background="{DynamicResource Brush.Scrim}">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- ============================ Drop zone states ============================ -->
+
+  <DataTemplate DataType="{x:Type vm:EmptyDropZoneViewModel}">
+    <Grid>
+      <Rectangle RadiusX="{StaticResource Radius.PanelValue}"
+                 RadiusY="{StaticResource Radius.PanelValue}"
+                 Fill="{DynamicResource Brush.SurfaceEmpty}"
+                 Stroke="{DynamicResource Brush.BorderStrong}"
+                 StrokeThickness="{StaticResource Size.BorderThickness}"
+                 StrokeDashArray="4 2" />
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock HorizontalAlignment="Center"
+                   FontWeight="{StaticResource Weight.SemiBold}"
+                   Text="Drop quote file here" />
+        <TextBlock Margin="{StaticResource Space.Top4}"
+                   HorizontalAlignment="Center"
+                   Style="{StaticResource Text.Caption}"
+                   Text="{Binding AcceptedCaption}" />
+        <TextBlock Margin="{StaticResource Space.Top8}"
+                   HorizontalAlignment="Center"
+                   Foreground="{DynamicResource Brush.Accent}"
+                   FontWeight="{StaticResource Weight.SemiBold}"
+                   FontSize="13"
+                   Text="Browse…" />
+        <TextBlock Margin="{StaticResource Space.Top4}"
+                   HorizontalAlignment="Center"
+                   Style="{StaticResource Text.Caption}"
+                   Foreground="{DynamicResource Brush.TextMuted}"
+                   Text="One file at a time · Ctrl+O opens the file picker" />
+      </StackPanel>
+    </Grid>
+  </DataTemplate>
+
+  <DataTemplate DataType="{x:Type vm:DragOverDropZoneViewModel}">
+    <Grid>
+      <Rectangle RadiusX="{StaticResource Radius.PanelValue}"
+                 RadiusY="{StaticResource Radius.PanelValue}"
+                 Fill="{DynamicResource Brush.InfoWash}"
+                 Stroke="{DynamicResource Brush.Accent}"
+                 StrokeThickness="{StaticResource Size.FocusThickness}"
+                 StrokeDashArray="4 2" />
+      <TextBlock HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 Foreground="{DynamicResource Brush.AccentHover}"
+                 FontWeight="{StaticResource Weight.SemiBold}"
+                 Text="Release to load" />
+    </Grid>
+  </DataTemplate>
+
+  <DataTemplate DataType="{x:Type vm:InvalidDropZoneViewModel}">
+    <Border Background="{DynamicResource Brush.ErrorWash}"
+            BorderBrush="{DynamicResource Brush.Error}"
+            BorderThickness="{StaticResource Border.All}"
+            CornerRadius="{StaticResource Radius.Panel}"
+            Padding="{StaticResource Space.16}">
+      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+        <Border Width="{StaticResource Size.MessageGlyph}"
+                Height="{StaticResource Size.MessageGlyph}"
+                Margin="{StaticResource Space.Right12}"
+                VerticalAlignment="Top"
+                Background="{DynamicResource Brush.Error}"
+                CornerRadius="{StaticResource Radius.Control}">
+          <TextBlock HorizontalAlignment="Center"
+                     VerticalAlignment="Center"
+                     Foreground="{DynamicResource Brush.Surface}"
+                     FontSize="11"
+                     FontWeight="{StaticResource Weight.Bold}"
+                     Text="!" />
+        </Border>
+        <StackPanel>
+          <TextBlock FontWeight="{StaticResource Weight.SemiBold}"
+                     Foreground="{DynamicResource Brush.ErrorText}"
+                     TextWrapping="Wrap"
+                     Text="{Binding Headline}" />
+          <TextBlock Margin="{StaticResource Space.Top4}"
+                     Style="{StaticResource Text.BodySecondary}"
+                     TextWrapping="Wrap"
+                     Text="{Binding Detail}" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </DataTemplate>
+
+  <DataTemplate DataType="{x:Type vm:FileDropZoneViewModel}">
+    <Border Background="{DynamicResource Brush.Surface}"
+            BorderBrush="{DynamicResource Brush.BorderStrong}"
+            BorderThickness="{StaticResource Border.All}"
+            CornerRadius="{StaticResource Radius.Panel}"
+            Padding="{StaticResource Space.Horizontal12}">
+      <Grid VerticalAlignment="Center">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <Border Width="{StaticResource Size.FileBadgeWidth}"
+                Height="{StaticResource Size.FileBadgeHeight}"
+                Margin="{StaticResource Space.Right12}"
+                Background="{DynamicResource Brush.SurfaceInset}"
+                BorderBrush="{DynamicResource Brush.BorderStrong}"
+                BorderThickness="{StaticResource Border.All}"
+                CornerRadius="{StaticResource Radius.Bar}">
+          <TextBlock HorizontalAlignment="Center"
+                     VerticalAlignment="Bottom"
+                     Margin="{StaticResource Space.Bottom4}"
+                     Foreground="{DynamicResource Brush.Error}"
+                     FontSize="9"
+                     FontWeight="{StaticResource Weight.Bold}"
+                     Text="{Binding File.Badge}" />
+        </Border>
+
+        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+          <TextBlock FontWeight="{StaticResource Weight.SemiBold}"
+                     TextTrimming="CharacterEllipsis"
+                     Text="{Binding File.DisplayName}"
+                     ToolTip="{Binding File.DisplayName}" />
+          <TextBlock Margin="{StaticResource Space.Top2}"
+                     Style="{StaticResource Text.Caption}"
+                     TextTrimming="CharacterEllipsis"
+                     Text="{Binding File.Metadata}" />
+          <TextBlock x:Name="Status"
+                     Margin="{StaticResource Space.Top4}"
+                     Style="{StaticResource Text.Caption}"
+                     Foreground="{DynamicResource Brush.TextMuted}"
+                     TextTrimming="CharacterEllipsis"
+                     Text="{Binding Status}" />
+        </StackPanel>
+
+        <Button Grid.Column="2"
+                Margin="{StaticResource Space.Right8}"
+                Style="{StaticResource Button.Compact}"
+                Content="Replace"
+                Visibility="{Binding CanReplace, Converter={StaticResource BooleanToVisibilityConverter}}"
+                Command="{Binding DataContext.BrowseCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                AutomationProperties.Name="Replace quote file" />
+        <Button Grid.Column="3"
+                Style="{StaticResource Button.Subtle}"
+                Content="✕"
+                Visibility="{Binding CanReplace, Converter={StaticResource BooleanToVisibilityConverter}}"
+                Command="{Binding DataContext.ClearCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                AutomationProperties.Name="Clear quote file" />
+      </Grid>
+    </Border>
+    <DataTemplate.Triggers>
+      <DataTrigger Binding="{Binding Severity}" Value="{x:Static vm:FileStatusSeverity.Working}">
+        <Setter TargetName="Status" Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding Severity}" Value="{x:Static vm:FileStatusSeverity.Done}">
+        <Setter TargetName="Status" Property="Foreground" Value="{DynamicResource Brush.Success}" />
+      </DataTrigger>
+    </DataTemplate.Triggers>
+  </DataTemplate>
+
+  <!-- ============================ Result region ============================ -->
+
+  <DataTemplate DataType="{x:Type vm:NoResultViewModel}">
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+      <Border Width="{StaticResource Size.Control}"
+              Height="{StaticResource Size.Control}"
+              HorizontalAlignment="Center"
+              Background="{DynamicResource Brush.SurfaceInset}"
+              BorderBrush="{DynamicResource Brush.BorderStrong}"
+              BorderThickness="{StaticResource Border.All}"
+              CornerRadius="{StaticResource Radius.Control}">
+        <TextBlock HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Foreground="{DynamicResource Brush.TextMuted}"
+                   Text="↔" />
+      </Border>
+      <TextBlock Margin="{StaticResource Space.Top12}"
+                 HorizontalAlignment="Center"
+                 FontWeight="{StaticResource Weight.SemiBold}"
+                 Text="No quote parsed yet" />
+      <TextBlock Margin="{StaticResource Space.Top4}"
+                 HorizontalAlignment="Center"
+                 Style="{StaticResource Text.Caption}"
+                 Text="Warnings, totals and the saved workbook path appear here." />
+    </StackPanel>
+  </DataTemplate>
+
+  <DataTemplate x:Key="Result.Parsed">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+
+      <Border x:Name="HeaderBand"
+              Background="{DynamicResource Brush.SuccessWash}"
+              BorderBrush="{DynamicResource Brush.SuccessBorder}"
+              BorderThickness="{StaticResource Border.Bottom}"
+              CornerRadius="{StaticResource Radius.PanelTop}"
+              Padding="{StaticResource Space.MessageBar}">
+        <StackPanel Orientation="Horizontal">
+          <Border x:Name="HeaderGlyphChrome"
+                  Width="{StaticResource Size.StatusGlyph}"
+                  Height="{StaticResource Size.StatusGlyph}"
+                  Margin="{StaticResource Space.Right8}"
+                  VerticalAlignment="Center"
+                  Background="{DynamicResource Brush.Success}"
+                  CornerRadius="{StaticResource Radius.Control}">
+            <TextBlock x:Name="HeaderGlyph"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource Brush.Surface}"
+                       FontSize="11"
+                       FontWeight="{StaticResource Weight.Bold}"
+                       Text="✓" />
+          </Border>
+          <TextBlock x:Name="HeaderText"
+                     VerticalAlignment="Center"
+                     FontSize="16"
+                     FontWeight="{StaticResource Weight.SemiBold}"
+                     Foreground="{DynamicResource Brush.SuccessText}"
+                     TextWrapping="Wrap"
+                     Text="{Binding Headline}" />
+        </StackPanel>
+      </Border>
+
+      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="{StaticResource Space.16}">
+        <StackPanel>
+          <TextBlock Style="{StaticResource Text.BodySecondary}"
+                     TextWrapping="Wrap"
+                     Text="{Binding Detail}" />
+
+          <ItemsControl Margin="{StaticResource Space.Top12}"
+                        ItemsSource="{Binding Facts}"
+                        Visibility="{Binding Facts, Converter={StaticResource EmptyToVisibility}}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <UniformGrid Columns="3" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Margin="{StaticResource Space.Bottom12}">
+                  <TextBlock Style="{StaticResource Text.SectionHeading}" Text="{Binding Label}" />
+                  <TextBlock Margin="{StaticResource Space.Top2}"
+                             FontWeight="{StaticResource Weight.SemiBold}"
+                             TextTrimming="CharacterEllipsis"
+                             Text="{Binding Value}"
+                             ToolTip="{Binding Value}" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <ItemsControl ItemsSource="{Binding Notes}"
+                        Visibility="{Binding Notes, Converter={StaticResource EmptyToVisibility}}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Style="{StaticResource Bar.Warning}" Margin="{StaticResource Space.Bottom8}">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Margin="{StaticResource Space.Right8}"
+                               VerticalAlignment="Top"
+                               Foreground="{DynamicResource Brush.Warning}"
+                               FontWeight="{StaticResource Weight.Bold}"
+                               Text="⚠" />
+                    <TextBlock Style="{StaticResource Text.BodySecondary}"
+                               Foreground="{DynamicResource Brush.WarningText}"
+                               TextWrapping="Wrap"
+                               Text="{Binding}" />
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <Border Style="{StaticResource Bar.Info}"
+                  Margin="{StaticResource Space.Bottom8}"
+                  Visibility="{Binding Guidance, Converter={StaticResource EmptyToVisibility}}">
+            <StackPanel Orientation="Horizontal">
+              <Border Width="{StaticResource Size.MessageGlyph}"
+                      Height="{StaticResource Size.MessageGlyph}"
+                      Margin="{StaticResource Space.Right8}"
+                      VerticalAlignment="Top"
+                      Background="{DynamicResource Brush.Accent}"
+                      CornerRadius="{StaticResource Radius.Control}">
+                <TextBlock HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource Brush.Surface}"
+                           FontSize="11"
+                           FontWeight="{StaticResource Weight.Bold}"
+                           Text="i" />
+              </Border>
+              <ItemsControl ItemsSource="{Binding Guidance.Blocks}" />
+            </StackPanel>
+          </Border>
+
+          <Border Style="{StaticResource Bar.Success}"
+                  Visibility="{Binding SavedMessage, Converter={StaticResource EmptyToVisibility}}">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock VerticalAlignment="Center"
+                         Style="{StaticResource Text.BodySecondary}"
+                         Foreground="{DynamicResource Brush.SuccessText}"
+                         TextTrimming="CharacterEllipsis"
+                         Text="{Binding SavedMessage}"
+                         ToolTip="{Binding SavedPath}" />
+              <Button Grid.Column="1"
+                      Margin="{StaticResource Space.Horizontal8}"
+                      Style="{StaticResource Button.Compact}"
+                      Content="Open folder"
+                      Command="{Binding DataContext.OpenFolderCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                      AutomationProperties.Name="Open the folder containing the saved workbook" />
+            </Grid>
+          </Border>
+
+          <Button Margin="{StaticResource Space.Top12}"
+                  HorizontalAlignment="Left"
+                  Style="{StaticResource Button.Compact}"
+                  Content="Parse another file"
+                  Command="{Binding DataContext.ClearCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                  AutomationProperties.Name="Parse another file" />
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+    <DataTemplate.Triggers>
+      <DataTrigger Binding="{Binding Severity}" Value="{x:Static vm:ResultSeverity.Warning}">
+        <Setter TargetName="HeaderBand" Property="Background" Value="{DynamicResource Brush.WarningWash}" />
+        <Setter TargetName="HeaderBand" Property="BorderBrush" Value="{DynamicResource Brush.WarningBorder}" />
+        <Setter TargetName="HeaderGlyphChrome" Property="Background" Value="{DynamicResource Brush.Warning}" />
+        <Setter TargetName="HeaderGlyph" Property="Text" Value="!" />
+        <Setter TargetName="HeaderText" Property="Foreground" Value="{DynamicResource Brush.WarningText}" />
+      </DataTrigger>
+    </DataTemplate.Triggers>
+  </DataTemplate>
+
+  <DataTemplate DataType="{x:Type vm:SuccessResultViewModel}">
+    <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource Result.Parsed}" />
+  </DataTemplate>
+
+  <DataTemplate DataType="{x:Type vm:WarningResultViewModel}">
+    <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource Result.Parsed}" />
+  </DataTemplate>
+
+  <DataTemplate DataType="{x:Type vm:FailureResultViewModel}">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+
+      <Border Background="{DynamicResource Brush.ErrorWash}"
+              BorderBrush="{DynamicResource Brush.ErrorBorder}"
+              BorderThickness="{StaticResource Border.Bottom}"
+              CornerRadius="{StaticResource Radius.PanelTop}"
+              Padding="{StaticResource Space.MessageBar}">
+        <StackPanel Orientation="Horizontal">
+          <Border Width="{StaticResource Size.StatusGlyph}"
+                  Height="{StaticResource Size.StatusGlyph}"
+                  Margin="{StaticResource Space.Right8}"
+                  VerticalAlignment="Center"
+                  Background="{DynamicResource Brush.Error}"
+                  CornerRadius="{StaticResource Radius.Control}">
+            <TextBlock HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource Brush.Surface}"
+                       FontSize="11"
+                       FontWeight="{StaticResource Weight.Bold}"
+                       Text="!" />
+          </Border>
+          <TextBlock VerticalAlignment="Center"
+                     FontSize="16"
+                     FontWeight="{StaticResource Weight.SemiBold}"
+                     Foreground="{DynamicResource Brush.ErrorText}"
+                     TextWrapping="Wrap"
+                     Text="{Binding Headline}" />
+        </StackPanel>
+      </Border>
+
+      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="{StaticResource Space.16}">
+        <StackPanel>
+          <TextBlock Style="{StaticResource Text.BodySecondary}" TextWrapping="Wrap" Text="{Binding Cause}" />
+          <TextBlock Margin="{StaticResource Space.Top12}"
+                     Style="{StaticResource Text.Caption}"
+                     TextWrapping="Wrap"
+                     Text="{Binding NextStep}" />
+
+          <ToggleButton x:Name="DetailsToggle"
+                        Margin="{StaticResource Space.Top12}"
+                        HorizontalAlignment="Left"
+                        Style="{StaticResource Toggle.Subtle}"
+                        Content="Technical details"
+                        AutomationProperties.Name="Show technical details" />
+          <Border Margin="{StaticResource Space.Top8}"
+                  Padding="{StaticResource Space.12}"
+                  Background="{DynamicResource Brush.SurfaceInset}"
+                  BorderBrush="{DynamicResource Brush.Border}"
+                  BorderThickness="{StaticResource Border.All}"
+                  CornerRadius="{StaticResource Radius.Bar}"
+                  Visibility="{Binding IsChecked, ElementName=DetailsToggle, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <TextBlock Style="{StaticResource Text.Metadata}"
+                       TextWrapping="Wrap"
+                       Text="{Binding TechnicalDetails}" />
+          </Border>
+
+          <StackPanel Margin="{StaticResource Space.Top12}" Orientation="Horizontal">
+            <Button Margin="{StaticResource Space.Right8}"
+                    Style="{StaticResource Button.Compact}"
+                    Content="Copy details"
+                    Command="{Binding DataContext.CopyDetailsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                    AutomationProperties.Name="Copy technical details" />
+            <Button Style="{StaticResource Button.Compact}"
+                    Content="Choose another file"
+                    Command="{Binding DataContext.BrowseCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                    AutomationProperties.Name="Choose another file" />
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </DataTemplate>
+
+  <!-- ============================ Overlay dialogs ============================ -->
+
+  <DataTemplate DataType="{x:Type vm:OverwriteDialogViewModel}">
+    <Border Style="{StaticResource Surface.Dialog}">
+      <StackPanel>
+        <TextBlock FontSize="16"
+                   FontWeight="{StaticResource Weight.SemiBold}"
+                   TextWrapping="Wrap"
+                   Text="{Binding Title}" />
+        <TextBlock Margin="{StaticResource Space.Top12}"
+                   Style="{StaticResource Text.BodySecondary}"
+                   TextWrapping="Wrap"
+                   Text="{Binding Message}" />
+        <StackPanel Margin="{StaticResource Space.Top20}"
+                    HorizontalAlignment="Right"
+                    Orientation="Horizontal">
+          <Button Margin="{StaticResource Space.Right8}"
+                  Style="{StaticResource Button.Secondary}"
+                  Content="Save a copy"
+                  Command="{Binding SaveCopyCommand}"
+                  AutomationProperties.Name="Save a copy" />
+          <Button Margin="{StaticResource Space.Right8}"
+                  Style="{StaticResource Button.Destructive}"
+                  Content="Replace"
+                  Command="{Binding ReplaceCommand}"
+                  AutomationProperties.Name="Replace the existing workbook" />
+          <Button Style="{StaticResource Button.Secondary}"
+                  Content="Cancel"
+                  Command="{Binding CancelCommand}"
+                  AutomationProperties.Name="Cancel" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </DataTemplate>
+</ResourceDictionary>

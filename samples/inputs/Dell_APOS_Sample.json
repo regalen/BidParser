@@ -1,0 +1,280 @@
+{
+    "affinityId": "900000001",
+    "id": "sample-id-0002",
+    "quoteNumber": 9000000000001,
+    "quoteVersion": 1,
+    "quoteType": "DSA Quote",
+    "resellerAffinityId": "900000003",
+    "solutionId": null,
+    "solutionVersion": null,
+    "creationDate": "2026-07-21T03:20:37.5296337+00:00",
+    "expirationDate": "2026-09-04T13:59:59+00:00",
+    "createdBy": "user@example.com",
+    "dealDetails": null,
+    "salesRepDetails": [
+        {
+            "name": "Dell Sales Rep",
+            "email": "salesrep@example.invalid",
+            "salesRepType": "Primary"
+        }
+    ],
+    "currency": "AUD",
+    "totalShipping": 0.0,
+    "totalTax": 502.18,
+    "totalEcoFee": 0.0,
+    "taxableAmount": 5021.82,
+    "nonTaxableAmount": 0.0,
+    "salesPrice": 5021.82,
+    "listPrice": 9657.35,
+    "finalPrice": 5524.0,
+    "gstin": null,
+    "billingContact": {
+        "firstName": "Sample",
+        "lastName": "Contact",
+        "companyName": "Sample Company",
+        "customerNumber": "900000004",
+        "department": "",
+        "emailAddress": "contact@example.invalid",
+        "phoneContacts": [
+            {
+                "countryCode": "",
+                "areaCode": "",
+                "number": "00000000",
+                "number1": "",
+                "number2": "",
+                "extension": "",
+                "phoneType": "Work",
+                "mediaType": ""
+            }
+        ],
+        "address": {
+            "city": "Sydney",
+            "country": "AU",
+            "line1": "1 Sample St",
+            "line2": "",
+            "line3": "",
+            "line4": "",
+            "postalCode": "2000",
+            "region": "NSW",
+            "countryCode": 0,
+            "state": null,
+            "province": null
+        }
+    },
+    "items": [
+        {
+            "id": "sample-id-0005",
+            "openBasketId": "sample-id-0006",
+            "parentId": null,
+            "contractCode": null,
+            "customerAgreementNumber": null,
+            "baseSkuNumber": "862-BMDP",
+            "baseSkuClassDescription": "ProSupport with 4-Hour Onsite Service Reinstate",
+            "customProductName": null,
+            "quantity": 1,
+            "listPrice": 9657.35,
+            "salesPrice": 5021.82,
+            "unitListPrice": 9657.35,
+            "unitSalesPrice": 5021.82,
+            "listPriceIncludingShipping": 9657.35,
+            "salesPriceIncludingShipping": 5021.82,
+            "unitListPriceIncludingShipping": 9657.35,
+            "unitSalesPriceIncludingShipping": 5021.82,
+            "ecoFee": 0.0,
+            "productDescription": "PowerEdge R740XD2 Upgrades and Extensions",
+            "productFamily": null,
+            "brand": null,
+            "lineOfBusiness": "PowerEdge Servers",
+            "hsnNumber": "998713",
+            "shipments": [
+                {
+                    "shipmentId": "sample-id-0007",
+                    "estimatedShippingDateRange": {
+                        "min": "0001-01-01T00:00:00",
+                        "max": "2026-07-22T15:59:00+00:00"
+                    },
+                    "estimatedDeliveryDateRange": {
+                        "min": "0001-01-01T00:00:00",
+                        "max": "2026-07-28T13:59:00+00:00"
+                    },
+                    "mustArriveByDate": "0001-01-01T00:00:00+00:00",
+                    "shippingMethod": "IY",
+                    "shippingPrice": 0.0,
+                    "shippingDiscount": 0.0,
+                    "shippingContact": {
+                        "firstName": "Sample",
+                        "lastName": "Contact",
+                        "companyName": "Sample Company",
+                        "customerNumber": "900000008",
+                        "emailAddress": "contact@example.invalid",
+                        "digitalFulfillmentEmail": null,
+                        "phoneContacts": [
+                            {
+                                "countryCode": "",
+                                "areaCode": "",
+                                "number": "00000000",
+                                "number1": "",
+                                "number2": "",
+                                "extension": "",
+                                "phoneType": "Work",
+                                "mediaType": ""
+                            }
+                        ],
+                        "address": {
+                            "city": "Sydney",
+                            "country": "AU",
+                            "line1": "1 Sample St",
+                            "line2": "",
+                            "line3": "",
+                            "line4": "",
+                            "postalCode": "2000",
+                            "region": "NSW",
+                            "countryCode": 0,
+                            "state": null,
+                            "province": null
+                        }
+                    },
+                    "installAt": null
+                }
+            ],
+            "skus": [
+                {
+                    "skuNumber": "862-BMDP",
+                    "description": "ProSupport with 4-Hour Onsite Service Reinstate",
+                    "quantity": 1,
+                    "listPrice": 9469.0,
+                    "unitListPrice": 9469.0,
+                    "salesPrice": 4923.88,
+                    "unitSalesPrice": 4923.88,
+                    "ecoFee": 0.0,
+                    "lineId": null,
+                    "lineNumber": null,
+                    "lineOfBusiness": "PowerEdge Servers",
+                    "productCategory": "Services",
+                    "isHardwareSku": false,
+                    "isHardwareMaintenaceSku": false,
+                    "isSoftwareSku": false,
+                    "isSoftwareMaintenaceSku": false,
+                    "isServiceSku": true,
+                    "isTiedSku": false,
+                    "parentItemId": null,
+                    "itemId": null,
+                    "serviceTags": {
+                        "serviceTagNumber": "TAG-SAMPLE1",
+                        "serviceContractExpiration": "2026-07-21T00:00:00",
+                        "newContractStartDate": "0001-01-01T00:00:00",
+                        "newContractEndDate": "2027-07-20T23:59:59"
+                    }
+                },
+                {
+                    "skuNumber": "891-10514",
+                    "description": "CSS SVC, Reinstatement Fee,ENT LOW END,Technician,Qty1 only for EMC, Cloud Products, PE, F10, PC",
+                    "quantity": 1,
+                    "listPrice": 188.35,
+                    "unitListPrice": 188.35,
+                    "salesPrice": 97.94,
+                    "unitSalesPrice": 97.94,
+                    "ecoFee": 0.0,
+                    "lineId": null,
+                    "lineNumber": null,
+                    "lineOfBusiness": "Misc",
+                    "productCategory": "Services",
+                    "isHardwareSku": false,
+                    "isHardwareMaintenaceSku": false,
+                    "isSoftwareSku": false,
+                    "isSoftwareMaintenaceSku": false,
+                    "isServiceSku": true,
+                    "isTiedSku": false,
+                    "parentItemId": null,
+                    "itemId": null,
+                    "serviceTags": {
+                        "serviceTagNumber": "TAG-SAMPLE1",
+                        "serviceContractExpiration": "2026-07-21T00:00:00",
+                        "newContractStartDate": "0001-01-01T00:00:00",
+                        "newContractEndDate": "2027-07-20T23:59:59"
+                    }
+                }
+            ]
+        }
+    ],
+    "endUser": {
+        "customerNumber": "900000009",
+        "companyName": "Sample End User",
+        "firstName": "Sample",
+        "middleName": null,
+        "lastName": "User",
+        "department": null,
+        "emailAddress": "enduser@example.invalid",
+        "warrantyEmail": null,
+        "digitalFulfillmentEmail": null,
+        "phoneContacts": [],
+        "fax": null,
+        "address": {
+            "city": "Sydney",
+            "country": "AU",
+            "line1": "1 Sample St",
+            "line2": null,
+            "line3": null,
+            "line4": null,
+            "postalCode": "2000",
+            "region": "NSW",
+            "countryCode": 0,
+            "state": null,
+            "province": null
+        }
+    },
+    "reseller": {
+        "customerNumber": "900000010",
+        "customerName": "Sample Reseller",
+        "address": {
+            "city": "Sydney",
+            "country": "AU",
+            "line1": "1 Sample St",
+            "line2": null,
+            "line3": null,
+            "line4": null,
+            "postalCode": "2000",
+            "region": "NSW",
+            "countryCode": 0,
+            "state": null,
+            "province": null
+        },
+        "contactName": "Sample Reseller Contact",
+        "contactEmail": "reseller@example.invalid",
+        "contactPhone": [],
+        "firstName": null,
+        "middleName": null,
+        "lastName": null,
+        "department": null,
+        "warrantyEmail": null,
+        "digitalFulfillmentEmail": null,
+        "fax": null
+    },
+    "soldTo": {
+        "customerNumber": "900000011",
+        "companyName": "Sample Sold To",
+        "firstName": "Sample",
+        "middleName": null,
+        "lastName": "User",
+        "department": null,
+        "emailAddress": "soldto@example.invalid",
+        "warrantyEmail": null,
+        "digitalFulfillmentEmail": null,
+        "phoneContacts": [],
+        "fax": null,
+        "address": {
+            "city": "Sydney",
+            "country": "AU",
+            "line1": "1 Sample St",
+            "line2": "",
+            "line3": "",
+            "line4": "",
+            "postalCode": "2000",
+            "region": "NSW",
+            "countryCode": 0,
+            "state": null,
+            "province": null
+        }
+    },
+    "oscDetails": null
+}

@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>BidParser.Desktop.Configuration.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <!--
+    The desktop's remote-configuration layer parses untrusted public JSON and markup, so its tests
+    must run everywhere the rest of the suite runs. BidParser.Desktop targets net10.0-windows and
+    needs the Windows Desktop runtime to load, which would confine these tests to Windows CI, so the
+    source is compiled into this cross-platform assembly instead. The linked configuration,
+    service, and numeric-field model files do not reference WPF; WPF-facing MVVM behavior and
+    guidance rendering are deliberately not linked here.
+  -->
+  <ItemGroup>
+    <Compile Include="..\..\src\BidParser.Desktop\Configuration\*.cs" LinkBase="Linked\Configuration" />
+    <Compile Include="..\..\src\BidParser.Desktop\Mvvm\NumericFieldViewModel.cs" LinkBase="Linked\Mvvm" />
+    <Compile Include="..\..\src\BidParser.Desktop\Mvvm\ObservableObject.cs" LinkBase="Linked\Mvvm" />
+    <Compile Include="..\..\src\BidParser.Desktop\Services\DesktopServices.cs" LinkBase="Linked\Services" />
+    <Compile Include="..\..\src\BidParser.Desktop\Services\DesktopVersion.cs" LinkBase="Linked\Services" />
+    <EmbeddedResource Include="..\..\src\BidParser.Desktop\Configuration\Bundled\*.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\BidParser.Parsing\BidParser.Parsing.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NuGet.Versioning" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

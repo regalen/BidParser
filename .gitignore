@@ -1,0 +1,43 @@
+# Node / Vite
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+.npm/
+
+# Playwright run artifacts (MCP browser sessions and ad-hoc runs)
+frontend/test-results/
+frontend/playwright-report/
+.playwright-mcp/
+
+# .NET
+**/bin/
+**/obj/
+.dotnet/
+.nuget/
+
+# Local env / data
+.env
+new_vendors/
+*.local
+data/
+*.sqlite
+*.sqlite-journal
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.antigravitycli/
+.claude/
+.agents/
+
+# Temporary AI collaboration files
+.ai/inbox/
+
+# Local AI-agent instructions (never publish)
+CLAUDE.md
+GEMINI.md
+
+# Local desktop design handoff (planning/reference material only)
+/feat_bidparser_desktop/

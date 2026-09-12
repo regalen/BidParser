@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\BidParser.Domain\BidParser.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" />
+    <PackageReference Include="ExcelDataReader" />
+    <PackageReference Include="HtmlAgilityPack" />
+    <PackageReference Include="PdfPig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="BidParser.Parsing.Tests" />
+  </ItemGroup>
+</Project>

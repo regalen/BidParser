@@ -1,0 +1,71 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Color x:Key="Color.WindowBackground">#1B1D21</Color>
+  <Color x:Key="Color.Surface">#232629</Color>
+  <Color x:Key="Color.SurfaceInset">#2C3035</Color>
+  <Color x:Key="Color.SurfaceHover">#34383E</Color>
+  <Color x:Key="Color.SurfaceEmpty">#202327</Color>
+  <Color x:Key="Color.Border">#3A3E45</Color>
+  <Color x:Key="Color.BorderStrong">#555B64</Color>
+  <Color x:Key="Color.BorderAccent">#A8AEB8</Color>
+  <Color x:Key="Color.TextPrimary">#F2F4F7</Color>
+  <Color x:Key="Color.TextBody">#D8DCE2</Color>
+  <Color x:Key="Color.TextSecondary">#C2C7D0</Color>
+  <Color x:Key="Color.TextMuted">#A8AEB8</Color>
+  <Color x:Key="Color.TextDisabled">#858B94</Color>
+  <Color x:Key="Color.Accent">#4C9AF0</Color>
+  <Color x:Key="Color.AccentHover">#70AFF3</Color>
+  <Color x:Key="Color.AccentPressed">#2F80D8</Color>
+  <Color x:Key="Color.AccentForeground">#10131A</Color>
+  <Color x:Key="Color.Success">#4CC38A</Color>
+  <Color x:Key="Color.Warning">#E1A85B</Color>
+  <Color x:Key="Color.Error">#F27167</Color>
+  <Color x:Key="Color.InfoWash">#1D2B40</Color>
+  <Color x:Key="Color.SuccessWash">#1E2E27</Color>
+  <Color x:Key="Color.WarningWash">#342A1D</Color>
+  <Color x:Key="Color.ErrorWash">#382321</Color>
+  <Color x:Key="Color.InfoBorder">#33507A</Color>
+  <Color x:Key="Color.SuccessBorder">#2F5C48</Color>
+  <Color x:Key="Color.WarningBorder">#6B5330</Color>
+  <Color x:Key="Color.ErrorBorder">#6E3A35</Color>
+  <Color x:Key="Color.InfoText">#A9C8F2</Color>
+  <Color x:Key="Color.SuccessText">#8BDCB4</Color>
+  <Color x:Key="Color.WarningText">#EEC489</Color>
+  <Color x:Key="Color.ErrorText">#F5A79E</Color>
+  <Color x:Key="Color.Scrim">#99000000</Color>
+
+  <SolidColorBrush x:Key="Brush.WindowBackground" Color="{StaticResource Color.WindowBackground}" />
+  <SolidColorBrush x:Key="Brush.Surface" Color="{StaticResource Color.Surface}" />
+  <SolidColorBrush x:Key="Brush.SurfaceInset" Color="{StaticResource Color.SurfaceInset}" />
+  <SolidColorBrush x:Key="Brush.SurfaceHover" Color="{StaticResource Color.SurfaceHover}" />
+  <SolidColorBrush x:Key="Brush.SurfaceEmpty" Color="{StaticResource Color.SurfaceEmpty}" />
+  <SolidColorBrush x:Key="Brush.Border" Color="{StaticResource Color.Border}" />
+  <SolidColorBrush x:Key="Brush.BorderStrong" Color="{StaticResource Color.BorderStrong}" />
+  <SolidColorBrush x:Key="Brush.BorderAccent" Color="{StaticResource Color.BorderAccent}" />
+  <SolidColorBrush x:Key="Brush.TextPrimary" Color="{StaticResource Color.TextPrimary}" />
+  <SolidColorBrush x:Key="Brush.TextBody" Color="{StaticResource Color.TextBody}" />
+  <SolidColorBrush x:Key="Brush.TextSecondary" Color="{StaticResource Color.TextSecondary}" />
+  <SolidColorBrush x:Key="Brush.TextMuted" Color="{StaticResource Color.TextMuted}" />
+  <SolidColorBrush x:Key="Brush.TextDisabled" Color="{StaticResource Color.TextDisabled}" />
+  <SolidColorBrush x:Key="Brush.Accent" Color="{StaticResource Color.Accent}" />
+  <SolidColorBrush x:Key="Brush.AccentHover" Color="{StaticResource Color.AccentHover}" />
+  <SolidColorBrush x:Key="Brush.AccentPressed" Color="{StaticResource Color.AccentPressed}" />
+  <SolidColorBrush x:Key="Brush.AccentForeground" Color="{StaticResource Color.AccentForeground}" />
+  <SolidColorBrush x:Key="Brush.Success" Color="{StaticResource Color.Success}" />
+  <SolidColorBrush x:Key="Brush.Warning" Color="{StaticResource Color.Warning}" />
+  <SolidColorBrush x:Key="Brush.Error" Color="{StaticResource Color.Error}" />
+  <SolidColorBrush x:Key="Brush.InfoWash" Color="{StaticResource Color.InfoWash}" />
+  <SolidColorBrush x:Key="Brush.SuccessWash" Color="{StaticResource Color.SuccessWash}" />
+  <SolidColorBrush x:Key="Brush.WarningWash" Color="{StaticResource Color.WarningWash}" />
+  <SolidColorBrush x:Key="Brush.ErrorWash" Color="{StaticResource Color.ErrorWash}" />
+  <SolidColorBrush x:Key="Brush.Focus" Color="{StaticResource Color.Accent}" />
+  <SolidColorBrush x:Key="Brush.InfoBorder" Color="{StaticResource Color.InfoBorder}" />
+  <SolidColorBrush x:Key="Brush.SuccessBorder" Color="{StaticResource Color.SuccessBorder}" />
+  <SolidColorBrush x:Key="Brush.WarningBorder" Color="{StaticResource Color.WarningBorder}" />
+  <SolidColorBrush x:Key="Brush.ErrorBorder" Color="{StaticResource Color.ErrorBorder}" />
+  <SolidColorBrush x:Key="Brush.InfoText" Color="{StaticResource Color.InfoText}" />
+  <SolidColorBrush x:Key="Brush.SuccessText" Color="{StaticResource Color.SuccessText}" />
+  <SolidColorBrush x:Key="Brush.WarningText" Color="{StaticResource Color.WarningText}" />
+  <SolidColorBrush x:Key="Brush.ErrorText" Color="{StaticResource Color.ErrorText}" />
+  <SolidColorBrush x:Key="Brush.Scrim" Color="{StaticResource Color.Scrim}" />
+</ResourceDictionary>

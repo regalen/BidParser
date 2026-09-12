@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "vendorDefaults": [
+    {
+      "vendors": [
+        "Zebra"
+      ],
+      "onCostPct": 2.85
+    },
+    {
+      "vendors": [
+        "Datalogic"
+      ],
+      "onCostPct": 2.29
+    },
+    {
+      "vendors": [
+        "Epson"
+      ],
+      "onCostPct": 0.65
+    },
+    {
+      "vendors": [
+        "Strike"
+      ],
+      "onCostPct": 0.35
+    }
+  ]
+}

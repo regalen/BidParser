@@ -1,0 +1,348 @@
+name: Validate & Publish
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "README*"
+  # No paths-ignore here on purpose. Path filters are also evaluated for tag pushes, and a tag
+  # placed on a documentation-only commit would silently skip the release entirely.
+  push:
+    tags: ["v*"]
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  DESKTOP_PUBLISH_DIR: src/BidParser.Desktop/bin/publish/win-x64
+
+jobs:
+  # Resolve one version before either artefact is built. Tags are release authority, so reject a
+  # malformed tag or one cut from outside main before publishing an image or executable.
+  prepare-publish:
+    if: github.event_name == 'push'
+    runs-on: [self-hosted, linux, x64]
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Resolve and validate version
+        id: version
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          semver_pattern='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+
+          if [[ ! "$version" =~ $semver_pattern ]]; then
+            echo "::error::Release tag '${GITHUB_REF_NAME}' is not a supported SemVer vMAJOR.MINOR.PATCH tag."
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Release tag '${GITHUB_REF_NAME}' does not point to a commit on main."
+            exit 1
+          fi
+
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+
+  validate:
+    if: github.event_name == 'pull_request'
+    runs-on: [self-hosted, linux, x64]
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore BidParser.sln
+
+      - name: Build
+        run: dotnet build BidParser.sln --configuration Release --no-restore
+
+      # The whole solution, desktop included: BidParser.Desktop targets net10.0-windows but sets
+      # EnableWindowsTargeting, so it compiles here, and its configuration tests are deliberately
+      # cross-platform so they run in this suite rather than only on Windows.
+      - name: Test
+        run: dotnet test BidParser.sln --configuration Release --no-build --verbosity normal
+
+  # The desktop is the only artefact that cannot be produced on the Linux runner, so it gets its own
+  # pull-request check rather than waiting for a tag to discover a Windows-only break.
+  validate-windows:
+    if: github.event_name == 'pull_request'
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore src/BidParser.Desktop/BidParser.Desktop.csproj
+
+      - name: Build desktop
+        run: dotnet build src/BidParser.Desktop/BidParser.Desktop.csproj --configuration Release --no-restore
+
+      # Parser geometry can vary with the PDF library's platform-specific measurements. Keep the
+      # complete parser/output suite on Windows so those regressions fail before a release tag.
+      - name: Test parser and output
+        run: dotnet test tests/BidParser.Parsing.Tests/BidParser.Parsing.Tests.csproj --configuration Release
+
+      - name: Test desktop configuration
+        run: dotnet test tests/BidParser.Desktop.Configuration.Tests/BidParser.Desktop.Configuration.Tests.csproj --configuration Release
+
+      - name: Publish smoke candidate
+        run: >-
+          dotnet publish src/BidParser.Desktop/BidParser.Desktop.csproj
+          -p:PublishProfile=win-x64
+          -p:BidParserVersion=1.0.0-ci
+
+      - name: Verify one-file output, version metadata and launch
+        shell: pwsh
+        run: >-
+          ./build/verify-desktop-publish.ps1
+          -PublishDir '${{ env.DESKTOP_PUBLISH_DIR }}'
+          -ExpectedVersion '1.0.0-ci'
+
+  build-and-push:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: [self-hosted, linux, x64]
+    needs: [prepare-publish]
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_version: ${{ steps.meta.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=false
+          tags: |
+            type=sha,prefix=sha-,format=short,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Build and push
+        shell: bash
+        env:
+          BIDPARSER_VERSION: ${{ needs.prepare-publish.outputs.version }}
+          IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
+          IMAGE_LABELS: ${{ steps.meta.outputs.labels }}
+        run: |
+          build_args=(
+            --platform linux/amd64
+            --build-arg "APP_VERSION=${BIDPARSER_VERSION}"
+            --build-arg "BIDPARSER_VERSION=${BIDPARSER_VERSION}"
+          )
+
+          # metadata-action emits newline-separated tags and labels. Convert
+          # each value to the equivalent plain docker build flag because the
+          # rootless Podman runner does not provide Buildx.
+          while IFS= read -r tag; do
+            [[ -n "$tag" ]] && build_args+=(--tag "$tag")
+          done <<< "$IMAGE_TAGS"
+
+          while IFS= read -r label; do
+            [[ -n "$label" ]] && build_args+=(--label "$label")
+          done <<< "$IMAGE_LABELS"
+
+          docker build "${build_args[@]}" .
+
+          # Push only this event's generated tags. Using --all-tags could push
+          # stale tags retained in the persistent runner's local image store.
+          while IFS= read -r tag; do
+            [[ -n "$tag" ]] && docker push "$tag"
+          done <<< "$IMAGE_TAGS"
+
+  # The portable Windows executable. This must run on Windows: the SDK cannot rewrite the apphost's
+  # Win32 icon and version resources when cross-compiling, so a Linux-published exe would carry the
+  # .NET host's own metadata. verify-desktop-publish.ps1 fails that build rather than releasing it.
+  desktop-build:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    needs: [prepare-publish]
+    permissions:
+      contents: read
+    outputs:
+      sha256: ${{ steps.verify.outputs.sha256 }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      # The API suite needs a Linux SQL Server container and is covered by the pull-request run;
+      # this job proves the shared parsing/output core and the desktop layer on Windows.
+      - name: Test parser and output
+        run: dotnet test tests/BidParser.Parsing.Tests/BidParser.Parsing.Tests.csproj --configuration Release
+
+      - name: Test desktop configuration
+        run: dotnet test tests/BidParser.Desktop.Configuration.Tests/BidParser.Desktop.Configuration.Tests.csproj --configuration Release
+
+      - name: Publish portable executable
+        run: >-
+          dotnet publish src/BidParser.Desktop/BidParser.Desktop.csproj
+          -p:PublishProfile=win-x64
+          -p:BidParserVersion=${{ needs.prepare-publish.outputs.version }}
+
+      - name: Verify one-file output, version metadata and launch
+        id: verify
+        shell: pwsh
+        run: >-
+          ./build/verify-desktop-publish.ps1
+          -PublishDir '${{ env.DESKTOP_PUBLISH_DIR }}'
+          -ExpectedVersion '${{ needs.prepare-publish.outputs.version }}'
+
+      # Only the executable crosses between jobs — never the workspace, symbols or source.
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: bidparser-release
+          path: ${{ env.DESKTOP_PUBLISH_DIR }}/BidParser.exe
+          retention-days: 1
+          if-no-files-found: error
+
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: [self-hosted, linux, x64]
+    needs: [build-and-push, desktop-build]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          # Full history so the previous tag can be located for the change list.
+          fetch-depth: 0
+
+      # One public-safe change list for the release. Squashed PR subjects only: bodies may hold internal
+      # detail, and per the attribution policy in AGENTS.md no subject names a tool or agent.
+      - name: Build change list
+        id: changes
+        shell: bash
+        run: |
+          previous=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+          if [[ -n "$previous" ]]; then
+            range="${previous}..${GITHUB_REF_NAME}"
+            echo "Changes since ${previous}"
+          else
+            range="${GITHUB_REF_NAME}"
+            echo "No previous tag; listing all history"
+          fi
+
+          {
+            echo "list<<CHANGELIST_EOF"
+            git log --no-merges --pretty=format:'- %s' "$range" | grep -v '^- *$' || echo "- No changes recorded."
+            echo ""
+            echo "CHANGELIST_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Download portable executable
+        uses: actions/download-artifact@v4
+        with:
+          name: bidparser-release
+          path: dist
+
+      - name: Create and verify checksum
+        shell: bash
+        run: |
+          sha256sum dist/BidParser.exe > dist/BidParser.exe.sha256
+          actual="$(awk '{print $1}' dist/BidParser.exe.sha256)"
+          expected="${{ needs.desktop-build.outputs.sha256 }}"
+          if [[ "$actual" != "$expected" ]]; then
+            echo "::error::Downloaded executable checksum does not match the Windows verification output."
+            exit 1
+          fi
+
+      # Release notes and bodies describe the change, never the tooling used to make it. This job
+      # creates no commits and sets no author or committer metadata.
+      - name: Create release
+        uses: softprops/action-gh-release@v3
+        with:
+          name: BidParser ${{ needs.build-and-push.outputs.image_version }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          make_latest: ${{ contains(github.ref_name, '-') && 'false' || 'legacy' }}
+          files: |
+            dist/BidParser.exe
+            dist/BidParser.exe.sha256
+          fail_on_unmatched_files: true
+          body: |
+            **Docker image (web app):**
+            ```
+            docker pull ghcr.io/regalen/bidparser:${{ needs.build-and-push.outputs.image_version }}
+            ```
+
+            **[BidParser.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/BidParser.exe)** — Windows x64, portable.
+
+            Save it anywhere you can write to and run it. There is no installer, it needs no
+            separate .NET install, and it does not require administrator rights. To update, replace
+            the file with a newer one.
+
+            **SHA-256:** download `BidParser.exe.sha256` with the executable and verify it before
+            running the file.
+
+            > This build is not code-signed. Windows SmartScreen may warn the first time you run it,
+            > and some managed devices block unsigned executables outright. Verify that the download
+            > came from this repository and compare its SHA-256 checksum above. If your organisation
+            > blocks the executable, ask your IT administrator to assess or approve it; do not bypass
+            > organisational security policy.
+
+            ### Changes
+            ${{ steps.changes.outputs.list }}

@@ -1,0 +1,393 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using BidParser.Infrastructure.Entities;
+using BidParser.Infrastructure.Persistence;
+using BidParser.Infrastructure.Services;
+using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
+
+namespace BidParser.Api.Tests;
+
+public sealed class HistoryTests
+{
+    // ── list endpoint ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task HistoryListShowsJobsAfterParse()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var root = FindRepoRoot();
+        var bytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "XQ-9100002.pdf"));
+        await PostParseAsync(client, bytes, "XQ-9100002.pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "0.7400", "7.50");
+
+        var response = await client.GetFromJsonAsync<JsonElement>("/api/history");
+        response.GetProperty("total").GetInt32().Should().Be(1);
+        var row = response.GetProperty("rows").EnumerateArray().Single();
+        row.GetProperty("sourceFilename").GetString().Should().Be("XQ-9100002.pdf");
+        row.GetProperty("bidNumber").GetString().Should().Be("XQ-9100002");
+        row.GetProperty("bidRevision").GetString().Should().Be("1");
+        row.GetProperty("vendor").GetString().Should().Be("Nutanix");
+        row.GetProperty("parserSlug").GetString().Should().Be("nutanix_software_only_pdf");
+        row.GetProperty("fileTypeDisplay").GetString().Should().Be("Software Only (PDF)");
+        row.GetProperty("crmTemplate").GetString().Should().Be("Foreign Uplift");
+        row.GetProperty("totalsMatch").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DeletingUserRemovesTheirParseFiles()
+    {
+        // M3: deleting a user cascades their ParseJob rows; the stored source and
+        // output files must be removed too (RetentionService discovers files via
+        // the rows, so once the rows are gone the files would be orphaned forever).
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var create = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/users",
+            new { username = "user2", name = "User Two", role = "user" });
+        create.EnsureSuccessStatusCode();
+        var created = await create.Content.ReadFromJsonAsync<JsonElement>();
+        var userId = created.GetProperty("user").GetProperty("id").GetInt32();
+        var temp = created.GetProperty("tempPassword").GetString()!;
+
+        using var client2 = fixture.Factory.CreateClient();
+        await ApiTestFixture.PostJsonWithCsrfAsync(client2, "/api/auth/login",
+            new { username = "user2", password = temp });
+        await ApiTestFixture.PostJsonWithCsrfAsync(client2, "/api/auth/change-password",
+            new { OldPassword = temp, NewPassword = "User2Pass1!" });
+
+        var root = FindRepoRoot();
+        var pdfBytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "XQ-9100002.pdf"));
+        await PostParseAsync(client2, pdfBytes, "user2_quote.pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "1.0", "5.0");
+
+        string sourcePath, outputPath;
+        using (var scope = fixture.Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var job = await db.ParseJobs.SingleAsync(j => j.UserId == userId);
+            sourcePath = job.SourcePath;
+            outputPath = job.OutputPath;
+        }
+        File.Exists(sourcePath).Should().BeTrue();
+        File.Exists(outputPath).Should().BeTrue();
+
+        var delete = await ApiTestFixture.DeleteWithCsrfAsync(client, $"/api/users/{userId}");
+        delete.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        File.Exists(sourcePath).Should().BeFalse();
+        File.Exists(outputPath).Should().BeFalse();
+
+        var users = await client.GetFromJsonAsync<JsonElement[]>("/api/users");
+        users!.Select(u => u.GetProperty("username").GetString()).Should().NotContain("user2");
+    }
+
+    [Fact]
+    public async Task HistoryListUserScopedAndQFilter()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        // Upload two files
+        var root = FindRepoRoot();
+        var pdfBytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "XQ-9100002.pdf"));
+        var xlsxBytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "XQ-9100003.xlsx"));
+        await PostParseAsync(client, pdfBytes, "XQ-9100002.pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "1.0", "5.0");
+        await PostParseAsync(client, xlsxBytes, "XQ-9100003.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "Nutanix", "nutanix_hardware_only_xlsx", "1.0", "5.0");
+
+        // Create a second user and parse under their account
+        var create = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/users",
+            new { username = "user2", name = "User Two", role = "user" });
+        create.EnsureSuccessStatusCode();
+        var createTemp = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("tempPassword").GetString()!;
+
+        using var client2 = fixture.Factory.CreateClient();
+        await ApiTestFixture.PostJsonWithCsrfAsync(client2, "/api/auth/login",
+            new { username = "user2", password = createTemp });
+        await ApiTestFixture.PostJsonWithCsrfAsync(client2, "/api/auth/change-password",
+            new { OldPassword = createTemp, NewPassword = "User2Pass1!" });
+        await PostParseAsync(client2, pdfBytes, "XQ-9100002.pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "1.0", "5.0");
+
+        // Admin sees only their own 2 jobs
+        var adminHistory = await client.GetFromJsonAsync<JsonElement>("/api/history?limit=100");
+        adminHistory.GetProperty("total").GetInt32().Should().Be(2);
+
+        // User2 sees only their 1 job
+        var user2History = await client2.GetFromJsonAsync<JsonElement>("/api/history?limit=100");
+        user2History.GetProperty("total").GetInt32().Should().Be(1);
+
+        var bidOnly = await client2.GetFromJsonAsync<JsonElement>("/api/history?q=XQ-9100002");
+        bidOnly.GetProperty("total").GetInt32().Should().Be(1);
+        bidOnly.GetProperty("rows").EnumerateArray().Single()
+            .GetProperty("sourceFilename").GetString().Should().Be("XQ-9100002.pdf");
+
+        var compositeBid = await client2.GetFromJsonAsync<JsonElement>("/api/history?q=XQ-9100002%20v1");
+        compositeBid.GetProperty("total").GetInt32().Should().Be(1);
+
+        // q filter: match an uploaded source filename case-insensitively.
+        var filtered = await client.GetFromJsonAsync<JsonElement>("/api/history?q=9100003");
+        filtered.GetProperty("total").GetInt32().Should().Be(1);
+        filtered.GetProperty("rows").EnumerateArray().Single()
+            .GetProperty("sourceFilename").GetString().Should().Be("XQ-9100003.xlsx");
+
+        var lowerFiltered = await client.GetFromJsonAsync<JsonElement>("/api/history?q=xq-9100002");
+        lowerFiltered.GetProperty("total").GetInt32().Should().Be(1);
+        lowerFiltered.GetProperty("rows").EnumerateArray().Single()
+            .GetProperty("sourceFilename").GetString().Should().Be("XQ-9100002.pdf");
+
+        var upperFiltered = await client.GetFromJsonAsync<JsonElement>("/api/history?q=XQ-9100002");
+        upperFiltered.GetProperty("total").GetInt32().Should().Be(1);
+        upperFiltered.GetProperty("rows").EnumerateArray().Single()
+            .GetProperty("sourceFilename").GetString().Should().Be("XQ-9100002.pdf");
+
+        // whitespace-only q treated as no filter
+        var unfiltered = await client.GetFromJsonAsync<JsonElement>("/api/history?q=++++");
+        unfiltered.GetProperty("total").GetInt32().Should().Be(2);
+    }
+
+    [Fact]
+    public async Task HistoryListPagination()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var root = FindRepoRoot();
+        var bytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "XQ-9100002.pdf"));
+        for (var i = 0; i < 3; i++)
+        {
+            await PostParseAsync(client, bytes, $"quote_{i}.pdf", "application/pdf",
+                "Nutanix", "nutanix_software_only_pdf", "1.0", "5.0");
+        }
+
+        var page1 = await client.GetFromJsonAsync<JsonElement>("/api/history?limit=2&offset=0");
+        page1.GetProperty("total").GetInt32().Should().Be(3);
+        page1.GetProperty("rows").EnumerateArray().Should().HaveCount(2);
+
+        var page2 = await client.GetFromJsonAsync<JsonElement>("/api/history?limit=2&offset=2");
+        page2.GetProperty("total").GetInt32().Should().Be(3);
+        page2.GetProperty("rows").EnumerateArray().Should().HaveCount(1);
+    }
+
+    // ── when field ───────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task HistoryWhenFieldIsIsoTimestamp()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        using var scope = fixture.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var admin = await db.Users.FirstAsync();
+
+        db.ParseJobs.Add(new ParseJob
+        {
+            UserId = admin.Id,
+            Vendor = "Nutanix",
+            ParserSlug = "nutanix_software_only_pdf",
+            CrmTemplate = "Foreign Uplift",
+            SourceFilename = "when_test.pdf",
+            SourcePath = "/fake/source.pdf",
+            OutputPath = "/fake/output.xlsx",
+            FxRate = 1m,
+            Margin = 5m,
+            ComputedTotal = 100m,
+            TotalsMatch = true
+        });
+        await db.SaveChangesAsync();
+
+        var response = await client.GetFromJsonAsync<JsonElement>("/api/history?limit=1");
+        var when = response.GetProperty("rows").EnumerateArray().First().GetProperty("when").GetString()!;
+
+        DateTime.TryParse(when, null, System.Globalization.DateTimeStyles.RoundtripKind, out var parsed)
+            .Should().BeTrue($"'when' should be a parseable ISO timestamp, got: {when}");
+        parsed.Kind.Should().Be(DateTimeKind.Utc);
+    }
+
+    // ── downloads ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task HistoryDownloadRoundtrip()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var root = FindRepoRoot();
+        var bytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "XQ-9100002.pdf"));
+        await PostParseAsync(client, bytes, "XQ-9100002.pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "1.0", "5.0");
+
+        var history = await client.GetFromJsonAsync<JsonElement>("/api/history");
+        var jobId = history.GetProperty("rows").EnumerateArray().First().GetProperty("id").GetInt32();
+
+        var source = await client.GetAsync($"/api/history/{jobId}/source");
+        source.StatusCode.Should().Be(HttpStatusCode.OK);
+        var sourceBytes = await source.Content.ReadAsByteArrayAsync();
+        sourceBytes.Length.Should().BeGreaterThan(0);
+
+        var output = await client.GetAsync($"/api/history/{jobId}/output");
+        output.StatusCode.Should().Be(HttpStatusCode.OK);
+        var outputBytes = await output.Content.ReadAsByteArrayAsync();
+        outputBytes.Length.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task HistoryDownloadCrossUserReturns404()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        // Admin uploads a file
+        var root = FindRepoRoot();
+        var bytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "XQ-9100002.pdf"));
+        await PostParseAsync(client, bytes, "XQ-9100002.pdf", "application/pdf",
+            "Nutanix", "nutanix_software_only_pdf", "1.0", "5.0");
+        var history = await client.GetFromJsonAsync<JsonElement>("/api/history");
+        var adminJobId = history.GetProperty("rows").EnumerateArray().First().GetProperty("id").GetInt32();
+
+        // Create user2 and log them in
+        var create2 = await ApiTestFixture.PostJsonWithCsrfAsync(client, "/api/users",
+            new { username = "user2", name = "User Two", role = "user" });
+        var create2Temp = (await create2.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("tempPassword").GetString()!;
+        using var client2 = fixture.Factory.CreateClient();
+        await ApiTestFixture.PostJsonWithCsrfAsync(client2, "/api/auth/login",
+            new { username = "user2", password = create2Temp });
+        await ApiTestFixture.PostJsonWithCsrfAsync(client2, "/api/auth/change-password",
+            new { OldPassword = create2Temp, NewPassword = "User2Pass1!" });
+
+        // User2 can't see or download admin's job
+        var sourceResponse = await client2.GetAsync($"/api/history/{adminJobId}/source");
+        sourceResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var outputResponse = await client2.GetAsync($"/api/history/{adminJobId}/output");
+        outputResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // ── retention ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task RetentionDeletesExpiredJobsAndFiles()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        using var scope = fixture.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var admin = await db.Users.FirstAsync();
+
+        // Write real files to disk so the retention can delete them
+        var uploadDir = scope.ServiceProvider.GetRequiredService<BidParser.Infrastructure.Storage.FileStorage>();
+        var sourceFile = Path.Combine(Path.GetTempPath(), $"ret_source_{Guid.NewGuid():N}.pdf");
+        var outputFile = Path.Combine(Path.GetTempPath(), $"ret_output_{Guid.NewGuid():N}.xlsx");
+        File.WriteAllText(sourceFile, "fake pdf");
+        File.WriteAllText(outputFile, "fake xlsx");
+
+        var job = new ParseJob
+        {
+            UserId = admin.Id,
+            Vendor = "Nutanix",
+            ParserSlug = "nutanix_software_only_pdf",
+            CrmTemplate = "Foreign Uplift",
+            SourceFilename = "old_quote.pdf",
+            SourcePath = sourceFile,
+            OutputPath = outputFile,
+            FxRate = 1m,
+            Margin = 5m,
+            ComputedTotal = 100m,
+            TotalsMatch = true
+        };
+        db.ParseJobs.Add(job);
+        await db.SaveChangesAsync();
+
+        // Age the job to 1000 days ago (well past any retention window)
+        await db.Database.ExecuteSqlRawAsync(
+            "UPDATE parse_jobs SET created_at = {0} WHERE id = {1}",
+            DateTime.UtcNow.AddDays(-1000).ToString("yyyy-MM-dd HH:mm:ss.fffffff"),
+            job.Id);
+
+        // Add a fresh job that should NOT be deleted (retention = 90 days)
+        var freshJob = new ParseJob
+        {
+            UserId = admin.Id,
+            Vendor = "Nutanix",
+            ParserSlug = "nutanix_software_only_pdf",
+            CrmTemplate = "Foreign Uplift",
+            SourceFilename = "fresh_quote.pdf",
+            SourcePath = "/fake/fresh_source.pdf",
+            OutputPath = "/fake/fresh_output.xlsx",
+            FxRate = 1m,
+            Margin = 5m,
+            ComputedTotal = 100m,
+            TotalsMatch = true
+        };
+        db.ParseJobs.Add(freshJob);
+        await db.SaveChangesAsync();
+
+        var retentionService = scope.ServiceProvider.GetRequiredService<RetentionService>();
+        var deleted = await retentionService.CleanupOldParseJobsAsync(retentionDays: 90);
+
+        deleted.Should().Be(1);
+        (await db.ParseJobs.AnyAsync(j => j.Id == job.Id)).Should().BeFalse();
+        (await db.ParseJobs.AnyAsync(j => j.Id == freshJob.Id)).Should().BeTrue();
+        File.Exists(sourceFile).Should().BeFalse();
+        File.Exists(outputFile).Should().BeFalse();
+    }
+
+    // ── helpers ───────────────────────────────────────────────────────────────
+
+    private static Task<HttpResponseMessage> PostParseAsync(
+        HttpClient client,
+        byte[] fileBytes,
+        string filename,
+        string contentType,
+        string vendor,
+        string parserSlug,
+        string fxRate,
+        string margin)
+    {
+        var form = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(fileBytes);
+        fileContent.Headers.ContentType = new(contentType);
+        form.Add(fileContent, "file", filename);
+        form.Add(new StringContent(vendor), "vendor");
+        form.Add(new StringContent(parserSlug), "parserSlug");
+        form.Add(new StringContent(fxRate), "fxRate");
+        form.Add(new StringContent(margin), "margin");
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/parse") { Content = form };
+        request.Headers.Add("X-Requested-With", "BidParser");
+        return client.SendAsync(request);
+    }
+
+    private static string FindRepoRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "BidParser.sln")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate repository root.");
+    }
+}

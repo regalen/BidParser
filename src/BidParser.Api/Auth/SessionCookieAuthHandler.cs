@@ -1,0 +1,108 @@
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using System.Globalization;
+using BidParser.Api.Contracts;
+using BidParser.Api.Options;
+using BidParser.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+
+namespace BidParser.Api.Auth;
+
+/// <summary>
+/// Cookie-based authentication handler. Reads the encrypted "bidparser_session" cookie, then validates its
+/// signature, expiry, and password-hash stamp (so a password change or admin reset revokes every session),
+/// loads the user and builds their claims. Emits JSON 401/403 bodies — notAuthenticated / adminRequired /
+/// passwordChangeRequired — that the SPA branches on.
+/// </summary>
+public sealed class SessionCookieAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
+{
+    public const string SchemeName = "SessionCookie";
+    public const string CookieName = "bidparser_session";
+    private readonly SessionTokenService _tokens;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly AppOptions _appOptions;
+
+    public SessionCookieAuthHandler(
+        IOptionsMonitor<AuthenticationSchemeOptions> options,
+        ILoggerFactory logger,
+        UrlEncoder encoder,
+        SessionTokenService tokens,
+        IServiceScopeFactory scopeFactory,
+        AppOptions appOptions)
+        : base(options, logger, encoder)
+    {
+        _tokens = tokens;
+        _scopeFactory = scopeFactory;
+        _appOptions = appOptions;
+    }
+
+    protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
+    {
+        if (!Request.Cookies.TryGetValue(CookieName, out var cookie) || string.IsNullOrWhiteSpace(cookie))
+        {
+            return AuthenticateResult.NoResult();
+        }
+
+        var payload = _tokens.TryReadPayload(cookie);
+        if (payload is null)
+        {
+            return AuthenticateResult.Fail("Invalid session.");
+        }
+
+        var expiresAt = payload.IssuedAt + (_appOptions.SessionLifetimeHours * 60 * 60);
+        if (expiresAt < DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+        {
+            return AuthenticateResult.Fail("Session expired.");
+        }
+
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await db.Users.AsNoTracking().SingleOrDefaultAsync(
+            candidate => candidate.Id == payload.UserId,
+            Context.RequestAborted);
+        if (user is null)
+        {
+            return AuthenticateResult.Fail("User not found.");
+        }
+
+        // Sessions are bound to a fingerprint of the password hash; a password
+        // change or admin reset revokes every existing session for the user.
+        if (payload.Stamp != SessionTokenService.StampFor(user.PasswordHash))
+        {
+            return AuthenticateResult.Fail("Session revoked.");
+        }
+
+        List<Claim> claims =
+        [
+            new(ClaimTypes.NameIdentifier, user.Id.ToString(CultureInfo.InvariantCulture)),
+            new(ClaimTypes.Name, user.Username),
+            new(ClaimTypes.Role, user.Role.ToString().ToLowerInvariant()),
+            new("mustChangePassword", user.MustChangePassword ? "true" : "false")
+        ];
+
+        var identity = new ClaimsIdentity(claims, SchemeName);
+        return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName));
+    }
+
+    protected override Task HandleChallengeAsync(AuthenticationProperties properties)
+    {
+        Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return Response.WriteAsJsonAsync(new ApiError("notAuthenticated"));
+    }
+
+    protected override Task HandleForbiddenAsync(AuthenticationProperties properties)
+    {
+        Response.StatusCode = StatusCodes.Status403Forbidden;
+        var detail = Context.User.HasClaim("mustChangePassword", "true") ? "passwordChangeRequired" : "adminRequired";
+        if (detail == "passwordChangeRequired")
+        {
+            Logger.LogWarning(
+                "Authorization denied: passwordChangeRequired user={UserId}",
+                Context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown");
+        }
+
+        return Response.WriteAsJsonAsync(new ApiError(detail));
+    }
+}

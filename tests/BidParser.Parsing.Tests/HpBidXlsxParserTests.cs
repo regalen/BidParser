@@ -1,0 +1,266 @@
+using BidParser.Domain.Constants;
+using BidParser.Parsing.Registry;
+using FluentAssertions;
+using Xunit;
+
+namespace BidParser.Parsing.Tests;
+
+public sealed class HpBidXlsxParserTests
+{
+
+    // ── File 1: 034809 — 479 items (Part Number × 3, Bundle × 14, Bundle Detail × 462) ──
+
+    [Fact]
+    public void File1_Metadata_IsCorrect()
+    {
+        var root = TestSample.Root;
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpBidXlsx);
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals_Sample_01_HPI.xlsx"));
+
+        result.Metadata.QuoteNumber.Should().Be("99010001");
+        result.Metadata.Supplier.Should().Be(Vendors.Hp);
+        result.Metadata.Currency.Should().Be("AUD");
+        result.Metadata.QuotedTotal.Should().BeNull();
+        result.Metadata.ParserSlug.Should().Be(ParserSlugs.HpBidXlsx);
+    }
+
+    [Fact]
+    public void File1_ValidationMatchesWithNullTotal()
+    {
+        var root = TestSample.Root;
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpBidXlsx);
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals_Sample_01_HPI.xlsx"));
+
+        result.Validation.Matches.Should().BeTrue();
+        result.Validation.QuotedTotal.Should().BeNull();
+        // Qty for Part Number / Bundle lines derives from Min Order Qty (all 0 → 1 in this
+        // file), and Bundle Detail components contribute 0 (their price lives on the Bundle
+        // parent), so the computed total is the sum of Part Number + Bundle costs × 1.
+        result.Validation.ComputedTotal.Should().Be(34402.45m);
+    }
+
+    [Fact]
+    public void File1_TotalItemCount()
+    {
+        var root = TestSample.Root;
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpBidXlsx);
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals_Sample_01_HPI.xlsx"));
+
+        result.LineItems.Should().HaveCount(479);
+    }
+
+    [Fact]
+    public void File1_FirstThreeItems_ArePartNumbers()
+    {
+        var root = TestSample.Root;
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpBidXlsx);
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals_Sample_01_HPI.xlsx"));
+
+        // Qty now comes from Min Order Qty (0 → 1); Max Deal Qty (2012) moves to Comments.
+        result.LineItems
+            .Take(3)
+            .Select(i => (i.LineSequence, i.Vpn, i.Cost, i.Qty, i.MinQty, i.Comments))
+            .Should()
+            .Equal(
+                ("1", "9D9L6UT", 213.92m, 1, 1, "Max Qty: 2012"),
+                ("2", "9D9L6A9", 184.78m, 1, 1, "Max Qty: 2012"),
+                ("3", "9D9V7AA", 240m,    1, 1, "Max Qty: 2012"));
+    }
+
+    [Fact]
+    public void File1_FirstBundle_HasCorrectSequence()
+    {
+        var root = TestSample.Root;
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpBidXlsx);
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals_Sample_01_HPI.xlsx"));
+
+        // Item 4 is the first Bundle. Qty comes from Min Order Qty (0 → 1); the Max Deal
+        // Qty (880) is surfaced in Comments.
+        var bundle = result.LineItems.First(i => i.LineSequence == "4");
+        bundle.Vpn.Should().Be("55623728");
+        bundle.Cost.Should().Be(2387.94m);
+        bundle.Qty.Should().Be(1);
+        bundle.MinQty.Should().Be(1);
+        bundle.Comments.Should().Be("Max Qty: 880");
+    }
+
+    [Fact]
+    public void File1_BundleDetail_SequencePattern()
+    {
+        var root = TestSample.Root;
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpBidXlsx);
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals_Sample_01_HPI.xlsx"));
+
+        // The first child of Bundle 4. Bundle Detail components carry no price (the
+        // Bundle parent holds the total), so Cost is dropped to 0 — the writer then
+        // emits the 0.0001 sentinel on export.
+        var child1 = result.LineItems.First(i => i.LineSequence == "4.01");
+        child1.Vpn.Should().Be("C89FGAV");
+        child1.Cost.Should().Be(0m);
+        child1.Qty.Should().Be(1);
+        child1.MinQty.Should().Be(1);
+        // Bundle Detail rows have no Max Deal Qty, so Comments stays blank.
+        child1.Comments.Should().BeNull();
+
+        // The 6th child — has Option Code so vpn gets #-concatenated
+        var child6 = result.LineItems.First(i => i.LineSequence == "4.06");
+        child6.Vpn.Should().Be("4SS11AV#ABG");
+    }
+
+    [Fact]
+    public void File1_BundleDescription_DropsRepeatedProductId()
+    {
+        var root = TestSample.Root;
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpBidXlsx);
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals_Sample_01_HPI.xlsx"));
+
+        // Source cell reads "55623728-HP EliteBook 8 G2a 14 (…)" — HP repeats the bundle id in
+        // front of its own description. The id stays in the VPN; the description loses it.
+        var bundle = result.LineItems.First(i => i.LineSequence == "4");
+        bundle.Vpn.Should().Be("55623728");
+        bundle.Description.Should().Be("HP EliteBook 8 G2a 14 (14\" Touch, Ryzen 5, 16GB, 512GB)");
+    }
+
+    [Fact]
+    public void File1_NoBundleDescription_StartsWithItsOwnVpn()
+    {
+        var root = TestSample.Root;
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpBidXlsx);
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals_Sample_01_HPI.xlsx"));
+
+        // All 14 Bundle rows in this file carry the prefix at source; none may survive it.
+        result.LineItems
+            .Where(i => !i.LineSequence!.Contains('.'))
+            .Should()
+            .OnlyContain(i => !i.Description!.StartsWith(i.Vpn + "-", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void File1_PartNumberAndBundleDetailDescriptions_AreVerbatim()
+    {
+        var root = TestSample.Root;
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpBidXlsx);
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals_Sample_01_HPI.xlsx"));
+
+        // The strip is Bundle-only: no other line type is prefixed at source, so their
+        // descriptions must pass through untouched.
+        result.LineItems.First(i => i.LineSequence == "1").Description.Should().Be("HP S5 Pro 524pf FHD MNTR");
+        result.LineItems.First(i => i.LineSequence == "4.01").Description.Should().Be("BU IDS UMA RAI5435 8 14 G2a");
+    }
+
+    [Fact]
+    public void File1_OptionCode_ConcatenatedWithHash()
+    {
+        var root = TestSample.Root;
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpBidXlsx);
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals_Sample_01_HPI.xlsx"));
+
+        // At least one item must have a # in its VPN (from Option Code concatenation)
+        result.LineItems.Should().Contain(i => i.Vpn != null && i.Vpn.Contains('#'));
+    }
+
+    [Fact]
+    public void File1_MinQty_ZeroSubstitutedWithOne()
+    {
+        var root = TestSample.Root;
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpBidXlsx);
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals_Sample_01_HPI.xlsx"));
+
+        // All raw Min Order Qty values in this file are 0; after substitution they must all be 1
+        result.LineItems.Should().OnlyContain(i => i.MinQty >= 1);
+        result.LineItems.Should().NotContain(i => i.MinQty == 0);
+    }
+
+    [Fact]
+    public void File1_MsrpIsAlwaysNull()
+    {
+        var root = TestSample.Root;
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpBidXlsx);
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals_Sample_01_HPI.xlsx"));
+
+        result.LineItems.Should().OnlyContain(i => i.Msrp == null);
+    }
+
+    [Fact]
+    public void File1_AvailableTemplates()
+    {
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpBidXlsx);
+
+        parser.AvailableTemplates.Should().Equal(CrmTemplates.NoCalculation, CrmTemplates.Uplift);
+        parser.CrmTemplate.Should().Be(CrmTemplates.NoCalculation);
+    }
+
+    // ── File 2: 043243 — 5 Part Number rows only ──
+
+    [Fact]
+    public void File2_Metadata_IsCorrect()
+    {
+        var root = TestSample.Root;
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpBidXlsx);
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals_Sample_02_HPI.xlsx"));
+
+        result.Metadata.QuoteNumber.Should().Be("99010002");
+        result.Metadata.Currency.Should().Be("AUD");
+        result.Metadata.QuotedTotal.Should().BeNull();
+    }
+
+    [Fact]
+    public void File2_AllFivePartNumberItems()
+    {
+        var root = TestSample.Root;
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpBidXlsx);
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals_Sample_02_HPI.xlsx"));
+
+        result.LineItems.Should().HaveCount(5);
+
+        // Qty comes from Min Order Qty (all 0 → 1); Max Deal Qty moves to Comments.
+        result.LineItems
+            .Select(i => (i.LineSequence, i.Vpn, i.Cost, i.Qty, i.MinQty, i.Comments))
+            .Should()
+            .Equal(
+                ("1", "5TW10AA",  165.83m,  1, 1, "Max Qty: 100"),
+                ("2", "9D9S0UT",  336.70m,  1, 1, "Max Qty: 100"),
+                ("3", "BV2Q6PT", 3393.88m,  1, 1, "Max Qty: 100"),
+                ("4", "BQ4E3PT", 2258.18m,  1, 1, "Max Qty: 500"),
+                ("5", "BV8B6PT", 2160.00m,  1, 1, "Max Qty: 250"));
+    }
+
+    [Fact]
+    public void File2_ComputedTotal()
+    {
+        var root = TestSample.Root;
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpBidXlsx);
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals_Sample_02_HPI.xlsx"));
+
+        // Qty is 1 for every line (Min Order Qty 0 → 1), so the total is the sum of costs.
+        result.Validation.ComputedTotal.Should().Be(8314.59m);
+        result.Validation.Matches.Should().BeTrue();
+    }
+
+    [Fact]
+    public void File2_NoBundleChildren_SequenceIsWholeNumbers()
+    {
+        var root = TestSample.Root;
+        var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.HpBidXlsx);
+
+        var result = parser.Parse(Path.Combine(root, "samples", "inputs", "Deals_Sample_02_HPI.xlsx"));
+
+        // No dots in any LineSequence when there are no Bundle Detail rows
+        result.LineItems.Should().OnlyContain(i => !i.LineSequence!.Contains('.'));
+    }
+}

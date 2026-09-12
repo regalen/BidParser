@@ -1,0 +1,152 @@
+using BidParser.Parsing.Cleaning;
+using ClosedXML.Excel;
+
+namespace BidParser.Parsing.Xlsx;
+
+/// <summary>
+/// Anchor-based helpers over a ClosedXML workbook: locate cells by their text
+/// (<see cref="FindCell"/> and its positional variants), build a label → column
+/// <see cref="HeaderMap"/> from a header row, test for empty rows, and read cleaned cell text.
+/// Reads via GetFormattedString so values match what the user sees in Excel.
+/// </summary>
+public static class WorkbookReader
+{
+    public static XLWorkbook Open(string path) => new XLWorkbook(path);
+
+    public static IXLCell? FindCell(IXLWorksheet sheet, string expected)
+    {
+        return UsedCells(sheet).FirstOrDefault(cell => CellText(cell) == expected);
+    }
+
+    public static IXLCell? FindCellAfter(IXLWorksheet sheet, string expected, int afterRow)
+    {
+        return UsedCells(sheet)
+            .Where(cell => cell.Address.RowNumber > afterRow)
+            .FirstOrDefault(cell => CellText(cell) == expected);
+    }
+
+    public static IXLCell? FindCellAfterInColumn(IXLWorksheet sheet, string expected, int afterRow, int column)
+    {
+        return UsedCells(sheet)
+            .Where(cell => cell.Address.RowNumber > afterRow && cell.Address.ColumnNumber == column)
+            .FirstOrDefault(cell => CellText(cell) == expected);
+    }
+
+    public static IXLCell? FindCellStarting(IXLWorksheet sheet, string prefix)
+    {
+        return UsedCells(sheet).FirstOrDefault(cell => CellText(cell).StartsWith(prefix, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Finds <paramref name="label"/> anywhere in the sheet and returns the cell immediately to its
+    /// right — the metadata-block layout used by the HP and HPE bid workbooks. Returns an empty
+    /// string when the label is absent, so callers decide whether that is fatal.
+    /// <para>
+    /// Matching is case-insensitive, unlike <see cref="FindCell"/>. These are prose labels in a
+    /// metadata block, not table headers driving column mapping, so a vendor shipping
+    /// "Deal version" should not cost us the value.
+    /// </para>
+    /// </summary>
+    public static string ValueRightOf(IXLWorksheet sheet, string label)
+    {
+        var labelCell = UsedCells(sheet)
+            .FirstOrDefault(cell => string.Equals(CellText(cell), label, StringComparison.OrdinalIgnoreCase));
+        return labelCell is null
+            ? string.Empty
+            : CellText(sheet.Cell(labelCell.Address.RowNumber, labelCell.Address.ColumnNumber + 1));
+    }
+
+    /// <summary>Builds a label → column-index map from the given header row (blank labels skipped).</summary>
+    public static HeaderMap HeaderMap(IXLWorksheet sheet, int rowNumber)
+    {
+        var lastColumn = sheet.LastColumnUsed()?.ColumnNumber() ?? 0;
+        var labels = new Dictionary<string, int>();
+        for (var column = 1; column <= lastColumn; column++)
+        {
+            var label = CellText(sheet.Cell(rowNumber, column));
+            if (label.Length > 0)
+            {
+                labels[label] = column;
+            }
+        }
+
+        return new HeaderMap(rowNumber, labels);
+    }
+
+    /// <summary>Asserts every listed column exists; a missing one throws a "detect"-stage wrong-file-type error.</summary>
+    public static void RequireLabels(HeaderMap headerMap, params string[] labels)
+    {
+        foreach (var label in labels)
+        {
+            _ = headerMap.Require(label);
+        }
+    }
+
+    public static bool RowIsEmpty(IXLWorksheet sheet, int rowNumber)
+    {
+        var lastColumn = sheet.LastColumnUsed()?.ColumnNumber() ?? 0;
+        for (var column = 1; column <= lastColumn; column++)
+        {
+            if (CellText(sheet.Cell(rowNumber, column)).Length > 0)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public static string CellText(IXLCell cell)
+    {
+        return TextCleaner.Clean(cell.GetFormattedString());
+    }
+
+    public static object? CellValue(IXLCell cell)
+    {
+        if (cell.Value.IsBlank)
+        {
+            return null;
+        }
+
+        return cell.Value;
+    }
+
+    public static decimal ParseTotalText(object? value)
+    {
+        var text = TextCleaner.Clean(value);
+        if (text.StartsWith("TOTAL ", StringComparison.Ordinal))
+        {
+            text = text["TOTAL ".Length..];
+        }
+
+        return DecimalCleaner.Parse(text);
+    }
+
+    public static string FindTotalTextInRow(IXLWorksheet sheet, int row, int columnCount)
+    {
+        for (var column = 1; column <= columnCount; column++)
+        {
+            var text = CellText(sheet.Cell(row, column));
+            if (text.StartsWith("TOTAL ", StringComparison.Ordinal))
+            {
+                return text;
+            }
+        }
+
+        return string.Empty;
+    }
+
+    /// <summary>Captures every non-empty cell of a row keyed by its header label — the LineItem.Raw provenance.</summary>
+    public static IReadOnlyDictionary<string, string> BuildRawDict(IXLWorksheet sheet, int row, HeaderMap headerMap)
+    {
+        return headerMap.Columns
+            .Select(pair => (pair.Key, Value: CellText(sheet.Cell(row, pair.Value))))
+            .Where(pair => pair.Value.Length > 0)
+            .ToDictionary(pair => pair.Key, pair => pair.Value);
+    }
+
+    private static IEnumerable<IXLCell> UsedCells(IXLWorksheet sheet)
+    {
+        return sheet.RangeUsed()?.CellsUsed() ?? Enumerable.Empty<IXLCell>();
+    }
+}

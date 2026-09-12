@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "guidanceMessages": [
+    {
+      "fileTypes": [
+        "nutanix_software_only_pdf",
+        "nutanix_software_only_xlsx",
+        "nutanix_hardware_only_pdf",
+        "nutanix_hardware_only_xlsx",
+        "hp_oneconfig_xlsx",
+        "lenovo_lbpe_isg_xls",
+        "lenovo_lbpi_isg_pdf",
+        "dell_cto_json",
+        "zebra_pcr_pdf",
+        "zebra_pcr_xls",
+        "datalogic_quote_pdf",
+        "epson_quote_pdf",
+        "strike_quote_pdf"
+      ],
+      "html": "<p>When exporting this quote from CRM, use the <b>Standard</b> report type.</p>"
+    },
+    {
+      "fileTypes": [
+        "nutanix_renewal_pdf",
+        "nutanix_renewal_xlsx",
+        "dell_apos_json"
+      ],
+      "html": "<p>When exporting this quote from CRM, use the <strong>Start End Date</strong> report type.</p>"
+    },
+    {
+      "fileTypes": [
+        "lenovo_lbpi_idg_pdf",
+        "hp_bid_xlsx",
+        "hp_global_bid_xlsx",
+        "hpe_bid_xlsx"
+      ],
+      "html": "<p>When exporting this quote from CRM,</p><ul><li>To NOT show SOH or Disc% use the <strong>Standard</strong> report type.</li><li>To show Stock SOH use the <strong>Hardware SOH</strong> report type.</li><li>To show Stock SOH and Disc% use the <strong>Hardware SOH Disc %</strong> report type.</li></ul>"
+    },
+    {
+      "fileTypes": [
+        "cisco_ccw_quote_xls"
+      ],
+      "html": "<p>When exporting this quote from CRM,</p><ul><li>To show Stock SOH use the <strong>Hardware SOH</strong> report type.</li><li>To show Stock SOH and Disc% use the <strong>Hardware SOH Disc %</strong> report type.</li></ul>"
+    },
+    {
+      "fileTypes": [
+        "hp_services_xlsx"
+      ],
+      "html": "<p>When exporting this quote from CRM, use the <strong>Start End Date</strong> report type.</p><p>Select <strong>Split output by SAID</strong> if you want a separate xlsx file for each Service Agreement ID</p>"
+    }
+  ]
+}

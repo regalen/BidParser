@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ApplicationIcon>Assets\Brand\BidParser.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>BidParser</AssemblyName>
+    <RootNamespace>BidParser.Desktop</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NuGet.Versioning" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BidParser.Application\BidParser.Application.csproj" />
+    <ProjectReference Include="..\BidParser.Domain\BidParser.Domain.csproj" />
+    <ProjectReference Include="..\BidParser.Parsing\BidParser.Parsing.csproj" />
+    <ProjectReference Include="..\BidParser.Output\BidParser.Output.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Validated at startup and used whenever the public copies are unreachable or invalid. -->
+    <EmbeddedResource Include="Configuration\Bundled\guidanceMessages.json" />
+    <EmbeddedResource Include="Configuration\Bundled\vendorDefaults.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\Brand\BidParser.ico" />
+    <Resource Include="Assets\Brand\bidparser-icon.png" />
+    <Resource Include="Assets\Fonts\Inter-Regular.ttf" />
+    <Resource Include="Assets\Fonts\Inter-SemiBold.ttf" />
+    <Resource Include="Assets\Licenses\Inter-OFL.txt" />
+  </ItemGroup>
+</Project>

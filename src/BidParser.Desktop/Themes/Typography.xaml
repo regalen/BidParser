@@ -1,0 +1,53 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <FontFamily x:Key="Font.Primary">pack://application:,,,/BidParser;component/Assets/Fonts/#Inter, Segoe UI</FontFamily>
+  <FontFamily x:Key="Font.Monospace">Cascadia Mono, Consolas</FontFamily>
+  <FontWeight x:Key="Weight.Regular">Regular</FontWeight>
+  <FontWeight x:Key="Weight.SemiBold">SemiBold</FontWeight>
+  <FontWeight x:Key="Weight.Bold">Bold</FontWeight>
+
+  <Style TargetType="{x:Type TextBlock}">
+    <Setter Property="FontFamily" Value="{StaticResource Font.Primary}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontWeight" Value="{StaticResource Weight.Regular}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+  </Style>
+
+  <Style x:Key="Text.WindowTitle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="20" />
+    <Setter Property="FontWeight" Value="{StaticResource Weight.SemiBold}" />
+  </Style>
+  <Style x:Key="Text.SectionHeading" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="{StaticResource Weight.SemiBold}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+    <Setter Property="Typography.Capitals" Value="AllSmallCaps" />
+  </Style>
+  <Style x:Key="Text.FormLabel" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="{StaticResource Weight.SemiBold}" />
+  </Style>
+  <Style x:Key="Text.Body" TargetType="TextBlock" />
+  <Style x:Key="Text.BodySecondary" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+  </Style>
+  <Style x:Key="Text.Caption" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+  </Style>
+  <Style x:Key="Text.Metadata" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Font.Monospace}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}" />
+  </Style>
+  <Style x:Key="Text.FooterVersion" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Font.Primary}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}" />
+  </Style>
+  <Style x:Key="Text.Validation" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.Error}" />
+  </Style>
+</ResourceDictionary>

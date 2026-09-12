@@ -1,0 +1,261 @@
+<Window x:Class="BidParser.Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mvvm="clr-namespace:BidParser.Desktop.Mvvm"
+        Title="BidParser"
+        Width="{StaticResource Size.WindowWidth}"
+        Height="{StaticResource Size.WindowHeight}"
+        MinWidth="{StaticResource Size.WindowMinWidth}"
+        MinHeight="{StaticResource Size.WindowMinHeight}"
+        Icon="Assets/Brand/BidParser.ico"
+        Background="{DynamicResource Brush.WindowBackground}"
+        FontFamily="{StaticResource Font.Primary}"
+        Foreground="{DynamicResource Brush.TextPrimary}"
+        WindowStartupLocation="CenterScreen"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
+  <Window.InputBindings>
+    <KeyBinding Key="O" Modifiers="Control" Command="{Binding BrowseCommand}" />
+    <KeyBinding Key="Escape" Command="{Binding EscapeCommand}" />
+    <KeyBinding Key="C" Modifiers="Control+Shift" Command="{Binding CopyDetailsCommand}" />
+  </Window.InputBindings>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="{StaticResource Size.CommandBar}" />
+    </Grid.RowDefinitions>
+
+    <!-- Update bar: informational, session-dismissible, never blocking. -->
+    <Border Grid.Row="0"
+            Height="{StaticResource Size.UpdateBar}"
+            Padding="{StaticResource Space.Horizontal16}"
+            Background="{DynamicResource Brush.InfoWash}"
+            BorderBrush="{DynamicResource Brush.Border}"
+            BorderThickness="{StaticResource Border.Bottom}"
+            Visibility="{Binding HasUpdate, Converter={StaticResource BooleanToVisibilityConverter}}"
+            AutomationProperties.LiveSetting="Polite">
+      <DockPanel LastChildFill="True">
+        <Border Width="{StaticResource Size.MessageGlyph}"
+                Height="{StaticResource Size.MessageGlyph}"
+                Margin="{StaticResource Space.Right8}"
+                VerticalAlignment="Center"
+                Background="{DynamicResource Brush.Accent}"
+                CornerRadius="{StaticResource Radius.Control}">
+          <TextBlock HorizontalAlignment="Center"
+                     VerticalAlignment="Center"
+                     Foreground="{DynamicResource Brush.Surface}"
+                     FontSize="11"
+                     FontWeight="{StaticResource Weight.Bold}"
+                     Text="i" />
+        </Border>
+        <Button DockPanel.Dock="Right"
+                Style="{StaticResource Button.Subtle}"
+                Command="{Binding DismissUpdateCommand}"
+                AutomationProperties.Name="Dismiss update"
+                Content="✕" />
+        <Button DockPanel.Dock="Right"
+                Margin="{StaticResource Space.Right8}"
+                Style="{StaticResource Button.Compact}"
+                Command="{Binding ViewUpdateCommand}"
+                AutomationProperties.Name="View update"
+                Content="View update" />
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <TextBlock Style="{StaticResource Text.BodySecondary}"
+                     Foreground="{DynamicResource Brush.InfoText}"
+                     Text="A newer version of BidParser is available." />
+          <TextBlock Margin="{StaticResource Space.Horizontal8}"
+                     Style="{StaticResource Text.Caption}"
+                     Foreground="{DynamicResource Brush.InfoText}"
+                     Text="{Binding UpdateMessage}" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="{StaticResource Size.SettingsColumn}" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+
+      <!-- Settings: fixed width, frozen while a parse is running. -->
+      <Border Grid.Column="0"
+              Padding="{StaticResource Space.Panel}"
+              Background="{DynamicResource Brush.Surface}"
+              BorderBrush="{DynamicResource Brush.Border}"
+              BorderThickness="{StaticResource Border.Right}"
+              IsEnabled="{Binding IsSettingsEnabled}">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+
+          <StackPanel Grid.Row="0">
+            <TextBlock Style="{StaticResource Text.SectionHeading}" Text="QUOTE SETTINGS" />
+
+            <TextBlock Margin="{StaticResource Space.Top12}" Style="{StaticResource Text.FormLabel}" Text="Vendor" />
+            <Grid Margin="{StaticResource Space.Top4}">
+              <ComboBox Style="{StaticResource Input.ComboBox}"
+                        ItemsSource="{Binding Vendors}"
+                        SelectedItem="{Binding SelectedVendor}"
+                        TextSearch.TextPath="Name"
+                        AutomationProperties.Name="Vendor">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding Name}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBlock Margin="{StaticResource Space.Input}"
+                         VerticalAlignment="Center"
+                         Foreground="{DynamicResource Brush.TextSecondary}"
+                         IsHitTestVisible="False"
+                         Text="Select vendor">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding HasSelectedVendor}" Value="False">
+                        <Setter Property="Visibility" Value="Visible" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+            </Grid>
+
+            <TextBlock Margin="{StaticResource Space.Top12}" Style="{StaticResource Text.FormLabel}" Text="File type" />
+            <ComboBox Margin="{StaticResource Space.Top4}"
+                      Style="{StaticResource Input.ComboBox}"
+                      ItemsSource="{Binding ParserOptions}"
+                      SelectedItem="{Binding SelectedParser}"
+                      IsEnabled="{Binding HasSelectedVendor}"
+                      TextSearch.TextPath="DisplayName"
+                      AutomationProperties.Name="File type">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding DisplayName}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+
+            <StackPanel Visibility="{Binding HasMultipleTemplates, Converter={StaticResource BooleanToVisibilityConverter}}">
+              <TextBlock Margin="{StaticResource Space.Top12}" Style="{StaticResource Text.FormLabel}" Text="CRM template" />
+              <ComboBox Margin="{StaticResource Space.Top4}"
+                        Style="{StaticResource Input.ComboBox}"
+                        ItemsSource="{Binding TemplateOptions}"
+                        SelectedItem="{Binding SelectedTemplate}"
+                        TextSearch.TextPath="Name"
+                        AutomationProperties.Name="CRM template">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding Name}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Pricing: every row is capability-driven, and the whole section collapses when the
+               selected parser and template support none of them. -->
+          <StackPanel Grid.Row="1"
+                      Margin="{StaticResource Space.Top24}"
+                      Visibility="{Binding Capabilities.HasAnyPricingField, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="{StaticResource Border.Top}" />
+            <TextBlock Margin="{StaticResource Space.Top12}" Style="{StaticResource Text.SectionHeading}" Text="{Binding PricingHeading}" />
+
+            <ContentControl Content="{Binding FxRate}"
+                            Visibility="{Binding Capabilities.SupportsFx, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <ContentControl Content="{Binding Uplift}"
+                            Visibility="{Binding Capabilities.SupportsUplift, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <ContentControl Content="{Binding DiscountOffMsrp}"
+                            Visibility="{Binding Capabilities.SupportsDiscountOffMsrp, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <ContentControl Content="{Binding OnCost}"
+                            Visibility="{Binding Capabilities.SupportsOnCost, Converter={StaticResource BooleanToVisibilityConverter}}" />
+          </StackPanel>
+
+          <CheckBox Grid.Row="2"
+                    Margin="{StaticResource Space.Top16}"
+                    VerticalAlignment="Top"
+                    Style="{StaticResource Input.CheckBox}"
+                    Content="{Binding SplitLabel}"
+                    IsChecked="{Binding SplitBySolutionId}"
+                    Visibility="{Binding Capabilities.SupportsSplit, Converter={StaticResource BooleanToVisibilityConverter}}"
+                    AutomationProperties.Name="{Binding SplitLabel}" />
+        </Grid>
+      </Border>
+
+      <!-- Workspace: the quote file above, the persistent result region below. -->
+      <Grid Grid.Column="1" Margin="{StaticResource Space.Panel}">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="{StaticResource Size.FileRegion}" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Margin="{StaticResource Space.Bottom12}" Style="{StaticResource Text.SectionHeading}" Text="QUOTE FILE" />
+        <Button Grid.Row="1"
+                Style="{StaticResource Surface.DropZone}"
+                Command="{Binding BrowseCommand}"
+                mvvm:DropFileBehavior.DropCommand="{Binding DropCommand}"
+                mvvm:DropFileBehavior.DragStateCommand="{Binding DragStateCommand}"
+                AutomationProperties.Name="Quote file. Press Space or Enter to browse, or drop a file here."
+                AutomationProperties.LiveSetting="Polite">
+          <ContentControl Content="{Binding DropZone}" />
+        </Button>
+
+        <TextBlock Grid.Row="2" Margin="{StaticResource Space.Vertical12}" Style="{StaticResource Text.SectionHeading}" Text="RESULT" />
+        <Border Grid.Row="3"
+                Style="{StaticResource Surface.Card}"
+                AutomationProperties.LiveSetting="Polite">
+          <ContentControl Content="{Binding Result}" />
+        </Border>
+      </Grid>
+    </Grid>
+
+    <ProgressBar Grid.Row="2"
+                 Style="{StaticResource Progress.Thin}"
+                 Visibility="{Binding IsParsing, Converter={StaticResource BooleanToVisibilityConverter}}"
+                 AutomationProperties.Name="Parsing" />
+
+    <Border Grid.Row="3"
+            Padding="{StaticResource Space.CommandBar}"
+            Background="{DynamicResource Brush.Surface}"
+            BorderBrush="{DynamicResource Brush.Border}"
+            BorderThickness="{StaticResource Border.Top}">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <TextBlock VerticalAlignment="Center"
+                   Style="{StaticResource Text.FooterVersion}"
+                   Text="{Binding VersionText}" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal">
+          <Button Margin="{StaticResource Space.Right8}"
+                  Style="{StaticResource Button.Secondary}"
+                  Command="{Binding SecondaryCommand}"
+                  Content="{Binding SecondaryActionText}"
+                  AutomationProperties.Name="{Binding SecondaryActionText}" />
+          <Button Style="{StaticResource Button.Primary}"
+                  Command="{Binding PrimaryCommand}"
+                  Content="{Binding PrimaryActionText}"
+                  IsDefault="True"
+                  AutomationProperties.Name="{Binding PrimaryActionText}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- The only overlay: a blocking, destructive overwrite decision. -->
+    <ContentControl x:Name="DialogHost"
+                    Grid.RowSpan="4"
+                    Style="{StaticResource Overlay.DialogHost}"
+                    Content="{Binding Dialog}"
+                    Visibility="{Binding HasDialog, Converter={StaticResource BooleanToVisibilityConverter}}" />
+  </Grid>
+</Window>

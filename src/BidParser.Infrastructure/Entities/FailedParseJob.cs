@@ -1,0 +1,58 @@
+namespace BidParser.Infrastructure.Entities;
+
+using BidParser.Domain.Models;
+
+/// <summary>
+/// A recorded parse failure — either an exception (magic-byte / parser / unhandled) or a success-path
+/// validation mismatch. Which fields are populated depends on <see cref="Category"/>: Stage/Hint/Message
+/// for ParseErrors, Computed/QuotedTotal for a ValidationMismatch. A mismatch also has a ParseJob row
+/// (the source of truth), so the monitoring runs view excludes ValidationMismatch failures to avoid
+/// double-counting. See AGENTS.md.
+/// </summary>
+public sealed class FailedParseJob
+{
+    public int Id { get; set; }
+
+    // Nullable FK — user may be deleted later. Snapshot fields below preserve identity.
+    public int? UserId { get; set; }
+    public required string UserUsername { get; set; }
+    public string? UserName { get; set; }
+
+    public required string Vendor { get; set; }
+    public required string ParserSlug { get; set; }
+
+    public required string SourceFilename { get; set; }
+    public required string SourcePath { get; set; }     // path under /data/files/originals/
+
+    public required FailureCategory Category { get; set; }
+
+    // Populated for ParseError only — null for unhandled exceptions.
+    public string? Stage { get; set; }
+    public string? Hint { get; set; }
+    public string? Message { get; set; }
+
+    // Populated for ValidationMismatch only — null for exception categories.
+    public decimal? ComputedTotal { get; set; }
+    public decimal? QuotedTotal { get; set; }
+
+    // ex.ToString() — type, message, stack trace, inner exceptions. TEXT, uncapped.
+    // For ValidationMismatch this holds a human-readable totals summary (no stack trace).
+    public required string ErrorDetail { get; set; }
+
+    public decimal FxRate { get; set; }
+    public decimal Margin { get; set; }
+    public ImportType? ImportType { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+
+    public User? User { get; set; }
+}
+
+/// <summary>Why a parse was recorded as failed. Serialised snake_case.</summary>
+public enum FailureCategory
+{
+    MagicByteMismatch,
+    ParserError,
+    UnhandledException,
+    ValidationMismatch,
+}

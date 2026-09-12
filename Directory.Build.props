@@ -1,0 +1,32 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <!--
+    The single source of version truth for every artefact built from this repository: the API and
+    desktop assemblies, the Windows file/product version, the desktop update comparison, the Docker
+    image tag and both release names. CI overrides it from the git tag
+    (`-p:BidParserVersion=1.0.0`); the default marks a build that did not come from a tag.
+  -->
+  <PropertyGroup>
+    <BidParserVersion Condition="'$(BidParserVersion)' == ''">1.0.0-dev</BidParserVersion>
+
+    <!-- Numeric assembly and file versions take the SemVer core only: Windows rejects a
+         prerelease label in a FILEVERSION resource. -->
+    <BidParserVersionCore>$([System.Text.RegularExpressions.Regex]::Replace($(BidParserVersion), '[-+].*$', ''))</BidParserVersionCore>
+
+    <Version>$(BidParserVersion)</Version>
+    <InformationalVersion>$(BidParserVersion)</InformationalVersion>
+    <AssemblyVersion>$(BidParserVersionCore).0</AssemblyVersion>
+    <FileVersion>$(BidParserVersionCore).0</FileVersion>
+
+    <!-- Without this the SDK appends "+<commit sha>" to InformationalVersion, which is what the
+         desktop parses to compare against the latest public release. Keep it exactly the SemVer
+         that was tagged. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+</Project>

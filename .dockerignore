@@ -1,0 +1,29 @@
+.git
+.gitignore
+.github
+.vscode
+.idea
+.DS_Store
+
+# .NET
+**/bin
+**/obj
+.dotnet
+.nuget
+
+# Node
+**/node_modules
+frontend/dist
+*.tsbuildinfo
+
+# Local data
+data/
+*.sqlite
+*.sqlite-journal
+.env
+
+# Docs / samples (not needed in image)
+docs/
+samples/
+*.md
+LICENSE

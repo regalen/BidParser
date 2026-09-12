@@ -1,0 +1,202 @@
+using System.Globalization;
+using System.Security.Claims;
+using BidParser.Api.Auth;
+using BidParser.Api.Contracts;
+using BidParser.Domain.Abstractions;
+using BidParser.Domain.Constants;
+using BidParser.Infrastructure.Entities;
+using BidParser.Infrastructure.Persistence;
+using BidParser.Output;
+using Microsoft.EntityFrameworkCore;
+
+namespace BidParser.Api.Endpoints;
+
+/// <summary>
+/// The signed-in user's own parse history (active users): GET /api/history (paged, searchable) plus
+/// /{id}/source and /{id}/output to re-download a past run's input/output. Scoped to the caller's jobs.
+/// </summary>
+public static class HistoryEndpoints
+{
+    public static IEndpointRouteBuilder MapHistoryEndpoints(this IEndpointRouteBuilder app)
+    {
+        app.MapGet("/api/history", ListAsync).RequireAuthorization(AuthPolicies.ActiveUser);
+        app.MapGet("/api/history/{id:int}/source", DownloadSourceAsync).RequireAuthorization(AuthPolicies.ActiveUser);
+        app.MapGet("/api/history/{id:int}/output", DownloadOutputAsync).RequireAuthorization(AuthPolicies.ActiveUser);
+        return app;
+    }
+
+    private static async Task<IResult> ListAsync(
+        HttpContext context,
+        AppDbContext db,
+        IParserRegistry registry,
+        ILogger<Program> logger,
+        int limit = 10,
+        int offset = 0,
+        string? q = null,
+        CancellationToken ct = default)
+    {
+        var user = await EndpointHelpers.CurrentUserAsync(context, db, ct);
+        if (user is null)
+        {
+            return Results.Json(new ApiError("notAuthenticated"), statusCode: 401);
+        }
+
+        limit = Math.Clamp(limit, 1, 100);
+        offset = Math.Max(offset, 0);
+        var needle = q?.Trim() ?? "";
+
+        var query = db.ParseJobs.Where(j => j.UserId == user.Id);
+        if (needle.Length > 0)
+        {
+            var pattern = $"%{EscapeLikePattern(needle)}%";
+            query = query.Where(j =>
+                EF.Functions.Like(j.SourceFilename, pattern, "\\") ||
+                (j.BidNumber != null && j.BidRevision != null && EF.Functions.Like(
+                    j.BidNumber + " v" + j.BidRevision, pattern, "\\")));
+        }
+
+        var total = await query.CountAsync(ct);
+        var jobs = await query
+            .OrderByDescending(j => j.CreatedAt)
+            .ThenByDescending(j => j.Id)
+            .Skip(offset)
+            .Take(limit)
+            .ToListAsync(ct);
+
+        var parserLookup = registry.Parsers.ToDictionary(p => p.Slug, p => p.DisplayName);
+        var rows = jobs.Select(j => new HistoryRow(
+            j.Id,
+            j.SourceFilename,
+            j.BidNumber,
+            j.BidRevision,
+            j.Vendor,
+            j.ParserSlug,
+            parserLookup.TryGetValue(j.ParserSlug, out var name) ? name : j.ParserSlug,
+            j.CrmTemplate,
+            DateTime.SpecifyKind(j.CreatedAt, DateTimeKind.Utc).ToString("O"),
+            j.TotalsMatch)).ToList();
+
+        logger.LogInformation(
+            "History list user={UserId} limit={Limit} offset={Offset} has_query={HasQuery} total={Total}",
+            user.Id,
+            limit,
+            offset,
+            needle.Length > 0,
+            total);
+        return Results.Ok(new HistoryResponse(rows, total));
+    }
+
+    private static async Task<IResult> DownloadSourceAsync(
+        int id,
+        HttpContext context,
+        AppDbContext db,
+        ILogger<Program> logger,
+        CancellationToken ct)
+    {
+        var job = await GetJobForUserAsync(id, context, db, ct);
+        if (job is null)
+        {
+            return Results.Json(new ApiError("Job not found."), statusCode: 404);
+        }
+
+        if (!File.Exists(job.SourcePath))
+        {
+            return Results.Json(new ApiError("File not found."), statusCode: 404);
+        }
+
+        logger.LogInformation(
+            "History download {Kind} job={JobId} user={UserId}",
+            "source",
+            job.Id,
+            job.UserId);
+        return Results.File(
+            new FileStream(job.SourcePath, FileMode.Open, FileAccess.Read, FileShare.Read),
+            MimeForExtension(job.SourcePath),
+            fileDownloadName: job.SourceFilename);
+    }
+
+    private static async Task<IResult> DownloadOutputAsync(
+        int id,
+        HttpContext context,
+        AppDbContext db,
+        IParserRegistry registry,
+        ILogger<Program> logger,
+        CancellationToken ct)
+    {
+        var job = await GetJobForUserAsync(id, context, db, ct);
+        if (job is null)
+        {
+            return Results.Json(new ApiError("Job not found."), statusCode: 404);
+        }
+
+        if (!File.Exists(job.OutputPath))
+        {
+            return Results.Json(new ApiError("File not found."), statusCode: 404);
+        }
+
+        var style = registry.Parsers.FirstOrDefault(p => p.Slug == job.ParserSlug)?.OutputNameStyle
+            ?? OutputNameStyle.BidScoped;
+        var downloadName = job.SplitBySolutionId
+            ? OutputNaming.OutputArchiveFilename(
+                job.SourceFilename, job.CrmTemplate, job.BidNumber, job.BidRevision, style)
+            : OutputNaming.OutputFilename(
+                job.SourceFilename, job.CrmTemplate, job.BidNumber, job.BidRevision, style);
+        logger.LogInformation(
+            "History download {Kind} job={JobId} user={UserId}",
+            "output",
+            job.Id,
+            job.UserId);
+        return Results.File(
+            new FileStream(job.OutputPath, FileMode.Open, FileAccess.Read, FileShare.Read),
+            job.SplitBySolutionId
+                ? "application/zip"
+                : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            fileDownloadName: downloadName);
+    }
+
+    private static async Task<ParseJob?> GetJobForUserAsync(
+        int id, HttpContext context, AppDbContext db, CancellationToken ct)
+    {
+        var idValue = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(idValue, CultureInfo.InvariantCulture, out var userId))
+        {
+            return null;
+        }
+
+        var job = await db.ParseJobs.SingleOrDefaultAsync(j => j.Id == id, ct);
+        return job is null || job.UserId != userId ? null : job;
+    }
+
+    private static string MimeForExtension(string path) =>
+        Path.GetExtension(path).ToLowerInvariant() switch
+        {
+            ".pdf" => "application/pdf",
+            ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".xls" => "application/vnd.ms-excel",
+            ".json" => "application/json",
+            _ => "application/octet-stream"
+        };
+
+    private static string EscapeLikePattern(string value) =>
+        value
+            .Replace("\\", "\\\\")
+            .Replace("[", "\\[")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
+
+    private sealed record HistoryResponse(
+        IReadOnlyList<HistoryRow> Rows,
+        int Total);
+
+    private sealed record HistoryRow(
+        int Id,
+        string SourceFilename,
+        string? BidNumber,
+        string? BidRevision,
+        string Vendor,
+        string ParserSlug,
+        string FileTypeDisplay,
+        string CrmTemplate,
+        string When,
+        bool TotalsMatch);
+}
