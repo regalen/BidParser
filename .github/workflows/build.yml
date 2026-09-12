@@ -326,7 +326,7 @@ jobs:
           body: |
             **Docker image (web app):**
             ```
-            docker pull ghcr.io/regalen/bidparser:${{ needs.build-and-push.outputs.image_version }}
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.image_version }}
             ```
 
             **[BidParser.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/BidParser.exe)** — Windows x64, portable.
