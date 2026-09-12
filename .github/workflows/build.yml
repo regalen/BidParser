@@ -80,6 +80,11 @@ jobs:
         run: npm run build
         working-directory: frontend
 
+      # setup-dotnet defaults to /usr/share/dotnet on Linux. Self-hosted runners use an
+      # unprivileged service account, so choose a per-run writable location instead.
+      - name: Select writable .NET install directory
+        run: echo "DOTNET_INSTALL_DIR=${RUNNER_TEMP}/dotnet" >> "$GITHUB_ENV"
+
       - name: Set up .NET
         uses: actions/setup-dotnet@v5
         with:
