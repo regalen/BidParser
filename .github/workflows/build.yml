@@ -150,6 +150,7 @@ jobs:
       packages: write
     outputs:
       image_version: ${{ steps.meta.outputs.version }}
+      image_name: ${{ steps.image.outputs.value }}
 
     steps:
       - name: Checkout
@@ -162,11 +163,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # GitHub repository names preserve case, while OCI image references must be lowercase.
+      - name: Resolve image name
+        id: image
+        shell: bash
+        run: |
+          image_name="$(tr '[:upper:]' '[:lower:]' <<< "$IMAGE_NAME")"
+          printf 'value=%s/%s\n' "$REGISTRY" "$image_name" >> "$GITHUB_OUTPUT"
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ steps.image.outputs.value }}
           flavor: |
             latest=false
           tags: |
@@ -303,7 +312,7 @@ jobs:
       - name: Create and verify checksum
         shell: bash
         run: |
-          sha256sum dist/BidParser.exe > dist/BidParser.exe.sha256
+          (cd dist && sha256sum BidParser.exe > BidParser.exe.sha256)
           actual="$(awk '{print $1}' dist/BidParser.exe.sha256)"
           expected="${{ needs.desktop-build.outputs.sha256 }}"
           if [[ "$actual" != "$expected" ]]; then
@@ -326,7 +335,7 @@ jobs:
           body: |
             **Docker image (web app):**
             ```
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.image_version }}
+            docker pull ${{ needs.build-and-push.outputs.image_name }}:${{ needs.build-and-push.outputs.image_version }}
             ```
 
             **[BidParser.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/BidParser.exe)** — Windows x64, portable.
