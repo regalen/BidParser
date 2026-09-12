@@ -199,7 +199,7 @@ The workflow at `.github/workflows/build.yml` gates web and desktop artifacts by
 
 | Event | Job that runs | Result |
 |---|---|---|
-| Pull request to `main` | `validate`, `validate-windows` | Frontend/full .NET suite on self-hosted Linux plus desktop build/tests, one-file publish verification, and launch smoke on `windows-latest`. No artifact published. |
+| Pull request to `main` | `validate`, `validate-windows` | Frontend/full .NET suite on GitHub-hosted `ubuntu-latest` plus desktop build/tests, one-file publish verification, and launch smoke on `windows-latest`. No artifact published. |
 | Push / merge to `main` | *(none)* | No artifact publication. |
 | Valid `v*` tag on `main` | `prepare-publish`, `build-and-push`, `desktop-build`, `release` | Validates SemVer/main ancestry, publishes the versioned Docker image, builds/tests/verifies one Windows `BidParser.exe`, then creates the same-repository GitHub Release with the EXE and checksum. |
 
@@ -212,31 +212,15 @@ validation. Tag pushes are not path-filtered, so a release tag can never be sile
 version stamps API/Desktop assembly metadata, the frontend footer, Docker build, and the GitHub
 Release. Tag builds remove one leading `v`.
 
-### Runner requirement — action needed at handover
+### Hosted runner requirement
 
-Linux validation, version gating, Docker publishing, and release coordination target a
-**self-hosted** runner (`runs-on: [self-hosted, linux, x64]`). Desktop validation and publishing
-target GitHub's `windows-latest` hosted runners.
+Linux validation, version gating, Docker publishing, and release coordination run on GitHub-hosted
+`ubuntu-latest`; desktop validation and publishing run on GitHub-hosted `windows-latest`. No
+self-hosted runner, LXC, Podman service, Docker socket, or runner-host SDK installation is needed.
 
-> **The current runner is privately operated** — it is a rootless Podman runner on the original
-> maintainer's own home server, and it is **not part of this repository or transferable with it**.
-> Whoever receives this project must either register their own self-hosted runner with the same
-> labels (`self-hosted, linux, x64`), or deliberately migrate those Linux jobs. Until then, Linux
-> validation, image publishing, and final release coordination queue indefinitely; Windows jobs do
-> not remove that dependency.
-
-A replacement runner must provide the .NET 10 SDK, Node 22, and a Docker-compatible CLI.
-
-Two consequences of the current runner being rootless Podman, relevant if you keep that setup:
-
-- The image is built with plain `docker build` rather than Buildx, since no Buildx driver is
-  available. There is therefore no cross-platform emulation and no registry-side layer cache, so
-  builds are slower than a Buildx-cached equivalent.
-- Only the tags generated for the triggering event are pushed, deliberately — the runner's image
-  store persists between runs, and `--all-tags` would republish stale tags from earlier builds.
-
-Moving to GitHub-hosted runners would allow the Buildx cache to be restored, but note that the
-repository is private, so hosted-runner minutes are billable.
+Private repositories consume GitHub-hosted Actions minutes. The workflow uses ordinary `docker
+build` and pushes only tags generated for the triggering event, keeping the published image set
+explicit.
 
 Publishing to GHCR and creating the desktop release use the repository `GITHUB_TOKEN`, scoped to
 `packages: write` and `contents: write` respectively. The tracked `config/` documents must be

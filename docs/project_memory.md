@@ -658,16 +658,15 @@ Out of scope: multi-file batch upload, CSV formats, review/approve gate, multi-t
 - **`SESSION_SECRET`** is the Data Protection app-name discriminator, **not** a key. The keyring in `/data/dp-keys` is the actual signing material. Rotating `SESSION_SECRET` scopes new cookies away from old (logs everyone out). Deleting `/data/dp-keys` invalidates the keyring.
 - **Env-var defaults**: `ADMIN_USERNAME=admin`, `ADMIN_PASSWORD=changeme`, `MAX_UPLOAD_MB=10`, `RATE_LIMIT_AUTH_PER_MIN=5`, `RETENTION_DAYS=90`, `SESSION_LIFETIME_HOURS=12`, `TZ=Australia/Sydney` (controls server-local time for `/admin/metrics` daily buckets; `tzdata` ships with the aspnet image). `SESSION_SECRET` has a dev default (`dev-only-change-me`) and must be overridden in production.
 - **GitHub Actions CI/CD** (`.github/workflows/build.yml`): application-changing PRs run the full
-  frontend/.NET `validate` job on the self-hosted Linux runner and a separate desktop build/config
+  frontend/.NET `validate` job on GitHub-hosted `ubuntu-latest` and a separate desktop build/config
   test on `windows-latest`. Main pushes publish nothing. A tag runs `prepare-publish`, which rejects
   malformed release tags or tags outside `main`, then Linux `build-and-push` and Windows
   `desktop-build` in parallel. `release` downloads the verified executable, verifies and publishes
   its checksum, and creates one same-repository GitHub Release from a subject-only changelist. The
   repository `GITHUB_TOKEN` has the scoped permissions required for package and release publishing;
-  no external publishing credential is used. Linux jobs retain the self-hosted rootless-Podman/plain-
-  `docker build` behavior and only push tag-generated images. Windows jobs are GitHub-hosted and
-  require available private-repository minutes. Feature pushes without a PR run nothing; tag pushes
-  are never path-filtered.
+  no external publishing credential is used. There is no self-hosted-runner or Podman dependency;
+  private-repository jobs consume GitHub-hosted Actions minutes. Feature pushes without a PR run
+  nothing; tag pushes are never path-filtered.
 - **Shared version** — `BidParserVersion` in `Directory.Build.props` is the build-time source for
   API/Desktop Version and exact InformationalVersion; Assembly/File versions use the SemVer core.
   CI also passes the same value to frontend `VITE_APP_VERSION`, Docker, and the release name. A tag
