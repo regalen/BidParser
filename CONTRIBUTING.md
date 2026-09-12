@@ -179,15 +179,10 @@ Documentation-only changes (`**/*.md`, `docs/**`, and `README*`) are ignored for
 Tag pushes are not path-filtered, so a release workflow cannot be skipped by a docs-only tagged
 commit.
 
-Linux validation, version gating, image publishing, and release coordination run on the
-self-hosted runner (`runs-on: [self-hosted, linux, x64]`); there is no Linux-hosted fallback, so
-those jobs queue if it is offline. Desktop validation/publishing runs on `windows-latest`. The
-self-hosted runner is rootless Podman with no Buildx driver, so images use plain `docker build` and
-have no registry-side layer cache.
-
-The runner is privately operated and does not transfer with the repository — see
-[Runner requirement](docs/DEPLOYMENT.md#runner-requirement--action-needed-at-handover) in the
-deployment guide.
+Linux validation, version gating, image publishing, and release coordination run on GitHub-hosted
+`ubuntu-latest`; desktop validation and publishing run on `windows-latest`. This repository has no
+self-hosted-runner, LXC, Podman, or Docker-socket prerequisite. Private repositories consume
+GitHub-hosted Actions minutes.
 
 ## Local validation (Docker)
 
