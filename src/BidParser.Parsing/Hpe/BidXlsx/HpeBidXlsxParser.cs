@@ -36,14 +36,13 @@ public sealed class HpeBidXlsxParser : IParser
             headerMap,
             "LineType",
             "ProductNumber",
+            "OptionCode",
             "BundleID",
             "ComponentID",
             "Quantity",
             "ProductDescription",
             "ListPrcEst",
-            "Offering",
-            "MinOrderQty",
-            "MaxDealQty");
+            "Offering");
 
         var items = new List<LineItem>();
         var lastRow = sheet.LastRowUsed()?.RowNumber() ?? headerMap.RowNumber;
@@ -69,7 +68,6 @@ public sealed class HpeBidXlsxParser : IParser
             string vpn;
             decimal msrp;
             decimal cost;
-            string? comments = null;
 
             switch (lineType)
             {
@@ -79,17 +77,13 @@ public sealed class HpeBidXlsxParser : IParser
                     lineSequence = lineCounter.ToString();
                     // A Part Number takes its VPN from ProductNumber; a Bundle (the header
                     // line that carries the bundle's pricing) takes it from BundleID. The
-                    // OptionCode column is intentionally ignored for the VPN (it stays in Raw).
+                    // OptionCode is intentionally ignored for these top-level line types; it is
+                    // appended only to BundleDetails VPNs below and always remains in Raw.
                     vpn = lineType == "Bundle"
                         ? Text(sheet, row, headerMap, "BundleID")
                         : Text(sheet, row, headerMap, "ProductNumber");
                     msrp = DecimalCleaner.Parse(Text(sheet, row, headerMap, "ListPrcEst"), defaultZero: true);
                     cost = DecimalCleaner.Parse(Text(sheet, row, headerMap, "Offering"), defaultZero: true);
-                    var maxDealQty = DecimalCleaner.ParseOptionalInt(Text(sheet, row, headerMap, "MaxDealQty"));
-                    if (maxDealQty is not null)
-                    {
-                        comments = $"Max Qty: {maxDealQty}";
-                    }
                     if (lineType == "Bundle")
                     {
                         // A Bundle opens a child group: subsequent BundleDetails rows
@@ -103,11 +97,16 @@ public sealed class HpeBidXlsxParser : IParser
                     bundleChildCounter++;
                     lineSequence = $"{bundleParentSeq}.{bundleChildCounter:D2}";
                     vpn = Text(sheet, row, headerMap, "ComponentID");
+                    var optionCode = Text(sheet, row, headerMap, "OptionCode");
+                    if (optionCode.Length > 0)
+                    {
+                        vpn = $"{vpn}#{optionCode}";
+                    }
                     // A BundleDetails line is a component of its Bundle; the Bundle line
                     // carries the total price, so the component's own msrp/cost are dropped to
                     // avoid double-counting. The writer emits the 0.0001 sentinel (the
                     // downstream import rejects a literal 0). The source values are still
-                    // captured in Raw. BundleDetails rows carry no comment.
+                    // captured in Raw.
                     msrp = 0m;
                     cost = 0m;
                     break;
@@ -117,12 +116,9 @@ public sealed class HpeBidXlsxParser : IParser
                     continue;
             }
 
-            // qty derives from the Quantity column for every line type. Min Order Qty is
-            // surfaced separately in the output's Min Order Qty column (0 → 1).
+            // Qty is the only quantity HPE Bid supplies to the CRM output.
             var qty = Int(sheet, row, headerMap, "Quantity");
             qty = qty == 0 ? 1 : qty;
-            var rawMinQty = Int(sheet, row, headerMap, "MinOrderQty");
-            var minQty = rawMinQty == 0 ? 1 : rawMinQty;
 
             items.Add(new LineItem
             {
@@ -131,9 +127,7 @@ public sealed class HpeBidXlsxParser : IParser
                 Cost = cost,
                 Msrp = msrp,
                 Qty = qty,
-                MinQty = minQty,
                 LineSequence = lineSequence,
-                Comments = comments,
                 Raw = WorkbookReader.BuildRawDict(sheet, row, headerMap)
             });
         }

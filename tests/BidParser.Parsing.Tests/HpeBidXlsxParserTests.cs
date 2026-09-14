@@ -55,14 +55,15 @@ public sealed class HpeBidXlsxParserTests
         var result = Parse("HPE_Deal_9500000001_v2.xlsx");
 
         // Item 1 is the first Bundle. VPN comes from BundleID (not ProductNumber); msrp from
-        // ListPrcEst, cost from Offering, comment from MaxDealQty, qty from Quantity.
+        // ListPrcEst, cost from Offering, and qty from Quantity.
         var bundle = result.LineItems.First(i => i.LineSequence == "1");
         bundle.Vpn.Should().Be("52080474");
         bundle.Msrp.Should().Be(87995.00m);
         bundle.Cost.Should().Be(26632.75m);
         bundle.Qty.Should().Be(1);
-        bundle.MinQty.Should().Be(1);
-        bundle.Comments.Should().Be("Max Qty: 1");
+        bundle.MinQty.Should().BeNull();
+        bundle.Comments.Should().BeNull();
+        result.LineItems.Should().OnlyContain(i => i.MinQty == null && i.Comments == null);
     }
 
     [Fact]
@@ -107,12 +108,15 @@ public sealed class HpeBidXlsxParserTests
     }
 
     [Fact]
-    public void File1_OptionCodeIsNotConcatenatedIntoVpn()
+    public void File1_BundleDetail_OptionCodeIsConcatenatedIntoVpn()
     {
         var result = Parse("HPE_Deal_9500000001_v2.xlsx");
 
-        // Unlike HP Bid, HPE VPNs are the base ID only — OptionCode is never appended.
-        result.LineItems.Should().OnlyContain(i => !i.Vpn.Contains('#'));
+        result.LineItems.First(i => i.LineSequence == "1.08").Vpn.Should().Be("HU4B2A3#QC1");
+        result.LineItems.First(i => i.LineSequence == "3.02").Vpn.Should().Be("P52499-B21#UUF");
+
+        // BundleDetails without an OptionCode retain the ComponentID unchanged.
+        result.LineItems.First(i => i.LineSequence == "1.01").Vpn.Should().Be("AK379B");
     }
 
     [Fact]
@@ -145,17 +149,17 @@ public sealed class HpeBidXlsxParserTests
 
         result.LineItems.Should().HaveCount(4);
 
-        // VPN from ProductNumber; msrp from ListPrcEst; cost from Offering; qty from Quantity;
-        // comment from MaxDealQty. The third line has ListPrcEst/Offering of 0 (kept as 0 in
+        // VPN from ProductNumber; msrp from ListPrcEst; cost from Offering; qty from Quantity.
+        // The third line has ListPrcEst/Offering of 0 (kept as 0 in
         // the model; the writer emits the sentinel on export).
         result.LineItems
             .Select(i => (i.LineSequence, i.Vpn, i.Msrp, i.Cost, i.Qty, i.MinQty, i.Comments))
             .Should()
             .Equal(
-                ("1", "R8Q70A", (decimal?)20514.00m, 5128.50m, 5, 1, "Max Qty: 5"),
-                ("2", "JL087A", (decimal?)2552.00m,   638.00m, 5, 1, "Max Qty: 5"),
-                ("3", "JL087A", (decimal?)0m,           0m,    5, 1, "Max Qty: 5"),
-                ("4", "JL669B", (decimal?)1106.00m,   276.50m, 5, 1, "Max Qty: 5"));
+                ("1", "R8Q70A", (decimal?)20514.00m, 5128.50m, 5, (int?)null, (string?)null),
+                ("2", "JL087A", (decimal?)2552.00m,   638.00m, 5, (int?)null, (string?)null),
+                ("3", "JL087A", (decimal?)0m,           0m,    5, (int?)null, (string?)null),
+                ("4", "JL669B", (decimal?)1106.00m,   276.50m, 5, (int?)null, (string?)null));
     }
 
     [Fact]
