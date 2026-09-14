@@ -35,6 +35,9 @@ Thumbs.db
 # Temporary AI collaboration files
 .ai/inbox/
 
+# Local analysis material: supplier documents, emails, raw payloads (never commit)
+/inbox/
+
 # Local AI-agent instructions (never publish)
 CLAUDE.md
 GEMINI.md

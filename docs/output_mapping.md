@@ -207,19 +207,19 @@ Same 27-column ANZ-GENERIC layout. Differences from HP Bid:
 |---|---|---|---|
 | A | Item | `LineSequence` | `"1"`, `"2"`, `"1.01"`, … (Bundle opens a child group; `BundleDetails` nest as `parent.NN`) |
 | B | Vendor Name | `"HPE"` | |
-| D | Vendor Part Number | `vpn` | `ProductNumber` (Part Number) / `BundleID` (Bundle) / `ComponentID` (BundleDetails). **`OptionCode` is not appended.** |
+| D | Vendor Part Number | `vpn` | `ProductNumber` (Part Number) / `BundleID` (Bundle) / `ComponentID` plus `"#{OptionCode}"` when non-empty (BundleDetails only) |
 | E | Description | `description` | `ProductDescription` |
 | F | Qty. | `qty` | From the **`Quantity`** column (`0 → 1`) — *not* Min Order Qty as in HP Bid |
 | H | MSRP | `msrp` | **Populated** from `ListPrcEst` (Part Number/Bundle); `0` → `0.0001` sentinel. BundleDetails = sentinel. |
 | I | Cost | `cost` | `Offering` (Part Number/Bundle); `0` → `0.0001` sentinel. BundleDetails = sentinel (component price dropped onto the Bundle parent). |
 | K | Margin | `margin` (Uplift only) | Written only on the `Uplift` profile |
-| R | Comments | `comments` | `"Max Qty: {MaxDealQty}"` for Part Number / Bundle; blank for BundleDetails |
-| W | Min Order Qty | `min_qty` | From `MinOrderQty` (`0 → 1`) |
+| R | Comments | **blank** | `MaxDealQty` is not output |
+| W | Min Order Qty | **blank** | `MinOrderQty` is not output |
 
 **Key differences vs HP Bid:**
 - MSRP (col H) is populated from `ListPrcEst` — HP Bid leaves col H blank. The `0 → 0.0001`
   sentinel now also applies to MSRP (via `CrmWriter`/`TemplateLayout.NonZeroPrice`).
-- Qty comes from `Quantity`, not Min Order Qty.
+- Qty comes only from `Quantity`; Min Order Qty and Comments remain blank.
 - `Matches = true` always (no quoted total). See `docs/hpe_bid_xlsx.md`.
 
 ---
