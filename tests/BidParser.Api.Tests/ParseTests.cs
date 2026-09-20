@@ -555,7 +555,8 @@ public sealed class ParseTests
         foreach (var vendor in new[]
                  {
                      Vendors.Hp, Vendors.Hpe, Vendors.LenovoIsg, Vendors.LenovoIdg, Vendors.Zebra,
-                     Vendors.Dell, Vendors.Cisco, Vendors.Datalogic, Vendors.Epson, Vendors.Strike
+                     Vendors.Dell, Vendors.Cisco, Vendors.Datalogic, Vendors.Epson, Vendors.Strike,
+                     Vendors.Trellix
                  })
         {
             var res = await ApiTestFixture.PatchJsonWithCsrfAsync(client, "/api/me/settings",

@@ -18,4 +18,5 @@ public static class Vendors
     public const string Datalogic = "Datalogic";
     public const string Epson = "Epson";
     public const string Strike = "Strike";
+    public const string Trellix = "Trellix";
 }

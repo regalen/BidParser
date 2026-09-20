@@ -56,8 +56,9 @@ for anchor strings, never by hard-coded row/column positions.
 Each format is a registered parser with a stable **slug**. The order below matches the registry
 ([`ParserRegistry.cs`](src/BidParser.Parsing/Registry/ParserRegistry.cs)), which is also the
 dropdown order. The **Output template** column is the CRM template the parser writes to; where a
-parser exposes more than one, the user picks it at parse time. Result guidance starts with the
-same report-type wording shown below, but administrators can update it at runtime.
+parser exposes more than one, the user picks it at parse time. Existing seeded result guidance uses
+the report-type wording shown below; administrators can update it at runtime. A dash means no
+guidance is seeded for that format.
 
 | Vendor | Quote format | Accepted input | Slug | Output template | Report type |
 |---|---|---|---|---|---|
@@ -83,8 +84,12 @@ same report-type wording shown below, but administrators can update it at runtim
 | **Datalogic** | Quote (PDF) | PDF | `datalogic_quote_pdf` | No Calculation / Uplift | Standard |
 | **Epson** | Quote (PDF) | PDF | `epson_quote_pdf` | No Calculation / Uplift | Standard |
 | **Strike** | Quote (PDF) | PDF | `strike_quote_pdf` | No Calculation / Uplift | Standard |
+| **Trellix** | Quote (PDF) | PDF | `trellix_quote_pdf` | No Calculation / Uplift | — |
 
 Notes on the table:
+
+- **Trellix result guidance** can be configured through administrator settings; the parser has no
+  seeded report-type message.
 
 - **Lenovo is two vendors in the dropdown.** Lenovo's Infrastructure Solutions Group (ISG, servers
   and storage, organised around Solution IDs) and Intelligent Devices Group (IDG, laptops and
@@ -122,8 +127,8 @@ are reference copies of CRM's other upload layouts, kept for when a future forma
 | Template | Sheet | Used by |
 |---|---|---|
 | **Foreign Uplift**<br>`ANZ-GENERIC_ForeignUplift.xlsx` | `Foreign Uplift` | All six Nutanix formats |
-| **No Calculation**<br>`ANZ-GENERIC_NoCalculation.xlsx` | `No Calculation` | HP Bid, HP Global Bid, HP Services, HPE Bid, all three Lenovo formats, both Zebra formats, both Dell formats, Cisco CCW, Datalogic, Epson, Strike |
-| **Uplift**<br>`ANZ-GENERIC_Uplift.xlsx` | `Uplift` | HP Bid, HP Global Bid, HP Services, HPE Bid, all three Lenovo formats, both Zebra formats, Datalogic, Epson, and Strike; additionally writes the Margin column. |
+| **No Calculation**<br>`ANZ-GENERIC_NoCalculation.xlsx` | `No Calculation` | HP Bid, HP Global Bid, HP Services, HPE Bid, all three Lenovo formats, both Zebra formats, both Dell formats, Cisco CCW, Datalogic, Epson, Strike, Trellix |
+| **Uplift**<br>`ANZ-GENERIC_Uplift.xlsx` | `Uplift` | HP Bid, HP Global Bid, HP Services, HPE Bid, all three Lenovo formats, both Zebra formats, Datalogic, Epson, Strike, and Trellix; additionally writes the Margin column. |
 | **% Off RRP with Uplift**<br>`ANZ-GENERIC_PercentOffWithUplift.xlsx` | `% Off RRP with Uplift` | HP OneConfig only |
 
 A single writer, [`CrmWriter`](src/BidParser.Output/CrmWriter.cs), produces all four. It never
@@ -185,10 +190,10 @@ start just the database from the compose file with `docker compose up -d mssql`.
 dotnet test tests/BidParser.Parsing.Tests/BidParser.Parsing.Tests.csproj
 ```
 
-The parser/application/output suite is the fast one (661 tests) and needs no container runtime.
+The parser/application/output suite is the fast one (686 tests) and needs no container runtime.
 The full suite, `dotnet test BidParser.sln`, additionally runs the 189 API integration tests
 against a SQL Server testcontainer and 118 cross-platform desktop configuration/update tests
-(968 tests total).
+(993 tests total).
 
 **Build the desktop host**
 

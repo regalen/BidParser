@@ -21,13 +21,16 @@ public sealed class ConfigurationDocumentTests
         $$"""{"schemaVersion": 1, "vendorDefaults": [{{entries}}]}""";
 
     [Fact]
-    public void The_bundled_documents_are_valid_and_cover_every_registered_parser()
+    public void The_bundled_documents_are_valid_and_cover_every_parser_with_seeded_guidance()
     {
         var guidance = DesktopConfiguration.ReadBundledGuidance(KnownSlugs);
         var defaults = DesktopConfiguration.ReadBundledVendorDefaults(KnownVendors);
 
         guidance.Should().NotBeNull();
-        guidance!.Count.Should().Be(KnownSlugs.Count);
+        guidance!.Count.Should().Be(KnownSlugs.Count - 1);
+        foreach (var slug in KnownSlugs.Where(slug => slug != ParserSlugs.TrellixQuotePdf))
+            guidance.For(slug).Should().NotBeNull($"existing parser {slug} has bundled guidance");
+        guidance.For(ParserSlugs.TrellixQuotePdf).Should().BeNull();
         defaults.Should().NotBeNull();
         defaults!.For(Vendors.Strike)!.OnCostPercent.Should().Be(0.35m);
         // Prefill is on-cost only by design; the other three are always the user's call.

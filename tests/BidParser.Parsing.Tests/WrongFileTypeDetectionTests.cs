@@ -73,6 +73,8 @@ public sealed class WrongFileTypeDetectionTests
     [InlineData("Strike_Quote_9202.pdf", "strike_quote_pdf")]
     [InlineData("Strike_Quote_9201.pdf", "strike_quote_pdf")]
     [InlineData("Strike_Quote_9203.pdf", "strike_quote_pdf")]
+    [InlineData("Trellix_Quote_900001.pdf", ParserSlugs.TrellixQuotePdf)]
+    [InlineData("Trellix_Quote_900002.pdf", ParserSlugs.TrellixQuotePdf)]
     public void Detect_uniquely_identifies_format_among_vendor_siblings(string inputName, string expectedSlug)
     {
         var root = TestSample.Root;
