@@ -152,6 +152,52 @@ public sealed class TemplateWriterTests
         WorkbookComparer.AssertEqual(actualPath, Path.Combine(root, "samples", "outputs", expectedName));
     }
 
+    [Theory]
+    [InlineData("Trellix_Quote_900001.pdf", "Trellix_Quote_900001_NoCalculation.xlsx", CrmTemplates.NoCalculation)]
+    [InlineData("Trellix_Quote_900001.pdf", "Trellix_Quote_900001_Uplift.xlsx", CrmTemplates.Uplift)]
+    [InlineData("Trellix_Quote_900002.pdf", "Trellix_Quote_900002_NoCalculation.xlsx", CrmTemplates.NoCalculation)]
+    public void Trellix_writer_matches_synthetic_golden_and_standard_columns(
+        string inputName, string expectedName, string template)
+    {
+        var root = TestSample.Root;
+        var parser = new ParserRegistry().Parsers.Single(candidate => candidate.Slug == ParserSlugs.TrellixQuotePdf);
+        var result = parser.Parse(TestSample.Path(inputName));
+        using var tempDirectory = new TempDirectory();
+        var actualPath = Path.Combine(tempDirectory.Path, expectedName);
+        CrmWriter.Write(result.LineItems, actualPath, template,
+            new CrmWriterOptions(parser.OutputVendorName.ToUpperInvariant(), Margin: 5m));
+
+        WorkbookComparer.AssertEqual(actualPath, Path.Combine(root, "samples", "outputs", expectedName));
+        using var workbook = new XLWorkbook(actualPath);
+        var sheet = workbook.Worksheet(template);
+        var first = result.LineItems[0];
+        sheet.Cell(3, 1).GetString().Should().Be("1");
+        sheet.Cell(3, 2).GetString().Should().Be("TRELLIX");
+        sheet.Cell(3, 4).GetString().Should().Be(first.Vpn);
+        sheet.Cell(3, 5).GetString().Should().Be(first.Description);
+        sheet.Cell(3, 6).GetValue<int>().Should().Be(first.Qty);
+        sheet.Cell(3, 8).GetValue<decimal>().Should().Be(first.Msrp);
+        sheet.Cell(3, 9).GetValue<decimal>().Should().Be(first.Cost);
+        sheet.Cell(3, 13).GetString().Should().Be(first.SerialNumber ?? string.Empty);
+        sheet.Cell(3, 16).DataType.Should().Be(XLDataType.DateTime);
+        sheet.Cell(3, 16).GetDateTime().Date.Should().Be(first.StartDate!.Value.ToDateTime(TimeOnly.MinValue));
+        sheet.Cell(3, 18).GetString().Should().Be(first.Comments);
+        sheet.Cell(3, 26).IsEmpty().Should().BeTrue();
+        sheet.Cell(3, 11).IsEmpty().Should().Be(template == CrmTemplates.NoCalculation);
+
+        if (inputName == "Trellix_Quote_900001.pdf")
+        {
+            sheet.Cell(3, 17).DataType.Should().Be(XLDataType.DateTime);
+            sheet.Cell(11, 8).GetValue<decimal>().Should().Be(0.0001m);
+            sheet.Cell(11, 9).GetValue<decimal>().Should().Be(0.0001m);
+        }
+        else
+        {
+            sheet.Cell(3, 17).IsEmpty().Should().BeTrue();
+            sheet.Cell(3, 13).GetString().Should().Be("SN-02");
+        }
+    }
+
     // ── CrmWriter (Lenovo LBP-E ISG XLS/XLSX, both templates) ────────
 
     [Theory]

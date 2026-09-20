@@ -64,6 +64,7 @@ public sealed class FormatDetectionTests
     [InlineData(Vendors.Datalogic, "Datalogic_PE930003.pdf", ParserSlugs.DatalogicQuotePdf)]
     [InlineData(Vendors.Epson, "Epson_96000002.pdf", ParserSlugs.EpsonQuotePdf)]
     [InlineData(Vendors.Strike, "Strike_Quote_9202.pdf", ParserSlugs.StrikeQuotePdf)]
+    [InlineData(Vendors.Trellix, "Trellix_Quote_900001.pdf", ParserSlugs.TrellixQuotePdf)]
     public void Resolve_identifies_new_pdf_formats(string vendor, string inputName, string expectedSlug)
     {
         var path = Path.Combine(TestSample.Root, "samples", "inputs", inputName);

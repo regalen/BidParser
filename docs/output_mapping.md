@@ -451,6 +451,28 @@ only when the selected concrete parser declares `SupportsOnCost`.
 
 ---
 
+## Trellix Quote PDF (ANZ-GENERIC — No Calculation / Uplift)
+
+`TrellixQuotePdfParser` (`trellix_quote_pdf`) uses the same local-currency writer and flat
+`LineSequence`. It offers no On Cost input. `No Calculation` is the default; `Uplift` also writes
+the standard Margin value in column K.
+
+| Col | Source | Output behaviour |
+|---|---|---|
+| A, B | Source order, parser vendor | Text items `"1"`, `"2"`, …; Vendor Name `TRELLIX` |
+| D, E | `Channel SKU`, `Product Description` | All SKU whitespace removed; wrapped description joined |
+| F | `QTY Software of support (Nodes)` or `QTY Hardware` | Exactly one positive quantity |
+| H, I | `Total MSRP / Qty`, `Cost Per Unit` | Unit decimals; a genuine zero uses the writer's `0.0001` sentinel |
+| M | `Latest Serial Number` | Blank when the source cell is empty |
+| P, Q | `Start Date`, `End Date` | Native Excel dates when present, `DD/MM/YYYY` display format |
+| R | `Program Type`, `Terms Length`, `Grant #s` | Non-empty values joined in that order with `" | "`; Terms Length remains textual |
+
+`LineItem.Term` remains null, so column N is blank. `Total Distribution Cost` supplies
+quote-level validation and is not written to an item column. The ordinary end-loop sentinel row
+follows the final line. See `docs/trellix_quote_pdf.md` for extraction and source-layout details.
+
+---
+
 ## Dell CTO (ANZ-GENERIC — No Calculation)
 
 **Parser:** `DellCtoJsonParser` (`dell_cto_json`)

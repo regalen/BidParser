@@ -20,7 +20,8 @@ public static class MeEndpoints
     private static readonly HashSet<string> KnownVendors = new(StringComparer.Ordinal)
     {
         Vendors.Nutanix, Vendors.Hp, Vendors.Hpe, Vendors.LenovoIsg, Vendors.LenovoIdg,
-        Vendors.Zebra, Vendors.Dell, Vendors.Cisco, Vendors.Datalogic, Vendors.Epson, Vendors.Strike
+        Vendors.Zebra, Vendors.Dell, Vendors.Cisco, Vendors.Datalogic, Vendors.Epson, Vendors.Strike,
+        Vendors.Trellix
     };
 
     public static IEndpointRouteBuilder MapMeEndpoints(this IEndpointRouteBuilder app)

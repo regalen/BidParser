@@ -1,0 +1,377 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [ 5 0 R 7 0 R 9 0 R 11 0 R ] /Count 4 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 266 >>
+stream
+BT /F1 10 Tf 1 0 0 1 36.0 574.0 Tm (Distributor Quote Report - Quote # Q-900001) Tj ET
+BT /F1 7 Tf 1 0 0 1 36.0 539.0 Tm (Trellix) Tj ET
+BT /F1 7 Tf 1 0 0 1 700.0 506.0 Tm (Quote Number: Q-900001) Tj ET
+BT /F1 7 Tf 1 0 0 1 700.0 395.0 Tm (Quote Currency: AUD) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 1008 612] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+6 0 obj
+<< /Length 4385 >>
+stream
+BT /F1 7 Tf 1 0 0 1 36.0 577.0 Tm (Distributor Quote Report - Quote # Q-900001) Tj ET
+BT /F1 7 Tf 1 0 0 1 780.0 577.0 Tm (Trellix) Tj ET
+BT /F1 7 Tf 1 0 0 1 36.0 453.0 Tm (Line) Tj ET
+BT /F1 7 Tf 1 0 0 1 36.0 445.0 Tm (Item) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 453.0 Tm (Product) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 445.0 Tm (Description) Tj ET
+BT /F1 7 Tf 1 0 0 1 113.0 453.0 Tm (Material) Tj ET
+BT /F1 7 Tf 1 0 0 1 113.0 445.0 Tm (Category) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 453.0 Tm (Program) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 445.0 Tm (Type) Tj ET
+BT /F1 7 Tf 1 0 0 1 203.0 453.0 Tm (Program) Tj ET
+BT /F1 7 Tf 1 0 0 1 203.0 445.0 Tm (Benefit) Tj ET
+BT /F1 7 Tf 1 0 0 1 244.0 453.0 Tm (Term) Tj ET
+BT /F1 7 Tf 1 0 0 1 244.0 445.0 Tm (s) Tj ET
+BT /F1 7 Tf 1 0 0 1 276.0 453.0 Tm (FCS) Tj ET
+BT /F1 7 Tf 1 0 0 1 276.0 445.0 Tm (Date) Tj ET
+BT /F1 7 Tf 1 0 0 1 320.0 453.0 Tm (Start) Tj ET
+BT /F1 7 Tf 1 0 0 1 320.0 445.0 Tm (Date) Tj ET
+BT /F1 7 Tf 1 0 0 1 355.0 453.0 Tm (End) Tj ET
+BT /F1 7 Tf 1 0 0 1 355.0 445.0 Tm (Date) Tj ET
+BT /F1 7 Tf 1 0 0 1 394.0 453.0 Tm (End) Tj ET
+BT /F1 7 Tf 1 0 0 1 394.0 445.0 Tm (of Life) Tj ET
+BT /F1 7 Tf 1 0 0 1 447.0 453.0 Tm (QTY) Tj ET
+BT /F1 7 Tf 1 0 0 1 447.0 445.0 Tm (Hardw) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 453.0 Tm (QTY) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 445.0 Tm (Softwar) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 453.0 Tm (Channel) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 445.0 Tm (SKU) Tj ET
+BT /F1 7 Tf 1 0 0 1 244.0 437.0 Tm (Lengt) Tj ET
+BT /F1 7 Tf 1 0 0 1 244.0 429.0 Tm (h) Tj ET
+BT /F1 7 Tf 1 0 0 1 447.0 437.0 Tm (are) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 437.0 Tm (e of) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 429.0 Tm (support) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 421.0 Tm (\(Nodes\)) Tj ET
+BT /F1 7 Tf 1 0 0 1 565.0 453.0 Tm (Data) Tj ET
+BT /F1 7 Tf 1 0 0 1 565.0 445.0 Tm (Center) Tj ET
+BT /F1 7 Tf 1 0 0 1 604.0 453.0 Tm (Grant #s) Tj ET
+BT /F1 7 Tf 1 0 0 1 643.0 453.0 Tm (Latest) Tj ET
+BT /F1 7 Tf 1 0 0 1 643.0 445.0 Tm (Serial) Tj ET
+BT /F1 7 Tf 1 0 0 1 678.0 453.0 Tm (MSRP) Tj ET
+BT /F1 7 Tf 1 0 0 1 678.0 445.0 Tm (Per Unit) Tj ET
+BT /F1 7 Tf 1 0 0 1 709.0 453.0 Tm (Total) Tj ET
+BT /F1 7 Tf 1 0 0 1 709.0 445.0 Tm (MSRP) Tj ET
+BT /F1 7 Tf 1 0 0 1 748.0 453.0 Tm (Cost) Tj ET
+BT /F1 7 Tf 1 0 0 1 748.0 445.0 Tm (Per Unit) Tj ET
+BT /F1 7 Tf 1 0 0 1 779.0 453.0 Tm (Standard) Tj ET
+BT /F1 7 Tf 1 0 0 1 779.0 445.0 Tm (Cost per Unit) Tj ET
+BT /F1 7 Tf 1 0 0 1 832.0 453.0 Tm (Total) Tj ET
+BT /F1 7 Tf 1 0 0 1 832.0 445.0 Tm (Disti Cost) Tj ET
+BT /F1 7 Tf 1 0 0 1 884.0 453.0 Tm (Final) Tj ET
+BT /F1 7 Tf 1 0 0 1 884.0 445.0 Tm (Disti Cost) Tj ET
+BT /F1 7 Tf 1 0 0 1 36.0 383.0 Tm (1) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 383.0 Tm (Test Cloud) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 375.0 Tm (Plan TE) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 383.0 Tm (Support) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 375.0 Tm (Renewal) Tj ET
+BT /F1 7 Tf 1 0 0 1 240.0 383.0 Tm (1.000) Tj ET
+BT /F1 7 Tf 1 0 0 1 316.0 383.0 Tm (10/01/202) Tj ET
+BT /F1 7 Tf 1 0 0 1 316.0 375.0 Tm (6) Tj ET
+BT /F1 7 Tf 1 0 0 1 351.0 383.0 Tm (9/30/2027) Tj ET
+BT /F1 7 Tf 1 0 0 1 447.0 383.0 Tm (0) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 383.0 Tm (10) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 383.0 Tm (SYNTH) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 375.0 Tm (001) Tj ET
+BT /F1 7 Tf 1 0 0 1 604.0 383.0 Tm (9000001-) Tj ET
+BT /F1 7 Tf 1 0 0 1 604.0 375.0 Tm (NAI) Tj ET
+BT /F1 7 Tf 1 0 0 1 678.0 383.0 Tm (20.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 709.0 383.0 Tm (200.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 748.0 383.0 Tm (12.34) Tj ET
+BT /F1 7 Tf 1 0 0 1 36.0 327.0 Tm (2) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 327.0 Tm (Test Store) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 319.0 Tm (Plan) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 327.0 Tm (Support) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 319.0 Tm (Renewal) Tj ET
+BT /F1 7 Tf 1 0 0 1 240.0 327.0 Tm (1.000) Tj ET
+BT /F1 7 Tf 1 0 0 1 316.0 327.0 Tm (10/01/202) Tj ET
+BT /F1 7 Tf 1 0 0 1 316.0 319.0 Tm (6) Tj ET
+BT /F1 7 Tf 1 0 0 1 351.0 327.0 Tm (9/30/2027) Tj ET
+BT /F1 7 Tf 1 0 0 1 447.0 327.0 Tm (0) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 327.0 Tm (2) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 327.0 Tm (SYNTH) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 319.0 Tm (002) Tj ET
+BT /F1 7 Tf 1 0 0 1 604.0 327.0 Tm (9000001-) Tj ET
+BT /F1 7 Tf 1 0 0 1 604.0 319.0 Tm (NAI) Tj ET
+BT /F1 7 Tf 1 0 0 1 678.0 327.0 Tm (60.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 709.0 327.0 Tm (120.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 748.0 327.0 Tm (45.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 36.0 210.0 Tm (*EXPORT CONTROL) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 1008 612] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 6133 >>
+stream
+BT /F1 7 Tf 1 0 0 1 36.0 577.0 Tm (Distributor Quote Report - Quote # Q-900001) Tj ET
+BT /F1 7 Tf 1 0 0 1 780.0 577.0 Tm (Trellix) Tj ET
+BT /F1 7 Tf 1 0 0 1 36.0 554.0 Tm (Line) Tj ET
+BT /F1 7 Tf 1 0 0 1 36.0 546.0 Tm (Item) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 554.0 Tm (Product) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 546.0 Tm (Description) Tj ET
+BT /F1 7 Tf 1 0 0 1 113.0 554.0 Tm (Material) Tj ET
+BT /F1 7 Tf 1 0 0 1 113.0 546.0 Tm (Category) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 554.0 Tm (Program) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 546.0 Tm (Type) Tj ET
+BT /F1 7 Tf 1 0 0 1 203.0 554.0 Tm (Program) Tj ET
+BT /F1 7 Tf 1 0 0 1 203.0 546.0 Tm (Benefit) Tj ET
+BT /F1 7 Tf 1 0 0 1 244.0 554.0 Tm (Term) Tj ET
+BT /F1 7 Tf 1 0 0 1 244.0 546.0 Tm (s) Tj ET
+BT /F1 7 Tf 1 0 0 1 276.0 554.0 Tm (FCS) Tj ET
+BT /F1 7 Tf 1 0 0 1 276.0 546.0 Tm (Date) Tj ET
+BT /F1 7 Tf 1 0 0 1 320.0 554.0 Tm (Start) Tj ET
+BT /F1 7 Tf 1 0 0 1 320.0 546.0 Tm (Date) Tj ET
+BT /F1 7 Tf 1 0 0 1 355.0 554.0 Tm (End) Tj ET
+BT /F1 7 Tf 1 0 0 1 355.0 546.0 Tm (Date) Tj ET
+BT /F1 7 Tf 1 0 0 1 394.0 554.0 Tm (End) Tj ET
+BT /F1 7 Tf 1 0 0 1 394.0 546.0 Tm (of Life) Tj ET
+BT /F1 7 Tf 1 0 0 1 447.0 554.0 Tm (QTY) Tj ET
+BT /F1 7 Tf 1 0 0 1 447.0 546.0 Tm (Hardw) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 554.0 Tm (QTY) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 546.0 Tm (Softwar) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 554.0 Tm (Channel) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 546.0 Tm (SKU) Tj ET
+BT /F1 7 Tf 1 0 0 1 244.0 538.0 Tm (Lengt) Tj ET
+BT /F1 7 Tf 1 0 0 1 244.0 530.0 Tm (h) Tj ET
+BT /F1 7 Tf 1 0 0 1 447.0 538.0 Tm (are) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 538.0 Tm (e of) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 530.0 Tm (support) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 522.0 Tm (\(Nodes\)) Tj ET
+BT /F1 7 Tf 1 0 0 1 565.0 554.0 Tm (Data) Tj ET
+BT /F1 7 Tf 1 0 0 1 565.0 546.0 Tm (Center) Tj ET
+BT /F1 7 Tf 1 0 0 1 604.0 554.0 Tm (Grant #s) Tj ET
+BT /F1 7 Tf 1 0 0 1 643.0 554.0 Tm (Latest) Tj ET
+BT /F1 7 Tf 1 0 0 1 643.0 546.0 Tm (Serial) Tj ET
+BT /F1 7 Tf 1 0 0 1 678.0 554.0 Tm (MSRP) Tj ET
+BT /F1 7 Tf 1 0 0 1 678.0 546.0 Tm (Per Unit) Tj ET
+BT /F1 7 Tf 1 0 0 1 709.0 554.0 Tm (Total) Tj ET
+BT /F1 7 Tf 1 0 0 1 709.0 546.0 Tm (MSRP) Tj ET
+BT /F1 7 Tf 1 0 0 1 748.0 554.0 Tm (Cost) Tj ET
+BT /F1 7 Tf 1 0 0 1 748.0 546.0 Tm (Per Unit) Tj ET
+BT /F1 7 Tf 1 0 0 1 779.0 554.0 Tm (Standard) Tj ET
+BT /F1 7 Tf 1 0 0 1 779.0 546.0 Tm (Cost per Unit) Tj ET
+BT /F1 7 Tf 1 0 0 1 832.0 554.0 Tm (Total) Tj ET
+BT /F1 7 Tf 1 0 0 1 832.0 546.0 Tm (Disti Cost) Tj ET
+BT /F1 7 Tf 1 0 0 1 884.0 554.0 Tm (Final) Tj ET
+BT /F1 7 Tf 1 0 0 1 884.0 546.0 Tm (Disti Cost) Tj ET
+BT /F1 7 Tf 1 0 0 1 36.0 484.0 Tm (3) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 484.0 Tm (Test Store) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 476.0 Tm (Plus) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 484.0 Tm (Support) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 476.0 Tm (Renewal) Tj ET
+BT /F1 7 Tf 1 0 0 1 240.0 484.0 Tm (1.000) Tj ET
+BT /F1 7 Tf 1 0 0 1 316.0 484.0 Tm (10/01/202) Tj ET
+BT /F1 7 Tf 1 0 0 1 316.0 476.0 Tm (6) Tj ET
+BT /F1 7 Tf 1 0 0 1 351.0 484.0 Tm (9/30/2027) Tj ET
+BT /F1 7 Tf 1 0 0 1 447.0 484.0 Tm (0) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 484.0 Tm (3) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 484.0 Tm (SYNTH) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 476.0 Tm (003) Tj ET
+BT /F1 7 Tf 1 0 0 1 604.0 484.0 Tm (9000001-) Tj ET
+BT /F1 7 Tf 1 0 0 1 604.0 476.0 Tm (NAI) Tj ET
+BT /F1 7 Tf 1 0 0 1 678.0 484.0 Tm (10.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 709.0 484.0 Tm (30.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 748.0 484.0 Tm (7.25) Tj ET
+BT /F1 7 Tf 1 0 0 1 36.0 428.0 Tm (4) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 428.0 Tm (Test Core) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 420.0 Tm (Plan) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 428.0 Tm (Support) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 420.0 Tm (Renewal) Tj ET
+BT /F1 7 Tf 1 0 0 1 240.0 428.0 Tm (1.000) Tj ET
+BT /F1 7 Tf 1 0 0 1 316.0 428.0 Tm (10/01/202) Tj ET
+BT /F1 7 Tf 1 0 0 1 316.0 420.0 Tm (6) Tj ET
+BT /F1 7 Tf 1 0 0 1 351.0 428.0 Tm (9/30/2027) Tj ET
+BT /F1 7 Tf 1 0 0 1 447.0 428.0 Tm (0) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 428.0 Tm (5) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 428.0 Tm (SYNTH) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 420.0 Tm (004) Tj ET
+BT /F1 7 Tf 1 0 0 1 604.0 428.0 Tm (9000001-) Tj ET
+BT /F1 7 Tf 1 0 0 1 604.0 420.0 Tm (NAI) Tj ET
+BT /F1 7 Tf 1 0 0 1 678.0 428.0 Tm (3.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 709.0 428.0 Tm (15.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 748.0 428.0 Tm (0.50) Tj ET
+BT /F1 7 Tf 1 0 0 1 36.0 372.0 Tm (5) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 372.0 Tm (Test VM) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 364.0 Tm (Plan) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 372.0 Tm (Support) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 364.0 Tm (Renewal) Tj ET
+BT /F1 7 Tf 1 0 0 1 240.0 372.0 Tm (1.000) Tj ET
+BT /F1 7 Tf 1 0 0 1 316.0 372.0 Tm (10/01/202) Tj ET
+BT /F1 7 Tf 1 0 0 1 316.0 364.0 Tm (6) Tj ET
+BT /F1 7 Tf 1 0 0 1 351.0 372.0 Tm (9/30/2027) Tj ET
+BT /F1 7 Tf 1 0 0 1 447.0 372.0 Tm (0) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 372.0 Tm (100) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 372.0 Tm (SYNTH) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 364.0 Tm (005) Tj ET
+BT /F1 7 Tf 1 0 0 1 604.0 372.0 Tm (9000001-) Tj ET
+BT /F1 7 Tf 1 0 0 1 604.0 364.0 Tm (NAI) Tj ET
+BT /F1 7 Tf 1 0 0 1 678.0 372.0 Tm (2.50) Tj ET
+BT /F1 7 Tf 1 0 0 1 709.0 372.0 Tm (250.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 748.0 372.0 Tm (1.20) Tj ET
+BT /F1 7 Tf 1 0 0 1 36.0 316.0 Tm (6) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 316.0 Tm (Test Data) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 308.0 Tm (Encrypt TE) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 316.0 Tm (Support) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 308.0 Tm (Renewal) Tj ET
+BT /F1 7 Tf 1 0 0 1 240.0 316.0 Tm (1.000) Tj ET
+BT /F1 7 Tf 1 0 0 1 316.0 316.0 Tm (10/01/202) Tj ET
+BT /F1 7 Tf 1 0 0 1 316.0 308.0 Tm (6) Tj ET
+BT /F1 7 Tf 1 0 0 1 351.0 316.0 Tm (9/30/2027) Tj ET
+BT /F1 7 Tf 1 0 0 1 447.0 316.0 Tm (0) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 316.0 Tm (7) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 316.0 Tm (SYNTH) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 308.0 Tm (006) Tj ET
+BT /F1 7 Tf 1 0 0 1 604.0 316.0 Tm (9000001-) Tj ET
+BT /F1 7 Tf 1 0 0 1 604.0 308.0 Tm (NAI) Tj ET
+BT /F1 7 Tf 1 0 0 1 678.0 316.0 Tm (10.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 709.0 316.0 Tm (70.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 748.0 316.0 Tm (8.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 36.0 210.0 Tm (*EXPORT CONTROL) Tj ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 1008 612] /Resources << /Font << /F1 3 0 R >> >> /Contents 8 0 R >>
+endobj
+10 0 obj
+<< /Length 5031 >>
+stream
+BT /F1 7 Tf 1 0 0 1 36.0 577.0 Tm (Distributor Quote Report - Quote # Q-900001) Tj ET
+BT /F1 7 Tf 1 0 0 1 780.0 577.0 Tm (Trellix) Tj ET
+BT /F1 7 Tf 1 0 0 1 36.0 554.0 Tm (Line) Tj ET
+BT /F1 7 Tf 1 0 0 1 36.0 546.0 Tm (Item) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 554.0 Tm (Product) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 546.0 Tm (Description) Tj ET
+BT /F1 7 Tf 1 0 0 1 113.0 554.0 Tm (Material) Tj ET
+BT /F1 7 Tf 1 0 0 1 113.0 546.0 Tm (Category) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 554.0 Tm (Program) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 546.0 Tm (Type) Tj ET
+BT /F1 7 Tf 1 0 0 1 203.0 554.0 Tm (Program) Tj ET
+BT /F1 7 Tf 1 0 0 1 203.0 546.0 Tm (Benefit) Tj ET
+BT /F1 7 Tf 1 0 0 1 244.0 554.0 Tm (Term) Tj ET
+BT /F1 7 Tf 1 0 0 1 244.0 546.0 Tm (s) Tj ET
+BT /F1 7 Tf 1 0 0 1 276.0 554.0 Tm (FCS) Tj ET
+BT /F1 7 Tf 1 0 0 1 276.0 546.0 Tm (Date) Tj ET
+BT /F1 7 Tf 1 0 0 1 320.0 554.0 Tm (Start) Tj ET
+BT /F1 7 Tf 1 0 0 1 320.0 546.0 Tm (Date) Tj ET
+BT /F1 7 Tf 1 0 0 1 355.0 554.0 Tm (End) Tj ET
+BT /F1 7 Tf 1 0 0 1 355.0 546.0 Tm (Date) Tj ET
+BT /F1 7 Tf 1 0 0 1 394.0 554.0 Tm (End) Tj ET
+BT /F1 7 Tf 1 0 0 1 394.0 546.0 Tm (of Life) Tj ET
+BT /F1 7 Tf 1 0 0 1 447.0 554.0 Tm (QTY) Tj ET
+BT /F1 7 Tf 1 0 0 1 447.0 546.0 Tm (Hardw) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 554.0 Tm (QTY) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 546.0 Tm (Softwar) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 554.0 Tm (Channel) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 546.0 Tm (SKU) Tj ET
+BT /F1 7 Tf 1 0 0 1 244.0 538.0 Tm (Lengt) Tj ET
+BT /F1 7 Tf 1 0 0 1 244.0 530.0 Tm (h) Tj ET
+BT /F1 7 Tf 1 0 0 1 447.0 538.0 Tm (are) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 538.0 Tm (e of) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 530.0 Tm (support) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 522.0 Tm (\(Nodes\)) Tj ET
+BT /F1 7 Tf 1 0 0 1 565.0 554.0 Tm (Data) Tj ET
+BT /F1 7 Tf 1 0 0 1 565.0 546.0 Tm (Center) Tj ET
+BT /F1 7 Tf 1 0 0 1 604.0 554.0 Tm (Grant #s) Tj ET
+BT /F1 7 Tf 1 0 0 1 643.0 554.0 Tm (Latest) Tj ET
+BT /F1 7 Tf 1 0 0 1 643.0 546.0 Tm (Serial) Tj ET
+BT /F1 7 Tf 1 0 0 1 678.0 554.0 Tm (MSRP) Tj ET
+BT /F1 7 Tf 1 0 0 1 678.0 546.0 Tm (Per Unit) Tj ET
+BT /F1 7 Tf 1 0 0 1 709.0 554.0 Tm (Total) Tj ET
+BT /F1 7 Tf 1 0 0 1 709.0 546.0 Tm (MSRP) Tj ET
+BT /F1 7 Tf 1 0 0 1 748.0 554.0 Tm (Cost) Tj ET
+BT /F1 7 Tf 1 0 0 1 748.0 546.0 Tm (Per Unit) Tj ET
+BT /F1 7 Tf 1 0 0 1 779.0 554.0 Tm (Standard) Tj ET
+BT /F1 7 Tf 1 0 0 1 779.0 546.0 Tm (Cost per Unit) Tj ET
+BT /F1 7 Tf 1 0 0 1 832.0 554.0 Tm (Total) Tj ET
+BT /F1 7 Tf 1 0 0 1 832.0 546.0 Tm (Disti Cost) Tj ET
+BT /F1 7 Tf 1 0 0 1 884.0 554.0 Tm (Final) Tj ET
+BT /F1 7 Tf 1 0 0 1 884.0 546.0 Tm (Disti Cost) Tj ET
+BT /F1 7 Tf 1 0 0 1 36.0 484.0 Tm (7) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 484.0 Tm (Test Data) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 476.0 Tm (Loss TE) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 484.0 Tm (Support) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 476.0 Tm (Renewal) Tj ET
+BT /F1 7 Tf 1 0 0 1 240.0 484.0 Tm (1.000) Tj ET
+BT /F1 7 Tf 1 0 0 1 316.0 484.0 Tm (10/01/202) Tj ET
+BT /F1 7 Tf 1 0 0 1 316.0 476.0 Tm (6) Tj ET
+BT /F1 7 Tf 1 0 0 1 351.0 484.0 Tm (9/30/2027) Tj ET
+BT /F1 7 Tf 1 0 0 1 447.0 484.0 Tm (0) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 484.0 Tm (4) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 484.0 Tm (SYNTH) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 476.0 Tm (007) Tj ET
+BT /F1 7 Tf 1 0 0 1 604.0 484.0 Tm (9000001-) Tj ET
+BT /F1 7 Tf 1 0 0 1 604.0 476.0 Tm (NAI) Tj ET
+BT /F1 7 Tf 1 0 0 1 678.0 484.0 Tm (20.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 709.0 484.0 Tm (80.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 748.0 484.0 Tm (13.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 36.0 428.0 Tm (8) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 428.0 Tm (Test Upgrade) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 420.0 Tm (Prepaid) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 428.0 Tm (Upgrade/Crossgrade) Tj ET
+BT /F1 7 Tf 1 0 0 1 240.0 428.0 Tm (1.121) Tj ET
+BT /F1 7 Tf 1 0 0 1 316.0 428.0 Tm (8/18/2026) Tj ET
+BT /F1 7 Tf 1 0 0 1 351.0 428.0 Tm (9/30/2027) Tj ET
+BT /F1 7 Tf 1 0 0 1 447.0 428.0 Tm (0) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 428.0 Tm (1) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 428.0 Tm (SYNTH) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 420.0 Tm (008) Tj ET
+BT /F1 7 Tf 1 0 0 1 678.0 428.0 Tm (0.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 709.0 428.0 Tm (0.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 748.0 428.0 Tm (1,080.) Tj ET
+BT /F1 7 Tf 1 0 0 1 748.0 420.0 Tm (40) Tj ET
+BT /F1 7 Tf 1 0 0 1 36.0 372.0 Tm (8) Tj ET
+BT /F1 7 Tf 1 0 0 1 62.0 372.0 Tm (Test Credits) Tj ET
+BT /F1 7 Tf 1 0 0 1 158.0 372.0 Tm (New) Tj ET
+BT /F1 7 Tf 1 0 0 1 240.0 372.0 Tm (1.121) Tj ET
+BT /F1 7 Tf 1 0 0 1 316.0 372.0 Tm (8/18/2026) Tj ET
+BT /F1 7 Tf 1 0 0 1 351.0 372.0 Tm (9/30/2027) Tj ET
+BT /F1 7 Tf 1 0 0 1 447.0 372.0 Tm (0) Tj ET
+BT /F1 7 Tf 1 0 0 1 482.0 372.0 Tm (3) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 372.0 Tm (SYNTH) Tj ET
+BT /F1 7 Tf 1 0 0 1 521.0 364.0 Tm (009) Tj ET
+BT /F1 7 Tf 1 0 0 1 678.0 372.0 Tm (0.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 709.0 372.0 Tm (0.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 748.0 372.0 Tm (0.00) Tj ET
+BT /F1 7 Tf 1 0 0 1 124.0 257.0 Tm (*At a minimum, review each line.) Tj ET
+BT /F1 7 Tf 1 0 0 1 36.0 210.0 Tm (*EXPORT CONTROL) Tj ET
+BT /F1 7 Tf 1 0 0 1 800.0 240.0 Tm (Total Distribution Cost: 1,546.05) Tj ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 1008 612] /Resources << /Font << /F1 3 0 R >> >> /Contents 10 0 R >>
+endobj
+xref
+0 12
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000136 00000 n 
+0000000206 00000 n 
+0000000522 00000 n 
+0000000649 00000 n 
+0000005085 00000 n 
+0000005212 00000 n 
+0000011396 00000 n 
+0000011523 00000 n 
+0000016606 00000 n 
+trailer
+<< /Size 12 /Root 1 0 R >>
+startxref
+16735
+%%EOF

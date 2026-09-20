@@ -184,8 +184,8 @@ inventory and workflows: `docs/agent_tooling.md`.**
 
 ## Commands
 
-- `dotnet test BidParser.sln` — full suite (968 tests; API tests need a container runtime).
-- `dotnet test tests/BidParser.Parsing.Tests/BidParser.Parsing.Tests.csproj` — fast parser/output suite (661 tests; no container runtime).
+- `dotnet test BidParser.sln` — full suite (993 tests; API tests need a container runtime).
+- `dotnet test tests/BidParser.Parsing.Tests/BidParser.Parsing.Tests.csproj` — fast parser/output suite (686 tests; no container runtime).
 - `dotnet test tests/BidParser.Api.Tests/BidParser.Api.Tests.csproj` — API integration suite (189 tests; needs a container runtime; takes several minutes).
 - `dotnet test tests/BidParser.Desktop.Configuration.Tests/BidParser.Desktop.Configuration.Tests.csproj` — desktop remote-config/update suite (118 tests; no container runtime, runs on Linux).
 - `dotnet build src/BidParser.Desktop/BidParser.Desktop.csproj --configuration Release` — cross-platform desktop compile check; launch/native metadata verification still requires Windows.

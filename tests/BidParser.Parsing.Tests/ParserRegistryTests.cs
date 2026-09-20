@@ -35,7 +35,8 @@ public sealed class ParserRegistryTests
                 "cisco_ccw_quote_xls",
                 "datalogic_quote_pdf",
                 "epson_quote_pdf",
-                "strike_quote_pdf");
+                "strike_quote_pdf",
+                ParserSlugs.TrellixQuotePdf);
     }
 
     [Fact]

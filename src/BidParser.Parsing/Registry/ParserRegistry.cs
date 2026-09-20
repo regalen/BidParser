@@ -20,6 +20,7 @@ using BidParser.Parsing.Cisco.CcwQuoteXls;
 using BidParser.Parsing.Datalogic.QuotePdf;
 using BidParser.Parsing.Epson.QuotePdf;
 using BidParser.Parsing.Strike.QuotePdf;
+using BidParser.Parsing.Trellix.QuotePdf;
 
 namespace BidParser.Parsing.Registry;
 
@@ -53,6 +54,7 @@ public sealed class ParserRegistry : IParserRegistry
         new CiscoCcwQuoteXlsParser(),
         new DatalogicQuotePdfParser(),
         new EpsonQuotePdfParser(),
-        new StrikeQuotePdfParser()
+        new StrikeQuotePdfParser(),
+        new TrellixQuotePdfParser()
     ];
 }
