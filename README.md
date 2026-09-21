@@ -101,9 +101,9 @@ Notes on the table:
   from Dell's Quote API and decides CTO versus APOS itself. Dell is the one vendor where automatic
   detection is the only option, enforced both in the UI and at the API layer. Dell is therefore
   web-only in desktop v1; the portable app does not expose manual JSON upload.
-- **Auto (detect format)** is an extra dropdown entry for Nutanix, Lenovo ISG, Zebra, and Dell. It
-  is preselected for those vendors, and for all but Dell the user can still choose a specific
-  format.
+- **Auto (detect format)** is an extra dropdown entry for Nutanix, Lenovo ISG, Zebra, Trellix,
+  and Dell. It is preselected for those vendors, and for all but Dell the user can still choose a
+  specific format.
 - **Multi-template formats** (No Calculation / Uplift) render a template dropdown. The only
   difference between the two is whether the Margin (Uplift) column is written; the layout is
   otherwise identical.
@@ -191,10 +191,10 @@ start just the database from the compose file with `docker compose up -d mssql`.
 dotnet test tests/BidParser.Parsing.Tests/BidParser.Parsing.Tests.csproj
 ```
 
-The parser/application/output suite is the fast one (697 tests) and needs no container runtime.
-The full suite, `dotnet test BidParser.sln`, additionally runs the 190 API integration tests
+The parser/application/output suite is the fast one (699 tests) and needs no container runtime.
+The full suite, `dotnet test BidParser.sln`, additionally runs the 192 API integration tests
 against a SQL Server testcontainer and 118 cross-platform desktop configuration/update tests
-(1005 tests total).
+(1009 tests total).
 
 **Build the desktop host**
 

@@ -40,7 +40,10 @@ public static class AutoDetectTypes
         // Dell is No Calculation only: the Quote API path writes through AnzGeneric without
         // FX or margin inputs, so Uplift is not offered on either Dell parser.
         new(Vendors.Dell, ParserSlugs.DellAuto, CrmTemplates.NoCalculation,
-            [CrmTemplates.NoCalculation])
+            [CrmTemplates.NoCalculation]),
+        // Trellix PDF and XLSM share both templates and have independent Detect signatures.
+        new(Vendors.Trellix, ParserSlugs.TrellixAuto, CrmTemplates.NoCalculation,
+            [CrmTemplates.NoCalculation, CrmTemplates.Uplift])
     ];
 
     public static AutoDetectType? ForVendor(string vendor) =>

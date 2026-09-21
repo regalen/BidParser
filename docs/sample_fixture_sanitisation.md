@@ -65,7 +65,7 @@ The contributor checklist and mandatory rules are in `CONTRIBUTING.md` and `AGEN
 
 - Every renamed fixture reference was updated in tests, documentation and the frontend sample map.
 - Each public sample selected by the frontend is byte-identical to its root input fixture.
-- Parser/output suite: 697 passed.
+- Parser/output suite: 699 passed.
 - Frontend production build: passed.
 
 Repository history is intentionally out of scope for this change. It must be rewritten separately

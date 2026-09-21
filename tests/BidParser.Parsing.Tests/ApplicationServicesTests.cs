@@ -26,6 +26,16 @@ public sealed class ApplicationServicesTests
             .AcceptedExtensions.Should().BeEquivalentTo(".xls", ".xlsx");
         catalog.Single(item => item.Slug == ParserSlugs.TrellixQuoteXlsm)
             .AcceptedExtensions.Should().Equal(".xlsm");
+
+        var trellix = catalog.Where(item => item.Vendor == Vendors.Trellix).ToList();
+        trellix.Select(item => item.Slug).Should().Equal(
+            ParserSlugs.TrellixAuto, ParserSlugs.TrellixQuotePdf, ParserSlugs.TrellixQuoteXlsm);
+        trellix[0].IsAuto.Should().BeTrue();
+        trellix[0].AcceptedExtensions.Should().BeEquivalentTo(".pdf", ".xlsm");
+        trellix[0].AcceptedMimes.Should().BeEquivalentTo(
+            SourceFormatInspector.PdfMime, SourceFormatInspector.XlsmMime);
+        trellix[0].AvailableTemplates.Should().Equal(CrmTemplates.NoCalculation, CrmTemplates.Uplift);
+        trellix[0].SupportsOnCost.Should().BeFalse();
     }
 
     [Fact]
@@ -126,6 +136,8 @@ public sealed class ApplicationServicesTests
     [InlineData("XQ-9100002.pdf", Vendors.Nutanix, ParserSlugs.NutanixAuto, ParserSlugs.NutanixSoftwareOnlyPdf)]
     [InlineData("BRDAD019200001.xls", Vendors.LenovoIsg, ParserSlugs.LenovoAuto, ParserSlugs.LenovoLbpeIsgXls)]
     [InlineData("Zebra_PC_97000002_V2.0.pdf", Vendors.Zebra, ParserSlugs.ZebraAuto, ParserSlugs.ZebraPcrPdf)]
+    [InlineData("Trellix_Quote_900001.pdf", Vendors.Trellix, ParserSlugs.TrellixAuto, ParserSlugs.TrellixQuotePdf)]
+    [InlineData("Trellix_Quote_900003.xlsm", Vendors.Trellix, ParserSlugs.TrellixAuto, ParserSlugs.TrellixQuoteXlsm)]
     public async Task Auto_resolves_the_concrete_parser(
         string filename, string vendor, string autoSlug, string expectedSlug)
     {

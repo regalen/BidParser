@@ -50,6 +50,30 @@ const parsers = [
     supportsOnCost: true,
   })),
   {
+    slug: 'trellix_auto',
+    displayName: 'Auto (detect format)',
+    vendor: 'Trellix',
+    acceptedMime: '',
+    acceptedMimes: ['application/pdf', 'application/vnd.ms-excel.sheet.macroEnabled.12'],
+    crmTemplate: 'No Calculation',
+    availableTemplates: ['No Calculation', 'Uplift'],
+    supportsSubComponentDetail: false,
+    supportsSolutionIdSplit: false,
+    supportsOnCost: false,
+  },
+  {
+    slug: 'trellix_quote_pdf',
+    displayName: 'Quote (PDF)',
+    vendor: 'Trellix',
+    acceptedMime: 'application/pdf',
+    acceptedMimes: ['application/pdf'],
+    crmTemplate: 'No Calculation',
+    availableTemplates: ['No Calculation', 'Uplift'],
+    supportsSubComponentDetail: false,
+    supportsSolutionIdSplit: false,
+    supportsOnCost: false,
+  },
+  {
     slug: 'trellix_quote_xlsm',
     displayName: 'Quote (XLSM)',
     vendor: 'Trellix',
@@ -63,7 +87,7 @@ const parsers = [
   },
 ];
 
-test('Trellix XLSM appears in the file picker and can be selected for upload', async ({ page }) => {
+test('Trellix defaults to Auto and accepts PDF and XLSM uploads', async ({ page }) => {
   await mockCommonApi(page, async (route, path) => {
     if (path === '/api/parsers') {
       await fulfillJson(route, parsers);
@@ -78,9 +102,12 @@ test('Trellix XLSM appears in the file picker and can be selected for upload', a
 
   await page.goto('/dashboard');
   await page.locator('aside select').first().selectOption('Trellix');
-  await page.getByLabel('File type').selectOption('trellix_quote_xlsm');
+  await expect(page.getByLabel('File type')).toHaveValue('trellix_auto');
+  await expect(page.getByLabel('File type').locator('option')).toHaveCount(4);
   const fileInput = page.locator('input[type="file"]');
-  await expect(fileInput).toHaveAttribute('accept', /\.xlsm/);
+  await expect(fileInput).toHaveAttribute('accept', /\.pdf.*\.xlsm/);
+  await fileInput.setInputFiles('public/samples/Trellix_Quote_900001.pdf');
+  await expect(page.getByText('Trellix_Quote_900001.pdf', { exact: true })).toBeVisible();
   await fileInput.setInputFiles('public/samples/Trellix_Quote_900003.xlsm');
   await expect(page.getByText('Trellix_Quote_900003.xlsm', { exact: true })).toBeVisible();
 });

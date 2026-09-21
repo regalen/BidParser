@@ -23,12 +23,14 @@ export const PARSER_SLUG_NUTANIX_AUTO = 'nutanix_auto';
 export const PARSER_SLUG_LENOVO_AUTO = 'lenovo_auto';
 export const PARSER_SLUG_ZEBRA_AUTO = 'zebra_auto';
 export const PARSER_SLUG_DELL_AUTO = 'dell_auto';
+export const PARSER_SLUG_TRELLIX_AUTO = 'trellix_auto';
 
 const autoParserSlugs = new Set<string>([
   PARSER_SLUG_NUTANIX_AUTO,
   PARSER_SLUG_LENOVO_AUTO,
   PARSER_SLUG_ZEBRA_AUTO,
   PARSER_SLUG_DELL_AUTO,
+  PARSER_SLUG_TRELLIX_AUTO,
 ]);
 
 export function isAutoParserSlug(slug: string): boolean {

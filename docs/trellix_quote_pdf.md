@@ -5,6 +5,7 @@
 - **Accepted MIME:** `application/pdf`
 - **CRM templates:** `No Calculation` (default), `Uplift`
 - **Additional settings:** none
+- **Selection:** Trellix Auto is preselected; manual Quote (PDF) remains available.
 
 ## Recognition and table extraction
 

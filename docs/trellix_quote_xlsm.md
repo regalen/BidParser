@@ -5,6 +5,7 @@
 - **Accepted MIME:** `application/vnd.ms-excel.sheet.macroEnabled.12`
 - **CRM templates:** `No Calculation` (default), `Uplift`
 - **Additional settings:** none
+- **Selection:** Trellix Auto is preselected; manual Quote (XLSM) remains available.
 
 ## Recognition and extraction
 

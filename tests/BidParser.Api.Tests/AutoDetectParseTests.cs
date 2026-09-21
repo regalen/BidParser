@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using BidParser.Application.Parsing;
 using BidParser.Domain.Constants;
 using BidParser.Infrastructure.Entities;
 using BidParser.Infrastructure.Persistence;
@@ -213,6 +214,15 @@ public sealed class AutoDetectParseTests
             .GetProperty("supportsSubComponentDetail").GetBoolean().Should().BeFalse();
         parsers.Single(p => p.GetProperty("slug").GetString() == ParserSlugs.HpBidXlsx)
             .GetProperty("supportsSubComponentDetail").GetBoolean().Should().BeFalse();
+
+        var trellixEntries = parsers.Where(p => p.GetProperty("vendor").GetString() == Vendors.Trellix).ToList();
+        trellixEntries.Select(p => p.GetProperty("slug").GetString()).Should().Equal(
+            ParserSlugs.TrellixAuto, ParserSlugs.TrellixQuotePdf, ParserSlugs.TrellixQuoteXlsm);
+        trellixEntries[0].GetProperty("acceptedMimes").EnumerateArray().Select(mime => mime.GetString())
+            .Should().BeEquivalentTo(SourceFormatInspector.PdfMime, SourceFormatInspector.XlsmMime);
+        trellixEntries[0].GetProperty("availableTemplates").EnumerateArray().Select(template => template.GetString())
+            .Should().Equal(CrmTemplates.NoCalculation, CrmTemplates.Uplift);
+        trellixEntries[0].GetProperty("supportsOnCost").GetBoolean().Should().BeFalse();
     }
 
     [Fact]
@@ -313,6 +323,32 @@ public sealed class AutoDetectParseTests
         var job = await db.ParseJobs.SingleAsync();
         job.ParserSlug.Should().Be(expectedSlug);
         job.ImportType.Should().Be(ImportType.Auto);
+    }
+
+    [Theory]
+    [InlineData("Trellix_Quote_900001.pdf", SourceFormatInspector.PdfMime, ParserSlugs.TrellixQuotePdf)]
+    [InlineData("Trellix_Quote_900003.xlsm", SourceFormatInspector.XlsmMime, ParserSlugs.TrellixQuoteXlsm)]
+    public async Task AutoDetect_Trellix_Resolves_Pdf_Or_Xlsm(string inputName, string mime, string expectedSlug)
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var bytes = File.ReadAllBytes(Path.Combine(FindRepoRoot(), "samples", "inputs", inputName));
+        using var response = await PostParseAsync(
+            client, bytes, inputName, mime, Vendors.Trellix, ParserSlugs.TrellixAuto);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Headers.GetValues("X-Parser-Slug").Should().ContainSingle().Which.Should().Be(expectedSlug);
+
+        using var scope = fixture.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var job = await db.ParseJobs.SingleAsync();
+        job.ParserSlug.Should().Be(expectedSlug);
+        job.ImportType.Should().Be(ImportType.Auto);
+        var metric = await db.ParseMetrics.SingleAsync();
+        metric.ParserSlug.Should().Be(expectedSlug);
+        metric.ImportType.Should().Be(ImportType.Auto);
     }
 
     [Fact]
