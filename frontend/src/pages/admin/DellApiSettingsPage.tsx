@@ -167,7 +167,7 @@ export function DellApiSettingsPage() {
               <label className="flex items-center gap-3 self-end rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-accent focus:ring-accent"
+                  className="h-4 w-4 rounded-sm border-slate-300 text-accent focus:ring-accent"
                   checked={draft.useBasicAuthForToken}
                   onChange={(event) => update('useBasicAuthForToken', event.target.checked)}
                 />

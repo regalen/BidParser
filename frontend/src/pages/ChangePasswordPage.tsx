@@ -61,7 +61,7 @@ export function ChangePasswordPage() {
           </div>
 
           <div className="space-y-4">
-            <label className="block space-y-2">
+            <label className="block">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Old password</span>
               <input
                 type="password"
@@ -69,10 +69,10 @@ export function ChangePasswordPage() {
                 onChange={(event) => setOldPassword(event.target.value)}
                 autoComplete="current-password"
                 required
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+                className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-hidden transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
               />
             </label>
-            <label className="block space-y-2">
+            <label className="block">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400">New password</span>
               <input
                 type="password"
@@ -80,7 +80,7 @@ export function ChangePasswordPage() {
                 onChange={(event) => setNewPassword(event.target.value)}
                 autoComplete="new-password"
                 required
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+                className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-hidden transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
               />
               <ul className="space-y-1 pt-1 text-[11px] font-medium text-slate-500">
                 <Rule met={checks.length}>At least 8 characters</Rule>
@@ -89,7 +89,7 @@ export function ChangePasswordPage() {
                 <Rule met={checks.symbol}>One symbol</Rule>
               </ul>
             </label>
-            <label className="block space-y-2">
+            <label className="block">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Confirm password</span>
               <input
                 type="password"
@@ -97,7 +97,7 @@ export function ChangePasswordPage() {
                 onChange={(event) => setConfirm(event.target.value)}
                 autoComplete="new-password"
                 required
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+                className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-hidden transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
               />
               {confirm.length > 0 && !checks.match && (
                 <span className="text-[11px] font-medium text-red-500">Passwords don't match</span>

@@ -8,7 +8,7 @@ export function ProgressPanel({ label, badge, state }: { label: string; badge: s
   return (
     <div className="flex h-[180px] flex-col justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white p-6">
       <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
-        <span className="rounded border border-slate-200 px-1.5 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-500">
+        <span className="rounded-sm border border-slate-200 px-1.5 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-500">
           {badge}
         </span>
         <FileUp className="h-4 w-4 text-slate-400" />

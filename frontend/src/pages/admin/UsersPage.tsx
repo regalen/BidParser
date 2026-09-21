@@ -108,7 +108,7 @@ export function UsersPage() {
             <KeyRound className="h-4 w-4 shrink-0" />
             <span>
               Temporary password for <span className="font-bold">@{tempCredential.username}</span>:{' '}
-              <code className="rounded bg-white px-1.5 py-0.5 font-mono text-emerald-900">{tempCredential.password}</code>
+              <code className="rounded-sm bg-white px-1.5 py-0.5 font-mono text-emerald-900">{tempCredential.password}</code>
               {' '}— copy it now, it will not be shown again.
             </span>
             <button
@@ -167,7 +167,7 @@ function UserCard({
   const RoleIcon = isAdmin ? Shield : UserIcon;
 
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-accent/50">
+    <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-6 shadow-xs transition-all hover:border-accent/50">
       <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
         <button
           type="button"
@@ -211,7 +211,7 @@ function UserCard({
             <span className="truncate text-xs text-slate-500">@{row.username}</span>
             <span
               className={
-                'inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white ' +
+                'inline-flex items-center rounded-sm px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white ' +
                 (isAdmin ? 'bg-red-500' : 'bg-slate-500')
               }
             >

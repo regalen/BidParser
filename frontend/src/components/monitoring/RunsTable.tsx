@@ -60,7 +60,7 @@ export function RunsTable({
                       onClick={() => toggle(key)}
                       aria-expanded={isOpen}
                       aria-label={isOpen ? 'Collapse details' : 'Expand details'}
-                      className="rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-900"
+                      className="rounded-sm p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-900"
                     >
                       {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                     </button>

@@ -60,7 +60,7 @@ export function FileTypeSelect({
           <>
             {' '}
             <a
-              className="text-[#0077d4] underline hover:no-underline"
+              className="text-accent underline hover:no-underline"
               href={`/samples/${sampleFilename}`}
               target="_blank"
               rel="noopener noreferrer"
