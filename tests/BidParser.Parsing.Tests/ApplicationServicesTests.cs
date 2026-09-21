@@ -24,6 +24,8 @@ public sealed class ApplicationServicesTests
         catalog[1].Slug.Should().Be(ParserSlugs.NutanixSoftwareOnlyPdf);
         catalog.Single(item => item.Slug == ParserSlugs.LenovoLbpeIsgXls)
             .AcceptedExtensions.Should().BeEquivalentTo(".xls", ".xlsx");
+        catalog.Single(item => item.Slug == ParserSlugs.TrellixQuoteXlsm)
+            .AcceptedExtensions.Should().Equal(".xlsm");
     }
 
     [Fact]
@@ -81,6 +83,24 @@ public sealed class ApplicationServicesTests
         }
     }
 
+    [Fact]
+    public async Task Xlsm_extension_and_magic_bytes_are_accepted_only_for_the_xlsm_parser()
+    {
+        var inspector = new SourceFormatInspector();
+        var source = TestSample.Path("Trellix_Quote_900003.xlsm");
+
+        inspector.ResolveMime(source).Should().Be(SourceFormatInspector.XlsmMime);
+        await inspector.ValidateMagicBytesAsync(source, SourceFormatInspector.XlsmMime);
+        var parsed = await Service().ParseAsync(new QuoteParseRequest(
+            source, Vendors.Trellix, ParserSlugs.TrellixQuoteXlsm));
+        parsed.Result.LineItems.Should().HaveCount(4);
+
+        var wrongSelection = () => Service().ParseAsync(new QuoteParseRequest(
+            source, Vendors.Trellix, ParserSlugs.TrellixQuotePdf));
+        (await wrongSelection.Should().ThrowAsync<ParseInputException>()).Which.Kind
+            .Should().Be(ParseInputErrorKind.ExtensionMismatch);
+    }
+
     [Theory]
     [InlineData("XQ-9100002.pdf", Vendors.Nutanix, ParserSlugs.NutanixSoftwareOnlyPdf)]
     [InlineData("XQ-9100002.xlsx", Vendors.Nutanix, ParserSlugs.NutanixSoftwareOnlyXlsx)]
@@ -90,6 +110,7 @@ public sealed class ApplicationServicesTests
     [InlineData("Zebra_PC_97000002_V2.0.pdf", Vendors.Zebra, ParserSlugs.ZebraPcrPdf)]
     [InlineData("Quote_9400000001.xls", Vendors.Cisco, ParserSlugs.CiscoCcwQuoteXls)]
     [InlineData("Epson_96000002.pdf", Vendors.Epson, ParserSlugs.EpsonQuotePdf)]
+    [InlineData("Trellix_Quote_900003.xlsm", Vendors.Trellix, ParserSlugs.TrellixQuoteXlsm)]
     public async Task Representative_formats_parse_through_the_shared_service(
         string filename, string vendor, string slug)
     {

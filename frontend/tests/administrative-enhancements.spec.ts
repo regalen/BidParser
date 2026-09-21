@@ -49,7 +49,41 @@ const parsers = [
     supportsSolutionIdSplit: false,
     supportsOnCost: true,
   })),
+  {
+    slug: 'trellix_quote_xlsm',
+    displayName: 'Quote (XLSM)',
+    vendor: 'Trellix',
+    acceptedMime: 'application/vnd.ms-excel.sheet.macroEnabled.12',
+    acceptedMimes: ['application/vnd.ms-excel.sheet.macroEnabled.12'],
+    crmTemplate: 'No Calculation',
+    availableTemplates: ['No Calculation', 'Uplift'],
+    supportsSubComponentDetail: false,
+    supportsSolutionIdSplit: false,
+    supportsOnCost: false,
+  },
 ];
+
+test('Trellix XLSM appears in the file picker and can be selected for upload', async ({ page }) => {
+  await mockCommonApi(page, async (route, path) => {
+    if (path === '/api/parsers') {
+      await fulfillJson(route, parsers);
+      return true;
+    }
+    if (path === '/api/parse-ui-config') {
+      await fulfillJson(route, { vendorDefaults: {}, guidanceByParserSlug: {} });
+      return true;
+    }
+    return false;
+  });
+
+  await page.goto('/dashboard');
+  await page.locator('aside select').first().selectOption('Trellix');
+  await page.getByLabel('File type').selectOption('trellix_quote_xlsm');
+  const fileInput = page.locator('input[type="file"]');
+  await expect(fileInput).toHaveAttribute('accept', /\.xlsm/);
+  await fileInput.setInputFiles('public/samples/Trellix_Quote_900003.xlsm');
+  await expect(page.getByText('Trellix_Quote_900003.xlsm', { exact: true })).toBeVisible();
+});
 
 test('On Cost follows parser capability across vendors', async ({ page }) => {
   await mockCommonApi(page, async (route, path) => {

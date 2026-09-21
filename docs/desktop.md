@@ -11,7 +11,7 @@ with the concrete registry in `BidParser.Parsing` and the writer in `BidParser.O
 
 ## Supported scope
 
-- Every registered non-Dell PDF, XLSX, and XLS format is available. Vendors are alphabetical and
+- Every registered non-Dell PDF, XLSX, XLSM, and XLS format is available. Vendors are alphabetical and
   parser formats preserve registry order.
 - Auto detection is offered where `AutoDetectTypes` declares it. Guidance always follows the
   resolved concrete parser.
@@ -179,7 +179,7 @@ Windows x64 without a separately installed .NET runtime or elevation. Verify:
 
 - Explorer, taskbar, Alt+Tab, fonts, light/dark/high-contrast themes, supported DPI scales,
   keyboard/focus/Narrator behavior, default size, and minimum size.
-- Representative PDF, XLSX, and XLS inputs; Auto and wrong-format selection; mismatch and Zebra
+- Representative PDF, XLSX, XLSM, and XLS inputs; Auto and wrong-format selection; mismatch and Zebra
   cancellation warnings; HP/Lenovo/SAID split ZIPs; conflict overwrite/copy; and workbook integrity.
 - Valid public configuration, offline fallback, unsupported-schema fallback, independent endpoint
   failures, update notification/view/dismissal, blocked GitHub, and rate limiting.

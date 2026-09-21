@@ -75,6 +75,8 @@ public sealed class WrongFileTypeDetectionTests
     [InlineData("Strike_Quote_9203.pdf", "strike_quote_pdf")]
     [InlineData("Trellix_Quote_900001.pdf", ParserSlugs.TrellixQuotePdf)]
     [InlineData("Trellix_Quote_900002.pdf", ParserSlugs.TrellixQuotePdf)]
+    [InlineData("Trellix_Quote_900003.xlsm", ParserSlugs.TrellixQuoteXlsm)]
+    [InlineData("Trellix_Quote_900004.xlsm", ParserSlugs.TrellixQuoteXlsm)]
     public void Detect_uniquely_identifies_format_among_vendor_siblings(string inputName, string expectedSlug)
     {
         var root = TestSample.Root;
@@ -150,6 +152,7 @@ public sealed class WrongFileTypeDetectionTests
     {
         [".pdf"] = "application/pdf",
         [".xlsx"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        [".xlsm"] = "application/vnd.ms-excel.sheet.macroEnabled.12",
         [".xls"] = "application/vnd.ms-excel",
         [".json"] = "application/json"
     };

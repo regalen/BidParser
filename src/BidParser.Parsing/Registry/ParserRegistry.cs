@@ -21,6 +21,7 @@ using BidParser.Parsing.Datalogic.QuotePdf;
 using BidParser.Parsing.Epson.QuotePdf;
 using BidParser.Parsing.Strike.QuotePdf;
 using BidParser.Parsing.Trellix.QuotePdf;
+using BidParser.Parsing.Trellix.QuoteXlsm;
 
 namespace BidParser.Parsing.Registry;
 
@@ -55,6 +56,7 @@ public sealed class ParserRegistry : IParserRegistry
         new DatalogicQuotePdfParser(),
         new EpsonQuotePdfParser(),
         new StrikeQuotePdfParser(),
-        new TrellixQuotePdfParser()
+        new TrellixQuotePdfParser(),
+        new TrellixQuoteXlsmParser()
     ];
 }

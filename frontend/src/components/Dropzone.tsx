@@ -54,7 +54,7 @@ export function Dropzone({
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf,.xlsx,.xls,.json,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/json"
+        accept=".pdf,.xlsx,.xls,.xlsm,.json,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.ms-excel.sheet.macroEnabled.12,application/json"
         className="hidden"
         onChange={(event) => {
           const next = event.currentTarget.files?.[0];
@@ -84,7 +84,7 @@ export function Dropzone({
         <>
           <UploadCloud className="h-12 w-12 text-slate-400" strokeWidth={1.7} />
           <div className="mt-3 text-base font-semibold tracking-tight text-slate-900">Drop quote file here</div>
-          <div className="mt-1 text-[11px] tracking-wide text-slate-500">PDF, XLSX, XLS or JSON · max {MAX_UPLOAD_MB} MB</div>
+          <div className="mt-1 text-[11px] tracking-wide text-slate-500">PDF, XLSX, XLSM, XLS or JSON · max {MAX_UPLOAD_MB} MB</div>
         </>
       )}
       {error && <div className="mt-3 max-w-xl text-xs font-semibold text-red-600">{error}</div>}

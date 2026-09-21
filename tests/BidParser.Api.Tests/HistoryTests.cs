@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using BidParser.Application.Parsing;
+using BidParser.Domain.Constants;
 using BidParser.Infrastructure.Entities;
 using BidParser.Infrastructure.Persistence;
 using BidParser.Infrastructure.Services;
@@ -244,6 +246,27 @@ public sealed class HistoryTests
         output.StatusCode.Should().Be(HttpStatusCode.OK);
         var outputBytes = await output.Content.ReadAsByteArrayAsync();
         outputBytes.Length.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task TrellixXlsmUploadAndHistorySourceDownloadRoundtrip()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var filename = "Trellix_Quote_900003.xlsm";
+        var bytes = File.ReadAllBytes(Path.Combine(FindRepoRoot(), "samples", "inputs", filename));
+        var response = await PostParseAsync(client, bytes, filename,
+            SourceFormatInspector.XlsmMime, Vendors.Trellix, ParserSlugs.TrellixQuoteXlsm, "1.0", "5.0");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var history = await client.GetFromJsonAsync<JsonElement>("/api/history");
+        var jobId = history.GetProperty("rows").EnumerateArray().First().GetProperty("id").GetInt32();
+        var source = await client.GetAsync($"/api/history/{jobId}/source");
+        source.StatusCode.Should().Be(HttpStatusCode.OK);
+        source.Content.Headers.ContentType!.MediaType.Should().Be("application/vnd.ms-excel.sheet.macroEnabled.12");
+        (await source.Content.ReadAsByteArrayAsync()).Should().Equal(bytes);
     }
 
     [Fact]

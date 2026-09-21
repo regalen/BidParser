@@ -22,7 +22,7 @@ This is a public repository. **Raw customer files must never be committed**, inc
 temporary intermediate that would be removed later. Git retains prior objects, so a later cleanup
 commit does not make an earlier disclosure safe.
 
-Before any PDF, XLS, XLSX, CSV, JSON, HTML, screenshot, golden output, template, browser-download
+Before any PDF, XLS, XLSX, XLSM, CSV, JSON, HTML, screenshot, golden output, template, browser-download
 sample, or material derived from a real commercial transaction is copied into the working tree:
 
 1. Inspect both its filename and its contents; renaming a file is not sanitisation.
@@ -174,8 +174,9 @@ inventory and workflows: `docs/agent_tooling.md`.**
   render, navigate, upload, walk the parse flow end to end, reproduce a defect, confirm a fix. It is
   a one-off manual-testing instrument; delete any `.playwright-mcp/` directory it leaves behind.
 - **MCP browser sessions are not tests.** `@playwright/test` is the separate, committed E2E harness.
-  Its current four mocked-API checks cover parser-capability-driven On Cost and runtime-configuration
-  interactions; they are run locally with `npx playwright test` and have no CI job. Add another
+  Its current five mocked-API checks cover XLSM file selection, parser-capability-driven On Cost,
+  and runtime-configuration interactions; they are run locally with `npx playwright test` and have
+  no CI job. Add another
   committed spec only when it buys durable regression protection; not for every frontend change,
   and never brittle ones merely because Playwright is available.
 - **Tooling never replaces building and testing.** Run the relevant builds and tests from
@@ -184,9 +185,9 @@ inventory and workflows: `docs/agent_tooling.md`.**
 
 ## Commands
 
-- `dotnet test BidParser.sln` — full suite (993 tests; API tests need a container runtime).
-- `dotnet test tests/BidParser.Parsing.Tests/BidParser.Parsing.Tests.csproj` — fast parser/output suite (686 tests; no container runtime).
-- `dotnet test tests/BidParser.Api.Tests/BidParser.Api.Tests.csproj` — API integration suite (189 tests; needs a container runtime; takes several minutes).
+- `dotnet test BidParser.sln` — full suite (1005 tests; API tests need a container runtime).
+- `dotnet test tests/BidParser.Parsing.Tests/BidParser.Parsing.Tests.csproj` — fast parser/output suite (697 tests; no container runtime).
+- `dotnet test tests/BidParser.Api.Tests/BidParser.Api.Tests.csproj` — API integration suite (190 tests; needs a container runtime; takes several minutes).
 - `dotnet test tests/BidParser.Desktop.Configuration.Tests/BidParser.Desktop.Configuration.Tests.csproj` — desktop remote-config/update suite (118 tests; no container runtime, runs on Linux).
 - `dotnet build src/BidParser.Desktop/BidParser.Desktop.csproj --configuration Release` — cross-platform desktop compile check; launch/native metadata verification still requires Windows.
 - `dotnet run --project src/BidParser.Api` — backend dev server (`http://localhost:5000`; needs a reachable SQL Server — `docker compose up -d mssql` starts just the database).

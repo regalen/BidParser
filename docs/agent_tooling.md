@@ -92,8 +92,8 @@ install — that trades a portable dependency for a machine-specific one.
 
 `@playwright/test` is a separate thing: the frontend devDependency for repeatable E2E specs
 **committed to the repository**. `frontend/playwright.config.ts` and
-`frontend/tests/administrative-enhancements.spec.ts` currently provide four mocked-API checks for
-parser-capability-driven On Cost and runtime-configuration interactions. Run them from `frontend/`
+`frontend/tests/administrative-enhancements.spec.ts` currently provide five mocked-API checks for
+XLSM file selection, parser-capability-driven On Cost, and runtime-configuration interactions. Run them from `frontend/`
 with `npx playwright test`; there is no CI job for this harness.
 
 Add a committed spec when it buys durable regression protection:
