@@ -59,14 +59,14 @@ export function RecentUploadsTable({
             onChange={(event) => onQuery(event.target.value)}
             placeholder="Search by bid number or file name"
             aria-label="Search by bid number or file name"
-            className="h-8 w-full rounded-md border border-slate-200 bg-white pl-8 pr-8 text-[13px] text-slate-700 placeholder:text-slate-400 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            className="h-8 w-full rounded-md border border-slate-200 bg-white pl-8 pr-8 text-[13px] text-slate-700 placeholder:text-slate-400 focus:border-accent focus:outline-hidden focus:ring-1 focus:ring-accent"
           />
           {query && (
             <button
               type="button"
               onClick={() => onQuery('')}
               aria-label="Clear search"
-              className="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              className="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-sm text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
             >
               <X className="h-3 w-3" />
             </button>

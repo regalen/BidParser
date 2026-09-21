@@ -102,7 +102,7 @@ export function ParseSettingsCard({
             <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
               <input
                 type="checkbox"
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                className="mt-0.5 h-4 w-4 rounded-sm border-slate-300 text-blue-600 focus:ring-blue-500"
                 checked={splitBySolutionId}
                 onChange={(event) => onSplitBySolutionId(event.target.checked)}
               />

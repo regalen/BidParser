@@ -147,7 +147,7 @@ export function DateRangeControl() {
       <label className="label" htmlFor="date-range-preset">Date range</label>
       <select
         id="date-range-preset"
-        className="field w-40 !min-h-[32px] !py-1 !text-sm"
+        className="field w-40 min-h-[32px]! py-1! text-sm!"
         value={selected}
         onChange={(event) => handlePresetChange(event.target.value as PresetKey)}
       >
@@ -163,7 +163,7 @@ export function DateRangeControl() {
       {selected === 'month' && (
         <input
           type="month"
-          className="field !min-h-[32px] !py-1 !text-sm"
+          className="field min-h-[32px]! py-1! text-sm!"
           value={monthValue}
           onChange={(event) => handleMonthChange(event.target.value)}
         />
@@ -173,7 +173,7 @@ export function DateRangeControl() {
         <>
           <input
             type="date"
-            className="field !min-h-[32px] !py-1 !text-sm"
+            className="field min-h-[32px]! py-1! text-sm!"
             value={from ?? ''}
             max={to ?? undefined}
             onChange={(event) => handleCustomChange('from', event.target.value)}
@@ -182,7 +182,7 @@ export function DateRangeControl() {
           <span className="text-xs text-slate-500">to</span>
           <input
             type="date"
-            className="field !min-h-[32px] !py-1 !text-sm"
+            className="field min-h-[32px]! py-1! text-sm!"
             value={to ?? ''}
             min={from ?? undefined}
             onChange={(event) => handleCustomChange('to', event.target.value)}

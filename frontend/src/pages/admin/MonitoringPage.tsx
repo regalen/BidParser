@@ -122,7 +122,7 @@ export function MonitoringPage() {
             <label className="label" htmlFor="run-status">Status</label>
             <select
               id="run-status"
-              className="field w-48 !min-h-[32px] !py-1 !text-sm"
+              className="field w-48 min-h-[32px]! py-1! text-sm!"
               value={status}
               onChange={(event) => setFilter('status', event.target.value)}
             >
@@ -145,7 +145,7 @@ export function MonitoringPage() {
           </div>
         )}
 
-        <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
           <div className="overflow-x-auto">
             {runs.length === 0 ? (
               <div className="flex flex-col items-center gap-1 px-4 py-12 text-center">

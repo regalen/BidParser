@@ -64,7 +64,7 @@ export function Dropzone({
       />
       {file ? (
         <div className="flex w-full max-w-lg items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
-          <span className="rounded border border-slate-200 px-1.5 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-500">
+          <span className="rounded-sm border border-slate-200 px-1.5 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-500">
             {extension(file.name)}
           </span>
           <span className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-slate-900">{file.name}</span>

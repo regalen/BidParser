@@ -52,7 +52,7 @@ export function FailureRowDetail({ failure }: { failure: FailedParseJob }) {
             {copied ? 'Copied' : 'Copy'}
           </button>
         </div>
-        <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-xs leading-relaxed text-slate-800">
+        <pre className="max-h-96 overflow-auto whitespace-pre-wrap wrap-break-word p-3 font-mono text-xs leading-relaxed text-slate-800">
           {failure.errorDetail || '(no detail captured)'}
         </pre>
       </div>

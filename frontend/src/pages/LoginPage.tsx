@@ -48,17 +48,17 @@ export function LoginPage() {
           </div>
 
           <div className="space-y-4">
-            <label className="block space-y-2">
+            <label className="block">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Username</span>
               <input
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
                 autoComplete="username"
                 required
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+                className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-hidden transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
               />
             </label>
-            <label className="block space-y-2">
+            <label className="block">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Password</span>
               <input
                 type="password"
@@ -66,7 +66,7 @@ export function LoginPage() {
                 onChange={(event) => setPassword(event.target.value)}
                 autoComplete="current-password"
                 required
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+                className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-hidden transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
               />
             </label>
             {error && <p className="text-xs font-bold text-red-500">{error}</p>}
