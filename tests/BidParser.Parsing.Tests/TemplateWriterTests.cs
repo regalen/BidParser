@@ -198,6 +198,35 @@ public sealed class TemplateWriterTests
         }
     }
 
+    [Theory]
+    [InlineData("Trellix_Quote_900003.xlsm", "Trellix_Quote_900003_NoCalculation.xlsx", CrmTemplates.NoCalculation)]
+    [InlineData("Trellix_Quote_900003.xlsm", "Trellix_Quote_900003_Uplift.xlsx", CrmTemplates.Uplift)]
+    [InlineData("Trellix_Quote_900004.xlsm", "Trellix_Quote_900004_NoCalculation.xlsx", CrmTemplates.NoCalculation)]
+    public void Trellix_xlsm_writer_matches_synthetic_golden(
+        string inputName, string expectedName, string template)
+    {
+        var root = TestSample.Root;
+        var parser = new ParserRegistry().Parsers.Single(candidate => candidate.Slug == ParserSlugs.TrellixQuoteXlsm);
+        var result = parser.Parse(TestSample.Path(inputName));
+        using var tempDirectory = new TempDirectory();
+        var actualPath = Path.Combine(tempDirectory.Path, expectedName);
+        CrmWriter.Write(result.LineItems, actualPath, template,
+            new CrmWriterOptions(parser.OutputVendorName.ToUpperInvariant(), Margin: 5m));
+
+        WorkbookComparer.AssertEqual(actualPath, Path.Combine(root, "samples", "outputs", expectedName));
+        using var workbook = new XLWorkbook(actualPath);
+        var sheet = workbook.Worksheet(template);
+        sheet.Cell(3, 2).GetString().Should().Be("TRELLIX");
+        sheet.Cell(3, 18).GetString().Should().Be(result.LineItems[0].Comments);
+        sheet.Cell(3, 11).IsEmpty().Should().Be(template == CrmTemplates.NoCalculation);
+        if (inputName.Contains("900003"))
+        {
+            sheet.Cell(4, 16).IsEmpty().Should().BeTrue();
+            sheet.Cell(5, 8).GetValue<decimal>().Should().Be(0.0001m);
+            sheet.Cell(5, 9).GetValue<decimal>().Should().Be(0.0001m);
+        }
+    }
+
     // ── CrmWriter (Lenovo LBP-E ISG XLS/XLSX, both templates) ────────
 
     [Theory]

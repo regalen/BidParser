@@ -451,25 +451,28 @@ only when the selected concrete parser declares `SupportsOnCost`.
 
 ---
 
-## Trellix Quote PDF (ANZ-GENERIC — No Calculation / Uplift)
+## Trellix Quote PDF and XLSM (ANZ-GENERIC — No Calculation / Uplift)
 
-`TrellixQuotePdfParser` (`trellix_quote_pdf`) uses the same local-currency writer and flat
-`LineSequence`. It offers no On Cost input. `No Calculation` is the default; `Uplift` also writes
+`TrellixQuotePdfParser` (`trellix_quote_pdf`) and `TrellixQuoteXlsmParser`
+(`trellix_quote_xlsm`) use the same local-currency writer and flat
+`LineSequence`. Neither offers an On Cost input. `No Calculation` is the default; `Uplift` also writes
 the standard Margin value in column K.
 
 | Col | Source | Output behaviour |
 |---|---|---|
 | A, B | Source order, parser vendor | Text items `"1"`, `"2"`, …; Vendor Name `TRELLIX` |
-| D, E | `Channel SKU`, `Product Description` | All SKU whitespace removed; wrapped description joined |
-| F | `QTY Software of support (Nodes)` or `QTY Hardware` | Exactly one positive quantity |
+| D, E | `Channel SKU`, `Product Description` | All SKU whitespace removed; PDF wrapped description joined |
+| F | `QTY Software of support (Nodes)` (PDF) / `QTY Software or Support (Nodes)` (XLSM), or `QTY Hardware` | Exactly one positive quantity |
 | H, I | `Total MSRP / Qty`, `Cost Per Unit` | Unit decimals; a genuine zero uses the writer's `0.0001` sentinel |
 | M | `Latest Serial Number` | Blank when the source cell is empty |
 | P, Q | `Start Date`, `End Date` | Native Excel dates when present, `DD/MM/YYYY` display format |
-| R | `Program Type`, `Terms Length`, `Grant #s` | Non-empty values joined in that order with `" | "`; Terms Length remains textual |
+| R | `Program Type`, `Terms Length` (PDF) / formatted `Selling Term` (XLSM), `Grant #s` / `Grant #'s` | Non-empty values joined in that order with `" | "`; term remains textual |
 
-`LineItem.Term` remains null, so column N is blank. `Total Distribution Cost` supplies
-quote-level validation and is not written to an item column. The ordinary end-loop sentinel row
-follows the final line. See `docs/trellix_quote_pdf.md` for extraction and source-layout details.
+`LineItem.Term` remains null, so column N is blank. PDF validates against quote-level
+`Total Distribution Cost`; XLSM validates the sum of `Final Disti Cost` line totals against
+`Σ(Cost Per Unit × Qty)`. Neither total is written to an item column. The ordinary end-loop
+sentinel row follows the final line. See `docs/trellix_quote_pdf.md` and
+`docs/trellix_quote_xlsm.md` for source-layout details.
 
 ---
 

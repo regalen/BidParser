@@ -111,7 +111,7 @@ public sealed class ParseTests
             "Nutanix", "nutanix_software_only_pdf", "1.0", "5.0");
 
         response.StatusCode.Should().Be(HttpStatusCode.UnsupportedMediaType);
-        (await ApiTestFixture.DetailAsync(response)).Should().Be("Only PDF, XLS, XLSX, and JSON files are supported.");
+        (await ApiTestFixture.DetailAsync(response)).Should().Be("Only PDF, XLS, XLSX, XLSM, and JSON files are supported.");
     }
 
     [Fact]

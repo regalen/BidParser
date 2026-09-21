@@ -172,6 +172,7 @@ public static class HistoryEndpoints
         {
             ".pdf" => "application/pdf",
             ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".xlsm" => "application/vnd.ms-excel.sheet.macroEnabled.12",
             ".xls" => "application/vnd.ms-excel",
             ".json" => "application/json",
             _ => "application/octet-stream"

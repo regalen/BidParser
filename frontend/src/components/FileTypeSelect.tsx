@@ -21,6 +21,7 @@ const sampleFiles: Record<string, string> = {
   epson_quote_pdf: 'Epson_96000002.pdf',
   strike_quote_pdf: 'Strike_Quote_9202.pdf',
   trellix_quote_pdf: 'Trellix_Quote_900001.pdf',
+  trellix_quote_xlsm: 'Trellix_Quote_900003.xlsm',
   cisco_ccw_quote_xls: 'Quote_9400000001.xls',
 };
 

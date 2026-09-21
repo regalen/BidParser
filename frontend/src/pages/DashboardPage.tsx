@@ -218,8 +218,8 @@ export function DashboardPage() {
   }, [vendor, parserSlug, fxRate, margin, imPercent, selectedTemplate, file, quoteId, uploadState, selectedParser, isDellVendor]);
 
   const handleFile = useCallback((next: File) => {
-    if (!next.name.match(/\.(pdf|xlsx|xls|json)$/i)) {
-      setDropError('Only PDF, XLSX, XLS, and JSON files are supported.');
+    if (!next.name.match(/\.(pdf|xlsx|xlsm|xls|json)$/i)) {
+      setDropError('Only PDF, XLSX, XLSM, XLS, and JSON files are supported.');
       setFile(null);
       return;
     }

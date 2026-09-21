@@ -1,6 +1,6 @@
 # BidParser
 
-BidParser turns a supplier quote (PDF, XLSX, XLS, or a Dell Quote API response) into a
+BidParser turns a supplier quote (PDF, XLSX, XLSM, XLS, or a Dell Quote API response) into a
 standardised CRM upload workbook — `*_NoCalculation.xlsx`, `*_ForeignUplift.xlsx`, and so on —
 ready for import into the downstream quoting/CRM system. It ships as an authenticated web app and
 as a portable Windows desktop host for local, offline parsing.
@@ -32,7 +32,7 @@ for anchor strings, never by hard-coded row/column positions.
   `BidParser.exe` with no installer, database, login, or separately installed runtime.
 - **Shared application layer** — host-neutral selection, format validation, auto-detection, output
   validation, naming, and workbook/ZIP generation used by both web and desktop.
-- **Parser core** — PdfPig (PDF), ClosedXML (XLSX), ExcelDataReader (legacy OLE `.xls` and
+- **Parser core** — PdfPig (PDF), ClosedXML (XLSX and XLSM), ExcelDataReader (legacy OLE `.xls` and
   OpenXML `.xlsx`), HtmlAgilityPack (HTML-disguised `.xls`), `System.Text.Json` (Dell).
 
 ## Documentation map
@@ -85,10 +85,11 @@ guidance is seeded for that format.
 | **Epson** | Quote (PDF) | PDF | `epson_quote_pdf` | No Calculation / Uplift | Standard |
 | **Strike** | Quote (PDF) | PDF | `strike_quote_pdf` | No Calculation / Uplift | Standard |
 | **Trellix** | Quote (PDF) | PDF | `trellix_quote_pdf` | No Calculation / Uplift | — |
+| **Trellix** | Quote (XLSM) | XLSM | `trellix_quote_xlsm` | No Calculation / Uplift | — |
 
 Notes on the table:
 
-- **Trellix result guidance** can be configured through administrator settings; the parser has no
+- **Trellix result guidance** can be configured through administrator settings; neither parser has
   seeded report-type message.
 
 - **Lenovo is two vendors in the dropdown.** Lenovo's Infrastructure Solutions Group (ISG, servers
@@ -100,9 +101,9 @@ Notes on the table:
   from Dell's Quote API and decides CTO versus APOS itself. Dell is the one vendor where automatic
   detection is the only option, enforced both in the UI and at the API layer. Dell is therefore
   web-only in desktop v1; the portable app does not expose manual JSON upload.
-- **Auto (detect format)** is an extra dropdown entry for Nutanix, Lenovo ISG, Zebra, and Dell. It
-  is preselected for those vendors, and for all but Dell the user can still choose a specific
-  format.
+- **Auto (detect format)** is an extra dropdown entry for Nutanix, Lenovo ISG, Zebra, Trellix,
+  and Dell. It is preselected for those vendors, and for all but Dell the user can still choose a
+  specific format.
 - **Multi-template formats** (No Calculation / Uplift) render a template dropdown. The only
   difference between the two is whether the Margin (Uplift) column is written; the layout is
   otherwise identical.
@@ -190,10 +191,10 @@ start just the database from the compose file with `docker compose up -d mssql`.
 dotnet test tests/BidParser.Parsing.Tests/BidParser.Parsing.Tests.csproj
 ```
 
-The parser/application/output suite is the fast one (686 tests) and needs no container runtime.
-The full suite, `dotnet test BidParser.sln`, additionally runs the 189 API integration tests
+The parser/application/output suite is the fast one (699 tests) and needs no container runtime.
+The full suite, `dotnet test BidParser.sln`, additionally runs the 192 API integration tests
 against a SQL Server testcontainer and 118 cross-platform desktop configuration/update tests
-(993 tests total).
+(1009 tests total).
 
 **Build the desktop host**
 

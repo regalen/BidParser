@@ -5,6 +5,7 @@ public sealed class SourceFormatInspector
 {
     public const string PdfMime = "application/pdf";
     public const string XlsxMime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    public const string XlsmMime = "application/vnd.ms-excel.sheet.macroEnabled.12";
     public const string XlsMime = "application/vnd.ms-excel";
     public const string JsonMime = "application/json";
 
@@ -19,6 +20,7 @@ public sealed class SourceFormatInspector
         {
             [".pdf"] = PdfMime,
             [".xlsx"] = XlsxMime,
+            [".xlsm"] = XlsmMime,
             [".xls"] = XlsMime,
             [".json"] = JsonMime
         };
@@ -30,7 +32,7 @@ public sealed class SourceFormatInspector
             ? mime
             : throw new ParseInputException(
                 ParseInputErrorKind.UnsupportedExtension,
-                "Only PDF, XLS, XLSX, and JSON files are supported.");
+                "Only PDF, XLS, XLSX, XLSM, and JSON files are supported.");
     }
 
     public static IReadOnlyList<string> ExtensionsFor(IEnumerable<string> mimes)
@@ -52,6 +54,7 @@ public sealed class SourceFormatInspector
         {
             PdfMime => HasPrefix(header, bytesRead, [0x25, 0x50, 0x44, 0x46]),
             XlsxMime => HasPrefix(header, bytesRead, [0x50, 0x4B, 0x03, 0x04]),
+            XlsmMime => HasPrefix(header, bytesRead, [0x50, 0x4B, 0x03, 0x04]),
             XlsMime => HasPrefix(header, bytesRead, [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1])
                        || FirstNonWhitespaceIs(header, bytesRead, (byte)'<'),
             JsonMime => FirstNonWhitespaceIs(header, bytesRead, (byte)'{', (byte)'[', skipUtf8Bom: true),

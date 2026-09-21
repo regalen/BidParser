@@ -13,6 +13,7 @@ matching browser-download copies in `frontend/public/samples/` was reviewed and 
 | --- | --- |
 | Nutanix, Lenovo, Zebra, Datalogic, Epson and Strike PDFs | customer and reseller names, contacts, email addresses, phone numbers, addresses, quote/bid identifiers and filenames |
 | Trellix PDFs | Fully synthetic names, identifiers, serials, prices, totals, and PDF content; no source metadata retained |
+| Trellix XLSM workbooks | Newly generated synthetic names, identifiers, serials, dates, prices, totals, and workbook metadata; no VBA or private source sheets retained |
 | HP, HPE, Cisco, Lenovo and Nutanix spreadsheets | distributor/reseller/end-user names, contact details, postal addresses, deal/bid/quote identifiers, embedded document metadata and filenames |
 | Dell JSON fixtures | customer/account details, contact details, service tags and quote identifiers |
 | Golden outputs and CRM templates | customer/contact/identifier values and embedded workbook metadata |
@@ -43,6 +44,13 @@ them into `samples/inputs/`; the first browser sample is byte-identical to its i
 goldens were generated from these inputs with the shared writer and contain no customer data or
 inherited workbook metadata from the private reference.
 
+`Trellix_Quote_900003.xlsm` and `Trellix_Quote_900004.xlsm` were generated from scratch with
+invented quote, SKU, grant, and serial identifiers; customer-free descriptions; invented dates
+and prices; cached formula values; and `regalen` workbook creator metadata. Their XLSM package
+type is macro-enabled, but no VBA project is present. The first browser sample is byte-identical
+to its root input. CRM goldens were written from these synthetic inputs with the shared writer.
+The four private workbooks in the ignored inbox were used only for local extraction checks.
+
 ## Adding or replacing fixtures
 
 Fixture sanitisation is a privacy and security requirement, not a filename convention. Review the
@@ -57,7 +65,7 @@ The contributor checklist and mandatory rules are in `CONTRIBUTING.md` and `AGEN
 
 - Every renamed fixture reference was updated in tests, documentation and the frontend sample map.
 - Each public sample selected by the frontend is byte-identical to its root input fixture.
-- Parser/output suite: 686 passed.
+- Parser/output suite: 699 passed.
 - Frontend production build: passed.
 
 Repository history is intentionally out of scope for this change. It must be rewritten separately

@@ -87,7 +87,7 @@ from `GET /api/parsers`, and that choice routes the parse.
 reroute a manual selection. It has exactly two consumers:
 
 - **Auto (detect format)** — a synthesised dropdown entry for vendors listed in `AutoDetectTypes`
-  (Nutanix, Lenovo ISG, Zebra, Dell). When the user parses with an Auto slug, `FormatDetection`
+  (Nutanix, Lenovo ISG, Zebra, Trellix, Dell). When the user parses with an Auto slug, `FormatDetection`
   scores the vendor's parsers whose accepted MIME types match the upload and picks the best above a
   0.7 threshold. The resolved concrete slug is what gets persisted and returned in the
   `X-Parser-Slug` response header. A vendor's Auto entry may only advertise CRM templates common to
