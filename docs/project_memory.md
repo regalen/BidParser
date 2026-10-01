@@ -279,8 +279,8 @@ Per-field:
 - `vpn`: join and trim `Product Code`, then `ToUpperInvariant()` for SAP SKU resolution; source casing remains in `Raw`.
 - `serial_number`: source cell wraps across two lines (e.g. `24SW000351227,\nLIC-02472987`). Join fragments with **no separator** (comma is at end of first line), trim, collapse internal whitespace → single string (`24SW000351227,LIC-02472987`). Do **not** split into serial/license fields.
 - `start_date`/`end_date`: source `MM/DD/YYYY`; `DateOnly.ParseExact("MM/dd/yyyy")`. Frontend displays `DD/MM/YYYY`.
-- `msrp`: strip `USD`/commas from `Term Adjusted List Unit Price` → `Decimal`.
-- `cost`: strip `USD`/commas from `Net Unit Price` → `Decimal`.
+- `msrp`: strip `USD`/commas from `Term Adjusted List Unit Price` → `Decimal`; blank → `0`.
+- `cost`: strip `USD`/commas from `Net Unit Price` → `Decimal`; blank → `0`.
 - `qty`: `Qty` → `int`.
 
 No Term-Months sub-header. `Total Net Price` wraps but isn't extracted (validation comes from `TOTAL:`).
@@ -292,7 +292,7 @@ the `Total` header, rather than at the latter edge; this keeps extended-price di
 
 **USD-prefix fusion:** before bucketing, `NutanixRenewalPdfParser.FuseCurrencyTokens` walks the word stream and pairs each `"USD"` with its nearby numeric amount (forward window 6 words; spatial tolerance `Top ∈ [USD.Top − 3.5, USD.Top + 15.0]`, same page). The pair collapses into one synthetic `PdfWord` anchored at the *amount's* coordinates, so wrapped amounts land in the correct price column. Without this, `USD` and the numeric straddle the boundary and `DecimalCleaner.Parse` throws on a bare `'USD'`.
 
-Edge cases: serial wrap; `Net Unit Price`/`Qty` running together (`USD 54.41 160`) disambiguated by x-ranges; `TOTAL: USD ...` wrapping; serial with no embedded license; wrapped-currency layout (`XQ-9100007.pdf`).
+Edge cases: serial wrap; `Net Unit Price`/`Qty` running together (`USD 54.41 160`) disambiguated by x-ranges; `TOTAL: USD ...` wrapping; serial with no embedded license; wrapped-currency layout (`XQ-9100007.pdf`); unpriced license/component rows retained with zero `msrp` and `cost` so validation still matches the parent-priced total.
 
 Expected output for `XQ-9100004.pdf` (golden):
 

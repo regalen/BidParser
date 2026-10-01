@@ -229,8 +229,8 @@ public sealed partial class NutanixRenewalPdfParser : IParser
             SerialNumber = TextCleaner.JoinUnspaced(item.SerialParts),
             StartDate = DateCleaner.ParseMmDdYyyy(PdfTableHelpers.Cell(cells,"Start Date")),
             EndDate = DateCleaner.ParseMmDdYyyy(PdfTableHelpers.Cell(cells,"End Date")),
-            Msrp = DecimalCleaner.Parse(PdfTableHelpers.Cell(cells,"Term Adjusted List Unit Price")),
-            Cost = DecimalCleaner.Parse(PdfTableHelpers.Cell(cells,"Net Unit Price")),
+            Msrp = DecimalCleaner.Parse(PdfTableHelpers.Cell(cells,"Term Adjusted List Unit Price"), defaultZero: true),
+            Cost = DecimalCleaner.Parse(PdfTableHelpers.Cell(cells,"Net Unit Price"), defaultZero: true),
             Qty = DecimalCleaner.ParseInt(PdfTableHelpers.Cell(cells,"Qty")),
             Raw = PdfTableHelpers.RawDict(cells)
         };
