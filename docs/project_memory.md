@@ -284,6 +284,9 @@ Per-field:
 - `qty`: `Qty` → `int`.
 
 No Term-Months sub-header. `Total Net Price` wraps but isn't extracted (validation comes from `TOTAL:`).
+Its right-aligned amounts can start just left of the `Total` header. The `Qty` / `Total Net Price`
+boundary therefore sits halfway between the right edge of the `Qty` header and the left edge of
+the `Total` header, rather than at the latter edge; this keeps extended-price digits out of `Qty`.
 
 **Platform-column variant** (`XQ-9100001`): an optional `Platform` column sits between `No` and `Product Code`. Detect from the header band (search `"Platform"`); add to column-range map only when present. When a row carries a non-empty Platform value (itself potentially wrapping, joined without separator), `LineItem.Description` = `"Platform: {value}"` (e.g. `"Platform: NX-8035N-G8-HY"`); rows with no Platform value leave `Description` null. Product Code also wraps (`RSW-NCI-`/`ULT-PR`); fragments joined without separator via `JoinUnspaced`.
 

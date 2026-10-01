@@ -147,7 +147,7 @@ public sealed partial class NutanixRenewalPdfParser : IParser
     [GeneratedRegex(@"Quote\s*:\s*(XQ-\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex QuoteField();
 
-    private static IReadOnlyDictionary<string, (double Left, double Right)> BuildColumns(IReadOnlyList<PdfWord> words, PdfWord header)
+    internal static IReadOnlyDictionary<string, (double Left, double Right)> BuildColumns(IReadOnlyList<PdfWord> words, PdfWord header)
     {
         var headerWords = HeaderWords(words, header);
         var discountWord = headerWords.FirstOrDefault(word => word.Text == "Discount");
@@ -156,7 +156,14 @@ public sealed partial class NutanixRenewalPdfParser : IParser
             .OrderBy(word => word.X0)
             .FirstOrDefault();
         var platformWord = headerWords.FirstOrDefault(word => word.Text == "Platform");
-        var qtyX0 = RequiredX0(headerWords, "Qty");
+        var qtyWord = headerWords.First(word => word.Text == "Qty");
+        var qtyX0 = qtyWord.X0;
+        // The Total Net Price values are right-aligned. A wide amount can start just left of
+        // the "Total" header, so that header's X0 is not a safe boundary for the Qty cell.
+        // Place the boundary in the gap between the two header labels instead.
+        var totalNetPriceX0 = totalWord is null
+            ? 522.0
+            : (qtyWord.X1 + totalWord.X0) / 2;
 
         // The "Net Unit Price" header cluster (Net / Unit / Price) can render in different
         // left-to-right orders across PDF variants. Take the minimum X0 of the cluster and
@@ -185,7 +192,7 @@ public sealed partial class NutanixRenewalPdfParser : IParser
             ("Total Discount", discountWord?.X0 ?? 395.0),
             ("Net Unit Price", netUnitPriceX0),
             ("Qty", qtyX0),
-            ("Total Net Price", totalWord?.X0 ?? 522.0)
+            ("Total Net Price", totalNetPriceX0)
         };
 
         // Platform column is optional — only present in the variant that includes it.

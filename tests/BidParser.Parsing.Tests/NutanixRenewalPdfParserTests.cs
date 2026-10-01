@@ -1,3 +1,5 @@
+using BidParser.Parsing.Nutanix.RenewalPdf;
+using BidParser.Parsing.Pdf;
 using BidParser.Parsing.Registry;
 using FluentAssertions;
 using Xunit;
@@ -6,6 +8,41 @@ namespace BidParser.Parsing.Tests;
 
 public sealed class NutanixRenewalPdfParserTests
 {
+    [Fact]
+    public void Keeps_right_aligned_total_out_of_quantity_when_it_starts_before_its_header()
+    {
+        static PdfWord Word(string text, double left, double right, double top) =>
+            new(text, left, right, top, top + 8, 0, 600);
+
+        var header = Word("No", 10, 20, 100);
+        PdfWord[] words =
+        [
+            header,
+            Word("Product", 40, 70, 100),
+            Word("Serial", 170, 195, 100),
+            Word("Start", 255, 275, 100),
+            Word("End", 305, 320, 100),
+            Word("Adjusted", 348, 378, 100),
+            Word("List", 380, 395, 100),
+            Word("Discount", 410, 440, 100),
+            Word("Net", 455, 468, 100),
+            Word("Unit", 469, 482, 100),
+            Word("Price", 483, 497, 100),
+            Word("Qty", 498.39, 508.78, 100),
+            Word("Total", 534.36, 548.71, 100),
+            Word("240", 498.57, 508.59, 130),
+            Word("USD", 520, 532, 130),
+            Word("48,271.60", 534.28, 561, 130)
+        ];
+
+        var fused = PdfTableHelpers.FuseCurrencyTokens(words);
+        var columns = NutanixRenewalPdfParser.BuildColumns(fused, header);
+        var row = PdfTableHelpers.RowsBetween(fused, header.Top + 6, 0, columns).Single();
+
+        row.Cells["Qty"].Should().Be("240");
+        row.Cells["Total Net Price"].Should().Be("USD 48,271.60");
+    }
+
     [Fact]
     public void Extracts_expected_line_items_and_totals()
     {

@@ -53,6 +53,11 @@ Using the "Qty" column, extract the quantity. In the provide sample XQ-9100004.p
 72
 160
 
+The `Total Net Price` amounts are right-aligned and can begin slightly to the left of the `Total`
+header. Place the boundary between `Qty` and `Total Net Price` in the whitespace between their
+header labels, so the extended price cannot be appended to the quantity. Wrapped total amounts
+stay in the total-price column as well.
+
 **Validation**
 Once all lines are extracted, you will need to validate that the values are captured accurately. To achieve this I would first look to the "TOTAL: " field at the bottom of the table, in the sample file XQ-9100004.pdf this contains the string "USD 60,205.68". You would need to strip the currency text "USD" and parse the raw number which is 60205.68.
 
