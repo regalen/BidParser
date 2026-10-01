@@ -1,11 +1,137 @@
+using BidParser.Output;
+using BidParser.Parsing.Nutanix.RenewalPdf;
+using BidParser.Parsing.Pdf;
 using BidParser.Parsing.Registry;
+using ClosedXML.Excel;
 using FluentAssertions;
+using UglyToad.PdfPig.Core;
+using UglyToad.PdfPig.Fonts.Standard14Fonts;
+using UglyToad.PdfPig.Writer;
 using Xunit;
 
 namespace BidParser.Parsing.Tests;
 
 public sealed class NutanixRenewalPdfParserTests
 {
+    [Fact]
+    public void Keeps_unpriced_renewal_lines_with_zero_prices_and_matching_total()
+    {
+        var directory = Directory.CreateTempSubdirectory("bidparser-renewal-");
+        try
+        {
+            var inputPath = Path.Combine(directory.FullName, "synthetic-renewal.pdf");
+            var outputPath = Path.Combine(directory.FullName, "synthetic-renewal-output.xlsx");
+            var pdf = new PdfDocumentBuilder();
+            var font = pdf.AddStandard14Font(Standard14Font.Helvetica);
+            var page = pdf.AddPage(650, 600);
+            void Add(string value, double x, double y) =>
+                page.AddText(value, 7, new PdfPoint(x, y), font);
+
+            Add("No", 10, 500);
+            Add("Product", 40, 500);
+            Add("Code", 75, 500);
+            Add("Serial", 175, 500);
+            Add("Number", 198, 500);
+            Add("Start", 260, 500);
+            Add("End", 310, 500);
+            Add("Adjusted", 350, 500);
+            Add("List", 385, 500);
+            Add("Discount", 410, 500);
+            Add("Net", 455, 500);
+            Add("Unit", 473, 500);
+            Add("Price", 490, 500);
+            Add("Qty", 515, 500);
+            Add("Total", 550, 500);
+
+            void AddItem(string number, string vpn, string serial, double y, string qty,
+                string? msrp = null, string? cost = null, string? total = null)
+            {
+                Add(number, 10, y);
+                Add(vpn, 40, y);
+                Add(serial, 175, y);
+                Add("11/29/2026", 260, y);
+                Add("11/28/2027", 310, y);
+                if (msrp is not null) Add($"USD {msrp}", 350, y);
+                if (cost is not null) Add($"USD {cost}", 455, y);
+                Add(qty, 515, y);
+                if (total is not null) Add($"USD {total}", 550, y);
+            }
+
+            AddItem("1", "R-SYN-PARENT-PRD", "SYN-SERIAL-001", 470, "1", "80.00", "25.00", "25.00");
+            AddItem("2", "R-SYN-CHILD-A", "SYN-LIC-001", 445, "30");
+            AddItem("3", "R-SYN-CHILD-B", "SYN-LIC-002", 420, "36");
+            Add("TOTAL:", 500, 390);
+            Add("USD 25.00", 550, 390);
+            File.WriteAllBytes(inputPath, pdf.Build());
+
+            var parser = new NutanixRenewalPdfParser();
+            var result = parser.Parse(inputPath);
+
+            result.LineItems.Select(item => (item.Vpn, item.SerialNumber, item.Qty, item.Msrp, item.Cost))
+                .Should().Equal(
+                    ("R-SYN-PARENT-PRD", "SYN-SERIAL-001", 1, 80m, 25m),
+                    ("R-SYN-CHILD-A", "SYN-LIC-001", 30, 0m, 0m),
+                    ("R-SYN-CHILD-B", "SYN-LIC-002", 36, 0m, 0m));
+            result.LineItems.Should().OnlyContain(item =>
+                item.StartDate == new DateOnly(2026, 11, 29)
+                && item.EndDate == new DateOnly(2027, 11, 28));
+            result.Validation.ComputedTotal.Should().Be(25m);
+            result.Metadata.QuotedTotal.Should().Be(25m);
+            result.Validation.Matches.Should().BeTrue();
+
+            CrmWriter.Write(result.LineItems, outputPath, parser.CrmTemplate,
+                new CrmWriterOptions(parser.Vendor.ToUpperInvariant()));
+            using var workbook = new XLWorkbook(outputPath);
+            var sheet = workbook.Worksheet(parser.CrmTemplate);
+            sheet.Cell(4, 6).GetValue<int>().Should().Be(30);
+            sheet.Cell(5, 6).GetValue<int>().Should().Be(36);
+            foreach (var row in new[] { 4, 5 })
+            {
+                sheet.Cell(row, 20).GetValue<decimal>().Should().Be(0.0001m);
+                sheet.Cell(row, 21).GetValue<decimal>().Should().Be(0.0001m);
+            }
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Keeps_right_aligned_total_out_of_quantity_when_it_starts_before_its_header()
+    {
+        static PdfWord Word(string text, double left, double right, double top) =>
+            new(text, left, right, top, top + 8, 0, 600);
+
+        var header = Word("No", 10, 20, 100);
+        PdfWord[] words =
+        [
+            header,
+            Word("Product", 40, 70, 100),
+            Word("Serial", 170, 195, 100),
+            Word("Start", 255, 275, 100),
+            Word("End", 305, 320, 100),
+            Word("Adjusted", 348, 378, 100),
+            Word("List", 380, 395, 100),
+            Word("Discount", 410, 440, 100),
+            Word("Net", 455, 468, 100),
+            Word("Unit", 469, 482, 100),
+            Word("Price", 483, 497, 100),
+            Word("Qty", 498.39, 508.78, 100),
+            Word("Total", 534.36, 548.71, 100),
+            Word("240", 498.57, 508.59, 130),
+            Word("USD", 520, 532, 130),
+            Word("48,271.60", 534.28, 561, 130)
+        ];
+
+        var fused = PdfTableHelpers.FuseCurrencyTokens(words);
+        var columns = NutanixRenewalPdfParser.BuildColumns(fused, header);
+        var row = PdfTableHelpers.RowsBetween(fused, header.Top + 6, 0, columns).Single();
+
+        row.Cells["Qty"].Should().Be("240");
+        row.Cells["Total Net Price"].Should().Be("USD 48,271.60");
+    }
+
     [Fact]
     public void Extracts_expected_line_items_and_totals()
     {

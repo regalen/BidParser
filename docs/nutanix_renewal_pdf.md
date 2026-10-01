@@ -45,6 +45,11 @@ Using the "Term Adjusted List Unit Price" column extract the number in each row.
 **Sale Price (`Cost`)**
 Using the `Net Unit Price` column, extract the number in each row. The string in this field will look like `USD 54.41` or `USD 371.83`. Strip the currency text `USD` and capture only the value. For example, `USD 54.41` becomes `54.41` and `USD 371.83` becomes `371.83`.
 
+Some renewal quotes list license/component rows whose `Term Adjusted List Unit Price` and `Net Unit
+Price` cells are both blank. Keep these rows with their part number, serial number, dates and
+quantity. Represent each blank price as `0` in the parsed `LineItem`; this keeps validation based
+on the priced parent line and lets the Foreign Uplift writer emit its genuine-zero sentinel.
+
 **Quantity**
 Using the "Qty" column, extract the quantity. In the provide sample XQ-9100004.pdf, you would end up with the values;
 
@@ -52,6 +57,11 @@ Using the "Qty" column, extract the quantity. In the provide sample XQ-9100004.p
 32
 72
 160
+
+The `Total Net Price` amounts are right-aligned and can begin slightly to the left of the `Total`
+header. Place the boundary between `Qty` and `Total Net Price` in the whitespace between their
+header labels, so the extended price cannot be appended to the quantity. Wrapped total amounts
+stay in the total-price column as well.
 
 **Validation**
 Once all lines are extracted, you will need to validate that the values are captured accurately. To achieve this I would first look to the "TOTAL: " field at the bottom of the table, in the sample file XQ-9100004.pdf this contains the string "USD 60,205.68". You would need to strip the currency text "USD" and parse the raw number which is 60205.68.
