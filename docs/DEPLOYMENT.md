@@ -7,8 +7,8 @@ The portable Windows host is released separately and has no server deployment. S
 
 ## Quick Start
 
-The repository is private, so copy `docker-compose.yml` to the target host yourself — from a clone
-or over `scp`. There is no public URL to fetch it from.
+The repository is public. Copy `docker-compose.yml` to the target host from a clone or download it
+from the repository.
 
 Run everything below from the directory containing `docker-compose.yml`.
 
@@ -23,11 +23,7 @@ echo "FORWARDED_ALLOW_IPS=127.0.0.1" >> .env
 # echo "ADMIN_PASSWORD=something-stronger" >> .env
 # echo "DATA_DIR=/opt/bidparser/data" >> .env
 
-# 3. Authenticate to the registry (the package is private, like the repository)
-#    Use a GitHub personal access token with read:packages.
-echo "$GITHUB_TOKEN" | docker login ghcr.io -u <github-username> --password-stdin
-
-# 4. Pull and run
+# 3. Pull and run
 docker compose pull
 docker compose up -d
 ```
@@ -48,6 +44,11 @@ docker compose up -d
 ```
 
 Schema migrations run automatically inside `MigratorHostedService` at startup, so upgrades are applied without manual steps.
+
+The Dockerfile currently pins Node 22.23.4 for the frontend build, .NET SDK 10.0.402 for API
+publishing, and ASP.NET Core 10.0.13 for the running API. Review these pins after each upstream
+security release. A new release tag is required to publish patched web and desktop artifacts;
+pulling an older versioned image or executable does not update its bundled runtime.
 
 ## Environment Variables
 
