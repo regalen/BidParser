@@ -132,7 +132,9 @@ dotnet publish src/BidParser.Desktop/BidParser.Desktop.csproj `
   -p:BidParserVersion=1.0.0
 ```
 
-The profile is self-contained `win-x64`, single-file, includes native libraries for self-extraction,
+The profile pins the bundled .NET runtime to 10.0.13. Update that pin when a newer security patch
+is adopted, then rebuild and verify the executable on Windows. The profile is self-contained
+`win-x64`, single-file, includes native libraries for self-extraction,
 does not trim or require ReadyToRun, and embeds symbols. The publish directory must contain exactly
 `BidParser.exe`. Native runtime components may self-extract beneath `%TEMP%/.net`; quote data is
 not extracted there.
