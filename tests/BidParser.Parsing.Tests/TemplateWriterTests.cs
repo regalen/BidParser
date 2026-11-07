@@ -488,6 +488,7 @@ public sealed class TemplateWriterTests
 
     [Theory]
     [InlineData(CrmTemplates.ForeignUplift, true)]
+    [InlineData(CrmTemplates.ForeignNoCalculation, true)]
     [InlineData(CrmTemplates.NoCalculation, true)]
     [InlineData(CrmTemplates.Uplift, true)]
     [InlineData(CrmTemplates.PercentOffWithUplift, false)]
@@ -526,6 +527,7 @@ public sealed class TemplateWriterTests
     [Theory]
     [InlineData("XQ-9100002.pdf", CrmTemplates.ForeignUplift, "XQ-9100002_ForeignUplift.xlsx")]
     [InlineData("XQ-9100002.xlsx", CrmTemplates.ForeignUplift, "XQ-9100002_ForeignUplift.xlsx")]
+    [InlineData("quote.xlsx", CrmTemplates.ForeignNoCalculation, "quote_ForeignNoCalculation.xlsx")]
     [InlineData("quote.pdf", CrmTemplates.NoCalculation, "quote_NoCalculation.xlsx")]
     [InlineData("quote.pdf", CrmTemplates.Uplift, "quote_Uplift.xlsx")]
     [InlineData("quote.pdf", CrmTemplates.PercentOffWithUplift, "quote_PercentOffWithUplift.xlsx")]
@@ -537,6 +539,7 @@ public sealed class TemplateWriterTests
     [Theory]
     [InlineData("source.xlsx", CrmTemplates.Uplift, "BRDAD011030915", "3", "BRDAD011030915_3_Uplift.xlsx")]
     [InlineData("source.xlsx", CrmTemplates.ForeignUplift, "XQ-9100002", "1", "XQ-9100002_1_ForeignUplift.xlsx")]
+    [InlineData("source.xlsx", CrmTemplates.ForeignNoCalculation, "XQ-9100002", "1", "XQ-9100002_1_ForeignNoCalculation.xlsx")]
     [InlineData("source.xlsx", CrmTemplates.NoCalculation, "97000001", "2.0", "97000001_2.0_NoCalculation.xlsx")]
     public void OutputFilenameUsesBidMetadataWhenBothFieldsAreAvailable(
         string sourceFilename,
@@ -700,8 +703,10 @@ public sealed class TemplateWriterTests
         }
     }
 
-    [Fact]
-    public void ItemFallbackIsNumericOnForeignUplift()
+    [Theory]
+    [InlineData(CrmTemplates.ForeignUplift)]
+    [InlineData(CrmTemplates.ForeignNoCalculation)]
+    public void ItemFallbackIsNumericOnForeignTemplates(string crmTemplate)
     {
         var root = TestSample.Root;
         var parser = new ParserRegistry().Parsers.Single(p => p.Slug == ParserSlugs.NutanixSoftwareOnlyPdf);
@@ -712,7 +717,7 @@ public sealed class TemplateWriterTests
         var actualPath = Path.Combine(tempDirectory.Path, "item-fallback.xlsx");
 
         CrmWriter.Write(
-            result.LineItems, actualPath, CrmTemplates.ForeignUplift,
+            result.LineItems, actualPath, crmTemplate,
             new CrmWriterOptions(VendorName: "NUTANIX", Margin: 5.00m, TermAsComment: parser.TermRendersAsComment));
 
         using var workbook = new XLWorkbook(actualPath);
@@ -723,6 +728,93 @@ public sealed class TemplateWriterTests
             cell.IsNumber.Should().BeTrue($"col A on row {row} should be numeric");
             cell.GetNumber().Should().Be(row - 2);
         }
+    }
+
+    [Fact]
+    public void ForeignNoCalculationWriter_UsesForeignUpliftSheetAndOmitsMarginAndFxRate()
+    {
+        var items = new[]
+        {
+            new LineItem
+            {
+                Vpn = "SKU-PRICED",
+                Description = "Priced line with term",
+                Qty = 4,
+                Cost = 125.50m,
+                Msrp = 250.00m,
+                Term = 36,
+            },
+            new LineItem
+            {
+                Vpn = "SKU-ZERO",
+                Description = "Zero-priced line without term",
+                Qty = 2,
+                Cost = 0m,
+                Msrp = 0m,
+                Term = null,
+            },
+        };
+
+        using var tempDirectory = new TempDirectory();
+        var actualPath = Path.Combine(tempDirectory.Path, "foreign-no-calc.xlsx");
+
+        CrmWriter.Write(
+            items,
+            actualPath,
+            CrmTemplates.ForeignNoCalculation,
+            new CrmWriterOptions(
+                VendorName: "JUNIPER",
+                Margin: 7.25m,
+                FxRate: 0.6543m,
+                Currency: "USD",
+                TermAsComment: true));
+
+        using var workbook = new XLWorkbook(actualPath);
+        workbook.Worksheets.Should().ContainSingle().Which.Name.Should().Be(CrmTemplates.ForeignUplift);
+        var sheet = workbook.Worksheet(CrmTemplates.ForeignUplift);
+
+        // Row 1 & Row 2 headers preserved
+        sheet.Cell(1, 12).GetString().Should().Be("(Optional for Software and/or Services)");
+        sheet.Cell(2, 1).GetString().Should().Be("Item");
+        sheet.Cell(2, 11).GetString().Should().Be("Margin");
+        sheet.Cell(2, 19).GetString().Should().Be("Foreign Currency");
+        sheet.Cell(2, 20).GetString().Should().Be("Foreign Cost");
+        sheet.Cell(2, 21).GetString().Should().Be("Foreign MSRP");
+        sheet.Cell(2, 22).GetString().Should().Be("Foreign Exchange Rate");
+
+        // Row 3 — priced line
+        sheet.Cell(3, 1).Value.IsNumber.Should().BeTrue();
+        sheet.Cell(3, 1).GetValue<int>().Should().Be(1);
+        sheet.Cell(3, 2).GetString().Should().Be("JUNIPER");
+        sheet.Cell(3, 4).GetString().Should().Be("SKU-PRICED");
+        sheet.Cell(3, 5).GetString().Should().Be("Priced line with term");
+        sheet.Cell(3, 6).GetValue<int>().Should().Be(4);
+        sheet.Cell(3, 8).Value.IsBlank.Should().BeTrue("local MSRP col H is blank");
+        sheet.Cell(3, 9).Value.IsBlank.Should().BeTrue("local Cost col I is blank");
+        sheet.Cell(3, 11).Value.IsBlank.Should().BeTrue("Margin col K is blank even when options.Margin is supplied");
+        sheet.Cell(3, 14).Value.IsBlank.Should().BeTrue("Duration col N is blank when TermAsComment is true");
+        sheet.Cell(3, 18).GetString().Should().Be("36 Months");
+        sheet.Cell(3, 19).GetString().Should().Be("USD");
+        sheet.Cell(3, 20).GetValue<decimal>().Should().Be(125.50m);
+        sheet.Cell(3, 21).GetValue<decimal>().Should().Be(250.00m);
+        sheet.Cell(3, 22).Value.IsBlank.Should().BeTrue("FX Rate col V is blank even when options.FxRate is supplied");
+
+        // Row 4 — zero-priced line uses genuine-zero sentinels
+        sheet.Cell(4, 1).Value.IsNumber.Should().BeTrue();
+        sheet.Cell(4, 1).GetValue<int>().Should().Be(2);
+        sheet.Cell(4, 8).Value.IsBlank.Should().BeTrue();
+        sheet.Cell(4, 9).Value.IsBlank.Should().BeTrue();
+        sheet.Cell(4, 11).Value.IsBlank.Should().BeTrue();
+        sheet.Cell(4, 18).Value.IsBlank.Should().BeTrue();
+        sheet.Cell(4, 19).GetString().Should().Be("USD");
+        sheet.Cell(4, 20).GetValue<decimal>().Should().Be(0.0001m);
+        sheet.Cell(4, 21).GetValue<decimal>().Should().Be(0.0001m);
+        sheet.Cell(4, 22).Value.IsBlank.Should().BeTrue();
+
+        // Row 5 — end-loop sentinel
+        sheet.Cell(5, 2).GetString().Should().Be("*");
+        sheet.Cell(5, 4).GetString().Should().Be(
+            "DO NOT DELETE THIS LINE. Indicate * on column B to mark the end loop. Add / remove lines above as necessary.");
     }
 
 

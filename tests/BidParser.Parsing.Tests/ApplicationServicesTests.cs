@@ -43,6 +43,8 @@ public sealed class ApplicationServicesTests
     {
         CrmWriter.GetCapabilities(CrmTemplates.ForeignUplift).Should().Be(
             new CrmTemplateCapabilities(true, true, true, true, false, false, false));
+        CrmWriter.GetCapabilities(CrmTemplates.ForeignNoCalculation).Should().Be(
+            new CrmTemplateCapabilities(false, false, false, false, false, false, false));
         CrmWriter.GetCapabilities(CrmTemplates.NoCalculation)!.SupportsOnCost.Should().BeTrue();
         CrmWriter.GetCapabilities(CrmTemplates.PercentOffWithUplift)!.RequiresDiscountOffMsrp.Should().BeTrue();
         CrmWriter.GetCapabilities("not-a-template").Should().BeNull();

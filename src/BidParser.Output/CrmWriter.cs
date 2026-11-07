@@ -43,8 +43,8 @@ public static class CrmWriter
         return profile is null
             ? null
             : new CrmTemplateCapabilities(
-                UsesFxRate: profile.ForeignBlock,
-                RequiresFxRate: profile.ForeignBlock,
+                UsesFxRate: profile.ForeignExchangeRate,
+                RequiresFxRate: profile.ForeignExchangeRate,
                 UsesUplift: profile.Margin,
                 RequiresUplift: profile.Margin,
                 UsesDiscountOffMsrp: profile.ImPercent,
@@ -191,10 +191,15 @@ public static class CrmWriter
                     sheet.Cell(rowNumber, 18).Value = item.Comments;
                 }
 
-                // Cols S & V — Foreign Block (Currency & FX Rate)
-                if (profile.ForeignBlock)
+                // Col S — Foreign Currency
+                if (profile.ForeignCurrency)
                 {
                     sheet.Cell(rowNumber, 19).Value = options.Currency;
+                }
+
+                // Col V — Foreign Exchange Rate
+                if (profile.ForeignExchangeRate)
+                {
                     sheet.Cell(rowNumber, 22).Value = options.FxRate;
                 }
 

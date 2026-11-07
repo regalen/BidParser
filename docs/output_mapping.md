@@ -43,11 +43,9 @@ The `*` in column B is required — our quoting system uses it as the loop senti
 | Z | `On Cost %` |
 | AA | `Retail Bump %` |
 
-## Foreign Uplift (Nutanix) — field mapping
+## Foreign Uplift / Foreign No Calculation — field mapping
 
-The mapping below is for the **`Foreign Uplift`** template, which today is used by the six Nutanix
-formats only. Every other vendor writes a local-currency template; those mappings are in the
-per-vendor sections further down.
+The mapping below covers the foreign-currency writer profiles **`Foreign Uplift`** and **`Foreign No Calculation`**. Both write to the `Foreign Uplift` worksheet layout (`ANZ-GENERIC_ForeignUplift.xlsx`). `Foreign Uplift` writes the user's Margin (col K) and Foreign Exchange Rate (col V); `Foreign No Calculation` leaves both Margin (col K) and Foreign Exchange Rate (col V) blank while still writing Foreign Currency (col S), Foreign Cost (col T), and Foreign MSRP (col U). Every other vendor writes a local-currency template; those mappings are in the per-vendor sections further down.
 
 `CrmWriter` is the single writer for all templates and is format-agnostic: the per-column behaviour
 comes from `CrmTemplateProfile`, and the values below marked as supplied by `options` come from the
@@ -55,7 +53,7 @@ comes from `CrmTemplateProfile`, and the values below marked as supplied by `opt
 
 | Col | Header | Source | Notes |
 |-----|--------|--------|-------|
-| A | Item | auto-increment from 1 | Row index in the output (1, 2, 3, …). Nutanix parsers set no `LineSequence`, so this template's numeric fallback applies. |
+| A | Item | auto-increment from 1 | Row index in the output (1, 2, 3, …). Parsers using these profiles set no `LineSequence`, so the numeric fallback applies. |
 | B | Vendor Name | `options.VendorName` → `"NUTANIX"` | Supplied by `ParseService` from `parser.OutputVendorName.ToUpperInvariant()`. Not hardcoded — every vendor uses the same writer. |
 | C | IMTH SKU | _empty_ | Manual / future enrichment. |
 | D | Vendor Part Number | `vpn` | Nutanix parsers normalize the value to uppercase for SAP SKU resolution; source casing remains in `Raw`. |
@@ -65,24 +63,24 @@ comes from `CrmTemplateProfile`, and the values below marked as supplied by `opt
 | H | MSRP | _empty_ | **Always blank.** The parser's `msrp` value lands in column U only. |
 | I | Cost | _empty_ | Manual / future enrichment. |
 | J | Discount | _empty_ | Manual / future enrichment. |
-| K | Margin | `margin` | User-supplied at parse time (rendered as **Uplift** in the UI). `CrmWriterOptions` carries a `5.00` default, but `ParseService` always passes the user's value. |
+| K | Margin | `margin` (`Foreign Uplift` only) | User-supplied at parse time (rendered as **Uplift** in the UI) on `Foreign Uplift`; blank on `Foreign No Calculation`. |
 | L | Product Part Number (Warranty/Renewal) | _empty_ | Manual / future enrichment. |
 | M | Serial Number | `serial_number` | Written verbatim when populated; embedded license values remain comma-joined with no prefix or splitting. |
-| N | Warranty / Duration (months) | `term` | **Only written when `term >= 1`, and only for non-Software-Only formats.** For Software Only (PDF + XLSX), `term` lands in column R instead and N stays empty. If `term` is null or `0`, leave the cell empty. |
+| N | Warranty / Duration (months) | `term` | **Only written when `term >= 1`, and only when `TermRendersAsComment` is false.** When `TermRendersAsComment` is true, `term` lands in column R instead and N stays empty. If `term` is null or `0`, leave the cell empty. |
 | O | Vendor Ref | _empty_ | Manual / future enrichment. |
 | P | Start Date | `start_date` | Native Excel date; cell format `DD/MM/YYYY`. Empty if null. |
 | Q | End Date | `end_date` | Same as Start Date. |
-| R | Comments | `comments` **or** `term` (Software Only formats only) | Writes `comments` when populated. For `nutanix_software_only_pdf` and `nutanix_software_only_xlsx`, `term` is written as `"{term} Months"` when `term >= 1` (e.g. `60 Months`). Empty otherwise. The Software Only formats select term placement by declaring `TermRendersAsComment => true` on `IParser`; `CrmWriter` reads that flag and never inspects the vendor or slug. |
-| S | Foreign Currency | `QuoteMetadata.Currency` | Comes from the parsed quote, not a constant. `"USD"` for every Nutanix quote to date. |
+| R | Comments | `comments` **or** `term` (`TermRendersAsComment` formats) | Writes `comments` when populated. For parsers declaring `TermRendersAsComment => true` (such as `nutanix_software_only_pdf` and `nutanix_software_only_xlsx`), `term` is written as `"{term} Months"` when `term >= 1` (e.g. `60 Months`). Empty otherwise. `CrmWriter` reads that flag and never inspects the vendor or slug. |
+| S | Foreign Currency | `QuoteMetadata.Currency` | Comes from the parsed quote, not a constant (`"USD"`). Written on both `Foreign Uplift` and `Foreign No Calculation`. |
 | T | Foreign Cost | `cost` | A value of `0` is written as the sentinel `0.0001` (the downstream uplift app rejects literal `0` and rounds the sentinel back to `0`). See locked rule #2. |
 | U | Foreign MSRP | `msrp` | This is where the parser's MSRP value lives. A value of `0` is written as the sentinel `0.0001` (same reason as column T). |
-| V | Foreign Exchange Rate | `fx_rate` | User-supplied at parse time. `CrmWriterOptions` carries a `1.000` default, but `ParseService` always passes the user's value. |
+| V | Foreign Exchange Rate | `fx_rate` (`Foreign Uplift` only) | User-supplied at parse time on `Foreign Uplift`; blank on `Foreign No Calculation`. |
 | W–AA | (other) | _empty_ | Manual / future enrichment. |
 
-**Locked output rules** (rules 1 and 3 are specific to `Foreign Uplift`; 2 and 4–6 apply to every template)
-1. On `Foreign Uplift`, local `MSRP` (column H) is **never** populated — the parser's `msrp` value lives in `Foreign MSRP` (column U) only. Other templates do populate column H; see the per-vendor sections.
+**Locked output rules** (rules 1 and 3 are specific to `Foreign Uplift` / `Foreign No Calculation`; 2 and 4–6 apply to every template)
+1. On `Foreign Uplift` and `Foreign No Calculation`, local `MSRP` (column H) is **never** populated — the parser's `msrp` value lives in `Foreign MSRP` (column U) only. Other templates do populate column H; see the per-vendor sections.
 2. **The two zero prices.** CRM does not accept a literal `0` as a price, which gives the output two deliberate ways to write zero. They mean opposite things — see "Zero pricing: the two zeros" below for the full rule. Rows with blank supplier prices (Hardware Only Quote D bundled components and Renewal PDF license/component rows) get `msrp = 0` and `cost = 0` at parse time and are a **`ZeroPriceSentinel`** case: when writing to `Foreign Cost` (column T) and `Foreign MSRP` (column U), a value of `0` is replaced with `0.0001`, which CRM rounds back to `0` on import so the line lands at $0.00. The substitution is per-column at write time only; the in-memory `LineItem.Cost` / `LineItem.Msrp` remain `0` and validation totals are unaffected.
-3. `Warranty / Duration (months)` (column N) is **only written when `term >= 1`** *and* the parser does not declare `TermRendersAsComment` (the two Software Only formats do). For Software Only (PDF + XLSX), N stays empty and the term lands in `Comments` (column R) as `"{term} Months"` instead (e.g. `60 Months`). A term of `0` or null is treated as "no term" and both cells are left empty.
+3. `Warranty / Duration (months)` (column N) is **only written when `term >= 1`** *and* the parser does not declare `TermRendersAsComment`. For parsers with `TermRendersAsComment => true`, N stays empty and the term lands in `Comments` (column R) as `"{term} Months"` instead (e.g. `60 Months`). A term of `0` or null is treated as "no term" and both cells are left empty.
 4. `Serial Number` column (M) is populated from `serial_number`. The supplier's serial-cell string may contain an embedded license number (e.g. `"24SW000351227,LIC-02472987"`) and is written verbatim with no `"License: "` prefix or splitting. `Comments` remains independent in column R, so both fields can be emitted on the same line.
 5. Numbers are written as raw values — no forced decimal places. Excel will display `383` rather than `383.00` unless a cell format is applied; this is intentional.
 6. Dates are written as native `date` values with the cell number format `DD/MM/YYYY` so Excel displays them as DD/MM/YYYY but they remain sortable/filterable as real dates.
@@ -93,6 +91,7 @@ When both parsed bid fields are available, the output file is named
 `CrmTemplates.FileToken(crmTemplate)`. Bid fields are sanitised to `[A-Za-z0-9._-]` before they
 enter a filename. So:
 - bid `XQ-9100002`, revision `1`, and `Foreign Uplift` → `XQ-9100002_1_ForeignUplift.xlsx`
+- bid `XQ-9100002`, revision `1`, and `Foreign No Calculation` → `XQ-9100002_1_ForeignNoCalculation.xlsx`
 - bid `BRDAD011030915`, revision `3`, and `Uplift` → `BRDAD011030915_3_Uplift.xlsx`
 
 For parsers declaring `OutputNameStyle.SolutionScoped` (e.g. `hp_services_xlsx`), whole-quote downloads and ZIP archives are named `<BidNumber>_<FileToken>.xlsx` and `<BidNumber>_<FileToken>.zip` without a revision suffix (e.g. `CH9000000002_NoCalculation.xlsx` / `CH9000000002_NoCalculation.zip`), and split workbooks inside the archive are named `<solutionToken>_<FileToken>.xlsx` (e.g. `1073_3013_5309_NoCalculation.xlsx`), where whitespace runs in the solution ID are converted to underscores `_`.
@@ -141,12 +140,13 @@ All 8 CRM upload template workbooks are checked in under `samples/template/` and
 same 27-column layout (A→AA) and shared strings. They differ only in sheet tab name, default
 formatting, and column visibility.
 
-**Only four are wired up.** A template is selectable only when `CrmTemplateProfile.For` returns a
-profile for it — today `Foreign Uplift`, `No Calculation`, `Uplift`, and `% Off RRP with Uplift`.
-The other four workbooks in the table below (`RRPDiscount`, `PercentOffWithDiff`,
-`ForeignPercentOffWithUplift`, `ForeignPercentOffWithDiff`) are reference copies of CRM's other
-upload layouts, retained for when a future format needs one; adding one means adding a
-`CrmTemplateProfile` entry and a `CrmTemplates` constant, not a new writer.
+**Five profiles are wired up.** A template is selectable only when `CrmTemplateProfile.For` returns a
+profile for it — today `Foreign Uplift`, `Foreign No Calculation` (which writes the `Foreign Uplift`
+worksheet layout without Margin or Foreign Exchange Rate), `No Calculation`, `Uplift`, and
+`% Off RRP with Uplift`. The other four workbooks in the table below (`RRPDiscount`,
+`PercentOffWithDiff`, `ForeignPercentOffWithUplift`, `ForeignPercentOffWithDiff`) are reference
+copies of CRM's other upload layouts, retained for when a future format needs one; adding one means
+adding a `CrmTemplateProfile` entry and a `CrmTemplates` constant, not a new writer.
 
 | Template | Columns visible beyond common A–F, L–R, W, Z, AA |
 |---|---|

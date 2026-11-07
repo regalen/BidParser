@@ -38,7 +38,8 @@ internal sealed record CrmTemplateProfile(
     bool Term,                 // col N, or col R when termAsComment
     bool Dates,                // cols P/Q
     bool Comments,             // col R
-    bool ForeignBlock,         // cols S + V
+    bool ForeignCurrency,      // col S
+    bool ForeignExchangeRate,  // col V
     bool NumericItemFallback)  // col A when the parser sets no LineSequence: number vs text
 {
     /// <summary>Returns the profile for a CRM template, or null when the template is unknown.</summary>
@@ -55,7 +56,23 @@ internal sealed record CrmTemplateProfile(
             Term: true,
             Dates: true,
             Comments: true,
-            ForeignBlock: true,
+            ForeignCurrency: true,
+            ForeignExchangeRate: true,
+            NumericItemFallback: true),
+
+        CrmTemplates.ForeignNoCalculation => new(
+            SheetName: CrmTemplates.ForeignUplift,
+            Msrp: PriceWrite.AlwaysWithSentinel, MsrpColumn: 21,
+            Cost: PriceWrite.AlwaysWithSentinel, CostColumn: 20,
+            Margin: false,
+            ImPercent: false,
+            OnCost: false,
+            MinQty: false,
+            Term: true,
+            Dates: true,
+            Comments: true,
+            ForeignCurrency: true,
+            ForeignExchangeRate: false,
             NumericItemFallback: true),
 
         CrmTemplates.NoCalculation => new(
@@ -69,7 +86,8 @@ internal sealed record CrmTemplateProfile(
             Term: false,
             Dates: true,
             Comments: true,
-            ForeignBlock: false,
+            ForeignCurrency: false,
+            ForeignExchangeRate: false,
             NumericItemFallback: false),
 
         CrmTemplates.Uplift => new(
@@ -83,7 +101,8 @@ internal sealed record CrmTemplateProfile(
             Term: false,
             Dates: true,
             Comments: true,
-            ForeignBlock: false,
+            ForeignCurrency: false,
+            ForeignExchangeRate: false,
             NumericItemFallback: false),
 
         CrmTemplates.PercentOffWithUplift => new(
@@ -97,7 +116,8 @@ internal sealed record CrmTemplateProfile(
             Term: false,
             Dates: false,
             Comments: false,
-            ForeignBlock: false,
+            ForeignCurrency: false,
+            ForeignExchangeRate: false,
             NumericItemFallback: false),
 
         _ => null,
