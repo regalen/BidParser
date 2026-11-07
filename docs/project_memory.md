@@ -140,6 +140,7 @@ They also pin the *response contract*, because Dell's published spec does not fu
 | `Trellix_Quote_900002.pdf` | Trellix Quote (PDF) | Synthetic 2-item alternate layout; blank printed line number, hardware quantity, populated serial; AUD 50.00 |
 | `Trellix_Quote_900003.xlsm` | Trellix Quote (XLSM) | Synthetic 4-item workbook; displayed/underlying dates, non-unit selling term, hardware quantity, zero price; AUD 99.99 |
 | `Trellix_Quote_900004.xlsm` | Trellix Quote (XLSM) | Synthetic 1-item shifted-column workbook with a hidden synthetic sheet; AUD 36.25 |
+| `Juniper_CPQ_900001.xlsx` | Juniper CPQ (XLSX) | Synthetic 9-item CPQ Bill of Materials with 1 structural option summary row (`EX4400-48MP`), blank service durations, and `Totals:` row; USD 52,200.00 |
 
 ## ParseResult contract
 
@@ -630,6 +631,8 @@ Trellix Quote (PDF): the same two local-currency templates, but no On Cost capab
 
 Trellix Quote (XLSM): the same templates, fields, and capabilities. The parser anchors the visible workbook table and reads displayed Start/End dates when the export also contains underlying date columns. It validates summed `Final Disti Cost` line totals against `Σ(Cost Per Unit × Qty)` because the workbook has no quote-level distribution total. See `docs/trellix_quote_xlsm.md`.
 
+Juniper CPQ (XLSX) (`juniper_cpq_xlsx`): `Foreign Uplift` (default) and `Foreign No Calculation`. Anchors the visible workbook table on `SKU`, `Description`, `Service Duration`, `List Price Per`, `Quantity`, and `Extended Net Price`; excludes structural option summary rows by content (has `SKU` and aggregate totals while lacking `Description` and `List Price Per`); computes `Cost = Extended Net Price / Quantity` without premature rounding; reads revisionless bid identity from `Transaction #:`; sets `TermRendersAsComment => true`; and validates `Σ(Cost × Qty)` against the mapped `Extended Net Price` cell on the `Totals:` row. See `docs/juniper_cpq_xlsx.md`.
+
 `ParseService.ParseAsync` accepts an optional `crmTemplate`. When omitted/empty it defaults to `parser.CrmTemplate`, is validated against `parser.AvailableTemplates`, and the matching writer branch is dispatched. `/api/parsers` exposes `availableTemplates` so the frontend renders a static callout (single-template) or a dropdown (multi-template).
 
 ## MVP scope & guardrails
@@ -722,6 +725,7 @@ Out of scope: multi-file batch upload, CSV formats, review/approve gate, multi-t
 - `docs/strike_quote_pdf.md` — Strike quote PDF. Multi-page table continuation, space-aware wrapped product codes, printed-Value validation, and delivery-exclusive quoted total.
 - `docs/trellix_quote_pdf.md` — Trellix Distributor Quote Report PDF. AUD-only, two dense table layouts, dual quantity selection, unit MSRP calculation, dates/serial/comments, and Total Distribution Cost validation.
 - `docs/trellix_quote_xlsm.md` — Trellix Distributor Quote workbook. AUD-only, displayed/underlying date pairs, cached formula values, dual quantity selection, and summed Final Disti Cost validation.
+- `docs/juniper_cpq_xlsx.md` — Juniper CPQ Bill of Materials workbook. USD foreign output (`Foreign Uplift` / `Foreign No Calculation`), content-based structural option summary exclusion, `Extended Net Price / Quantity` unit cost, and `Totals:` row validation.
 - `docs/output_mapping.md` — how parsed `LineItem` fields map into `ANZ-GENERIC_*.xlsx`, output filename convention, column visibility across all 8 CRM upload templates, and locked output rules.
 - `docs/desktop.md` — portable WPF host behavior, local-data boundary, remote schema/trust model, update semantics, packaging/release prerequisites, and Windows acceptance runbook.
 - `docs/architecture.md` — human-facing architecture guide: project responsibilities, parse flow, persistence, auth, and where to start on a given change. The orientation document; this file is the deep reference behind it.

@@ -817,6 +817,25 @@ public sealed class TemplateWriterTests
             "DO NOT DELETE THIS LINE. Indicate * on column B to mark the end loop. Add / remove lines above as necessary.");
     }
 
+    [Theory]
+    [InlineData("Juniper_CPQ_900001.xlsx", "Juniper_CPQ_900001_ForeignUplift.xlsx", CrmTemplates.ForeignUplift)]
+    [InlineData("Juniper_CPQ_900001.xlsx", "Juniper_CPQ_900001_ForeignNoCalculation.xlsx", CrmTemplates.ForeignNoCalculation)]
+    public void Juniper_cpq_writer_matches_synthetic_golden(string inputName, string expectedName, string template)
+    {
+        var root = TestSample.Root;
+        var parser = new ParserRegistry().Parsers.Single(candidate => candidate.Slug == ParserSlugs.JuniperCpqXlsx);
+        var result = parser.Parse(TestSample.Path(inputName));
+        using var tempDirectory = new TempDirectory();
+        var actualPath = Path.Combine(tempDirectory.Path, expectedName);
+
+        var options = template == CrmTemplates.ForeignUplift
+            ? new CrmWriterOptions(VendorName: parser.OutputVendorName.ToUpperInvariant(), FxRate: 1.000m, Margin: 5.00m, TermAsComment: parser.TermRendersAsComment)
+            : new CrmWriterOptions(VendorName: parser.OutputVendorName.ToUpperInvariant(), TermAsComment: parser.TermRendersAsComment);
+        CrmWriter.Write(result.LineItems, actualPath, template, options);
+
+        WorkbookComparer.AssertEqual(actualPath, Path.Combine(root, "samples", "outputs", expectedName));
+    }
+
 
     private sealed class TempDirectory : IDisposable
     {

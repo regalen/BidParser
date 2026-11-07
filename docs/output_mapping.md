@@ -556,3 +556,27 @@ Uses the 27-column ANZ-GENERIC layout. Flattens Cisco's 3-level line numbers (`1
 | R | Comments | `comments` | Composed continuation text + `"Included Item/Support: {Included Item}"` |
 
 All other columns: blank. End-loop sentinel row after last line item: col B = `"*"`. Zero prices emit `0.0001` sentinel.
+
+---
+
+## Juniper CPQ (ANZ-GENERIC — Foreign Uplift / Foreign No Calculation)
+
+**Parser:** `JuniperCpqXlsxParser` (`juniper_cpq_xlsx`)  
+**Template / Writer:** `CrmWriter.Write(items, outputPath, crmTemplate, options)` (`crmTemplate` ∈ `{"Foreign Uplift", "Foreign No Calculation"}`, default `"Foreign Uplift"`)  
+**Sheet name:** `"Foreign Uplift"` (both modes)
+
+| Col | Header | Juniper CPQ value | Notes |
+|---|---|---|---|
+| A | Item | `1`, `2`, `3`, … | Sequential numeric fallback (`LineItem.LineSequence` is `null`) |
+| B | Vendor Name | `"JUNIPER"` | `vendor.ToUpperInvariant()` |
+| D | Vendor Part Number | `vpn` | `SKU` |
+| E | Description | `description` | `Description` |
+| F | Qty. | `qty` | `Quantity` |
+| K | Margin | `options.Margin` | Populated on `Foreign Uplift`; blank on `Foreign No Calculation` |
+| R | Comments | `"{term} Months"` | From `Service Duration` via `TermRendersAsComment => true`; blank when duration is empty |
+| S | Foreign Currency | `"USD"` | Fixed literal |
+| T | Foreign Cost | `cost` | `Extended Net Price / Quantity` (`0` → `0.0001` sentinel) |
+| U | Foreign MSRP | `msrp` | `List Price Per` (`0` → `0.0001` sentinel) |
+| V | Foreign Exchange Rate | `options.FxRate` | Populated on `Foreign Uplift`; blank on `Foreign No Calculation` |
+
+All other columns (including local `MSRP` col H, local `Cost` col I, and `Warranty / Duration` col N): blank. End-loop sentinel row after last line item: col B = `"*"`. See `docs/juniper_cpq_xlsx.md`.

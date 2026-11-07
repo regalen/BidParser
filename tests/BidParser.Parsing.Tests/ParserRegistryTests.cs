@@ -37,7 +37,8 @@ public sealed class ParserRegistryTests
                 "epson_quote_pdf",
                 "strike_quote_pdf",
                 ParserSlugs.TrellixQuotePdf,
-                ParserSlugs.TrellixQuoteXlsm);
+                ParserSlugs.TrellixQuoteXlsm,
+                ParserSlugs.JuniperCpqXlsx);
     }
 
     [Fact]
