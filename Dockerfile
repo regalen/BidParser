@@ -9,7 +9,7 @@ COPY frontend/ .
 RUN npm run build
 
 # Stage 2: publish .NET API
-FROM mcr.microsoft.com/dotnet/sdk:10.0.402 AS dotnet-build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.403 AS dotnet-build
 # The SemVer stamped into the API assembly. CI passes the tag; the default marks an untagged build.
 ARG BIDPARSER_VERSION=1.0.0-dev
 WORKDIR /src
@@ -34,7 +34,7 @@ RUN dotnet publish src/BidParser.Api/BidParser.Api.csproj \
     --output /app/publish
 
 # Stage 3: runtime with built frontend
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.13 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.14 AS runtime
 WORKDIR /app
 
 COPY --from=dotnet-build /app/publish ./
