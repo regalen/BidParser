@@ -15,10 +15,11 @@ with the concrete registry in `BidParser.Parsing` and the writer in `BidParser.O
   parser formats preserve registry order.
 - Auto detection is offered where `AutoDetectTypes` declares it. Guidance always follows the
   resolved concrete parser.
-- CRM-template choices, FX Rate, Uplift, Discount Off MSRP, On Cost, and Solution ID/SAID splitting
-  are derived from parser and template capabilities; remote configuration cannot add capabilities.
-- Validation mismatches and parser warnings remain saveable through the explicit **Save anyway**
-  action.
+- CRM-template choices (including `Foreign Uplift` vs `Foreign No Calculation`), FX Rate, Uplift,
+  Discount Off MSRP, On Cost, and Solution ID/SAID splitting are derived from parser and template
+  capabilities; remote configuration cannot add capabilities.
+- Validation mismatches (both quote-total mismatches and per-row extended-net mismatches) and parser
+  warnings remain saveable through the explicit **Save anyway** action.
 - Dell is excluded from desktop v1. Dell quotes must be acquired through the authenticated Quote
   API in the web host; accepting manual Dell JSON would create a different contract.
 

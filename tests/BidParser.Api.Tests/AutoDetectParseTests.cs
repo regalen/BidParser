@@ -223,6 +223,15 @@ public sealed class AutoDetectParseTests
         trellixEntries[0].GetProperty("availableTemplates").EnumerateArray().Select(template => template.GetString())
             .Should().Equal(CrmTemplates.NoCalculation, CrmTemplates.Uplift);
         trellixEntries[0].GetProperty("supportsOnCost").GetBoolean().Should().BeFalse();
+
+        var juniperEntries = parsers.Where(p => p.GetProperty("vendor").GetString() == Vendors.Juniper).ToList();
+        juniperEntries.Select(p => p.GetProperty("slug").GetString()).Should().Equal(
+            ParserSlugs.JuniperAuto, ParserSlugs.JuniperCpqXlsx, ParserSlugs.JuniperIndirectXlsx);
+        juniperEntries[0].GetProperty("acceptedMimes").EnumerateArray().Select(mime => mime.GetString())
+            .Should().Equal(SourceFormatInspector.XlsxMime);
+        juniperEntries[0].GetProperty("availableTemplates").EnumerateArray().Select(template => template.GetString())
+            .Should().Equal(CrmTemplates.ForeignUplift, CrmTemplates.ForeignNoCalculation);
+        juniperEntries[0].GetProperty("supportsOnCost").GetBoolean().Should().BeFalse();
     }
 
     [Fact]
@@ -337,6 +346,32 @@ public sealed class AutoDetectParseTests
         var bytes = File.ReadAllBytes(Path.Combine(FindRepoRoot(), "samples", "inputs", inputName));
         using var response = await PostParseAsync(
             client, bytes, inputName, mime, Vendors.Trellix, ParserSlugs.TrellixAuto);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Headers.GetValues("X-Parser-Slug").Should().ContainSingle().Which.Should().Be(expectedSlug);
+
+        using var scope = fixture.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var job = await db.ParseJobs.SingleAsync();
+        job.ParserSlug.Should().Be(expectedSlug);
+        job.ImportType.Should().Be(ImportType.Auto);
+        var metric = await db.ParseMetrics.SingleAsync();
+        metric.ParserSlug.Should().Be(expectedSlug);
+        metric.ImportType.Should().Be(ImportType.Auto);
+    }
+
+    [Theory]
+    [InlineData("Juniper_CPQ_900001.xlsx", SourceFormatInspector.XlsxMime, ParserSlugs.JuniperCpqXlsx)]
+    [InlineData("Juniper_Indirect_900001.xlsx", SourceFormatInspector.XlsxMime, ParserSlugs.JuniperIndirectXlsx)]
+    public async Task AutoDetect_Juniper_Resolves_Cpq_Or_Indirect(string inputName, string mime, string expectedSlug)
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var bytes = File.ReadAllBytes(Path.Combine(FindRepoRoot(), "samples", "inputs", inputName));
+        using var response = await PostParseAsync(
+            client, bytes, inputName, mime, Vendors.Juniper, ParserSlugs.JuniperAuto);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         response.Headers.GetValues("X-Parser-Slug").Should().ContainSingle().Which.Should().Be(expectedSlug);

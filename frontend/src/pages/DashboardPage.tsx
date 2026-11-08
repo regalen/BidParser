@@ -14,6 +14,8 @@ import { ParseSettingsCard } from '../components/ParseSettingsCard';
 import { RecentUploadsTable } from '../components/RecentUploadsTable';
 import { ToastStack, type ToastMessage } from '../components/Toast';
 import {
+  CRM_TEMPLATE_FOREIGN_NO_CALCULATION,
+  CRM_TEMPLATE_FOREIGN_UPLIFT,
   CRM_TEMPLATE_NO_CALCULATION,
   CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT,
   CRM_TEMPLATE_UPLIFT,
@@ -199,21 +201,19 @@ export function DashboardPage() {
   const canSubmit = useMemo(() => {
     const hasSource = isDellVendor ? DELL_QUOTE_ID_PATTERN.test(quoteId) : Boolean(file);
     if (!vendor || !parserSlug || !hasSource || uploadState !== 'idle') return false;
-    // Uplift requires margin; On Cost % is optional for parsers that support it.
-    // Multi-template (HP Bid, HPE, Dell, …): Uplift needs margin; No Calculation needs neither
-    if (selectedParser && selectedParser.availableTemplates.length > 1) {
-      const requiresMargin = selectedTemplate === CRM_TEMPLATE_UPLIFT;
-      return !requiresMargin || Boolean(margin);
+    const activeTemplate = selectedTemplate || selectedParser?.crmTemplate || '';
+    if (activeTemplate === CRM_TEMPLATE_FOREIGN_UPLIFT) {
+      return Boolean(fxRate && margin);
     }
-    // Single-template HP (HP OneConfig XLSX): % Off RRP with Uplift needs both margin and imPercent
-    if (selectedTemplate === CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT) {
+    if (activeTemplate === CRM_TEMPLATE_UPLIFT) {
+      return Boolean(margin);
+    }
+    if (activeTemplate === CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT) {
       return Boolean(margin && imPercent);
     }
-    // Single-template No Calculation (Cisco): needs no inputs
-    if (selectedParser?.crmTemplate === CRM_TEMPLATE_NO_CALCULATION) {
+    if (activeTemplate === CRM_TEMPLATE_NO_CALCULATION || activeTemplate === CRM_TEMPLATE_FOREIGN_NO_CALCULATION) {
       return true;
     }
-    // Single-template Foreign Uplift (Nutanix): needs both fxRate and margin
     return Boolean(fxRate && margin);
   }, [vendor, parserSlug, fxRate, margin, imPercent, selectedTemplate, file, quoteId, uploadState, selectedParser, isDellVendor]);
 
