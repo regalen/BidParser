@@ -78,6 +78,7 @@ public sealed class WrongFileTypeDetectionTests
     [InlineData("Trellix_Quote_900003.xlsm", ParserSlugs.TrellixQuoteXlsm)]
     [InlineData("Trellix_Quote_900004.xlsm", ParserSlugs.TrellixQuoteXlsm)]
     [InlineData("Juniper_CPQ_900001.xlsx", ParserSlugs.JuniperCpqXlsx)]
+    [InlineData("Juniper_Indirect_900001.xlsx", ParserSlugs.JuniperIndirectXlsx)]
     public void Detect_uniquely_identifies_format_among_vendor_siblings(string inputName, string expectedSlug)
     {
         var root = TestSample.Root;

@@ -818,12 +818,14 @@ public sealed class TemplateWriterTests
     }
 
     [Theory]
-    [InlineData("Juniper_CPQ_900001.xlsx", "Juniper_CPQ_900001_ForeignUplift.xlsx", CrmTemplates.ForeignUplift)]
-    [InlineData("Juniper_CPQ_900001.xlsx", "Juniper_CPQ_900001_ForeignNoCalculation.xlsx", CrmTemplates.ForeignNoCalculation)]
-    public void Juniper_cpq_writer_matches_synthetic_golden(string inputName, string expectedName, string template)
+    [InlineData(ParserSlugs.JuniperCpqXlsx, "Juniper_CPQ_900001.xlsx", "Juniper_CPQ_900001_ForeignUplift.xlsx", CrmTemplates.ForeignUplift)]
+    [InlineData(ParserSlugs.JuniperCpqXlsx, "Juniper_CPQ_900001.xlsx", "Juniper_CPQ_900001_ForeignNoCalculation.xlsx", CrmTemplates.ForeignNoCalculation)]
+    [InlineData(ParserSlugs.JuniperIndirectXlsx, "Juniper_Indirect_900001.xlsx", "Juniper_Indirect_900001_ForeignUplift.xlsx", CrmTemplates.ForeignUplift)]
+    [InlineData(ParserSlugs.JuniperIndirectXlsx, "Juniper_Indirect_900001.xlsx", "Juniper_Indirect_900001_ForeignNoCalculation.xlsx", CrmTemplates.ForeignNoCalculation)]
+    public void Juniper_writer_matches_synthetic_goldens(string slug, string inputName, string expectedName, string template)
     {
         var root = TestSample.Root;
-        var parser = new ParserRegistry().Parsers.Single(candidate => candidate.Slug == ParserSlugs.JuniperCpqXlsx);
+        var parser = new ParserRegistry().Parsers.Single(candidate => candidate.Slug == slug);
         var result = parser.Parse(TestSample.Path(inputName));
         using var tempDirectory = new TempDirectory();
         var actualPath = Path.Combine(tempDirectory.Path, expectedName);

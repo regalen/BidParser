@@ -73,6 +73,23 @@ public sealed class FormatDetectionTests
     }
 
     [Theory]
+    [InlineData("Juniper_CPQ_900001.xlsx", ParserSlugs.JuniperCpqXlsx)]
+    [InlineData("Juniper_Indirect_900001.xlsx", ParserSlugs.JuniperIndirectXlsx)]
+    public void Resolve_identifies_correct_juniper_format(string inputName, string expectedSlug)
+    {
+        var parsers = new ParserRegistry().Parsers;
+        var path = Path.Combine(TestSample.Root, "samples", "inputs", inputName);
+        var mime = ExtensionToMime[Path.GetExtension(inputName)];
+
+        var resolved = FormatDetection.Resolve(parsers, Vendors.Juniper, mime, path);
+        resolved.Should().NotBeNull();
+        resolved!.Slug.Should().Be(expectedSlug);
+
+        var excluded = FormatDetection.Resolve(parsers, Vendors.Juniper, mime, path, exclude: resolved);
+        excluded.Should().BeNull("sibling Juniper XLSX parser must not cross-detect");
+    }
+
+    [Theory]
     [InlineData("BRDAD019200001.xls", ParserSlugs.LenovoLbpeIsgXls)]
     [InlineData("Bid_Platform_Bid_Request_Sample_03.xls", ParserSlugs.LenovoLbpeIsgXls)]
     [InlineData("Bid_Platform_Bid_Request_Sample_04.xlsx", ParserSlugs.LenovoLbpeIsgXls)]

@@ -36,6 +36,16 @@ public sealed class ApplicationServicesTests
             SourceFormatInspector.PdfMime, SourceFormatInspector.XlsmMime);
         trellix[0].AvailableTemplates.Should().Equal(CrmTemplates.NoCalculation, CrmTemplates.Uplift);
         trellix[0].SupportsOnCost.Should().BeFalse();
+
+        var juniper = catalog.Where(item => item.Vendor == Vendors.Juniper).ToList();
+        juniper.Select(item => item.Slug).Should().Equal(
+            ParserSlugs.JuniperAuto, ParserSlugs.JuniperCpqXlsx, ParserSlugs.JuniperIndirectXlsx);
+        juniper[0].IsAuto.Should().BeTrue();
+        juniper[0].AcceptedExtensions.Should().Equal(".xlsx");
+        juniper[0].CrmTemplate.Should().Be(CrmTemplates.ForeignUplift);
+        juniper[0].AvailableTemplates.Should().Equal(CrmTemplates.ForeignUplift, CrmTemplates.ForeignNoCalculation);
+        juniper[0].SupportsOnCost.Should().BeFalse();
+        juniper[0].SupportsSolutionIdSplit.Should().BeFalse();
     }
 
     [Fact]
@@ -123,6 +133,8 @@ public sealed class ApplicationServicesTests
     [InlineData("Quote_9400000001.xls", Vendors.Cisco, ParserSlugs.CiscoCcwQuoteXls)]
     [InlineData("Epson_96000002.pdf", Vendors.Epson, ParserSlugs.EpsonQuotePdf)]
     [InlineData("Trellix_Quote_900003.xlsm", Vendors.Trellix, ParserSlugs.TrellixQuoteXlsm)]
+    [InlineData("Juniper_CPQ_900001.xlsx", Vendors.Juniper, ParserSlugs.JuniperCpqXlsx)]
+    [InlineData("Juniper_Indirect_900001.xlsx", Vendors.Juniper, ParserSlugs.JuniperIndirectXlsx)]
     public async Task Representative_formats_parse_through_the_shared_service(
         string filename, string vendor, string slug)
     {
@@ -140,6 +152,8 @@ public sealed class ApplicationServicesTests
     [InlineData("Zebra_PC_97000002_V2.0.pdf", Vendors.Zebra, ParserSlugs.ZebraAuto, ParserSlugs.ZebraPcrPdf)]
     [InlineData("Trellix_Quote_900001.pdf", Vendors.Trellix, ParserSlugs.TrellixAuto, ParserSlugs.TrellixQuotePdf)]
     [InlineData("Trellix_Quote_900003.xlsm", Vendors.Trellix, ParserSlugs.TrellixAuto, ParserSlugs.TrellixQuoteXlsm)]
+    [InlineData("Juniper_CPQ_900001.xlsx", Vendors.Juniper, ParserSlugs.JuniperAuto, ParserSlugs.JuniperCpqXlsx)]
+    [InlineData("Juniper_Indirect_900001.xlsx", Vendors.Juniper, ParserSlugs.JuniperAuto, ParserSlugs.JuniperIndirectXlsx)]
     public async Task Auto_resolves_the_concrete_parser(
         string filename, string vendor, string autoSlug, string expectedSlug)
     {
@@ -149,18 +163,22 @@ public sealed class ApplicationServicesTests
         parsed.WasAuto.Should().BeTrue();
     }
 
-    [Fact]
-    public async Task Wrong_file_type_is_an_input_error_that_names_the_sibling_format()
+    [Theory]
+    [InlineData("XQ-9100004.pdf", Vendors.Nutanix, ParserSlugs.NutanixSoftwareOnlyPdf, "Renewal (PDF)")]
+    [InlineData("Juniper_Indirect_900001.xlsx", Vendors.Juniper, ParserSlugs.JuniperCpqXlsx, "Indirect (XLSX)")]
+    [InlineData("Juniper_CPQ_900001.xlsx", Vendors.Juniper, ParserSlugs.JuniperIndirectXlsx, "CPQ (XLSX)")]
+    public async Task Wrong_file_type_is_an_input_error_that_names_the_sibling_format(
+        string filename, string vendor, string selectedSlug, string expectedSuggestion)
     {
         var request = new QuoteParseRequest(
-            TestSample.Path("XQ-9100004.pdf"), Vendors.Nutanix, ParserSlugs.NutanixSoftwareOnlyPdf);
+            TestSample.Path(filename), vendor, selectedSlug);
 
         var exception = await ((Func<Task>)(() => Service().ParseAsync(request)))
             .Should().ThrowAsync<ParseInputException>();
 
         exception.Which.Kind.Should().Be(ParseInputErrorKind.WrongFileType);
         exception.Which.Stage.Should().Be("fileType");
-        exception.Which.SuggestedParserName.Should().NotBeNullOrWhiteSpace();
+        exception.Which.SuggestedParserName.Should().Be(expectedSuggestion);
     }
 
     [Fact]

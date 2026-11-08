@@ -24,6 +24,7 @@ const sampleFiles: Record<string, string> = {
   trellix_quote_xlsm: 'Trellix_Quote_900003.xlsm',
   cisco_ccw_quote_xls: 'Quote_9400000001.xls',
   juniper_cpq_xlsx: 'Juniper_CPQ_900001.xlsx',
+  juniper_indirect_xlsx: 'Juniper_Indirect_900001.xlsx',
 };
 
 export function FileTypeSelect({

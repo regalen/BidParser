@@ -580,3 +580,27 @@ All other columns: blank. End-loop sentinel row after last line item: col B = `"
 | V | Foreign Exchange Rate | `options.FxRate` | Populated on `Foreign Uplift`; blank on `Foreign No Calculation` |
 
 All other columns (including local `MSRP` col H, local `Cost` col I, and `Warranty / Duration` col N): blank. End-loop sentinel row after last line item: col B = `"*"`. See `docs/juniper_cpq_xlsx.md`.
+
+---
+
+## Juniper Indirect (ANZ-GENERIC — Foreign Uplift / Foreign No Calculation)
+
+**Parser:** `JuniperIndirectXlsxParser` (`juniper_indirect_xlsx`)  
+**Template / Writer:** `CrmWriter.Write(items, outputPath, crmTemplate, options)` (`crmTemplate` ∈ `{"Foreign Uplift", "Foreign No Calculation"}`, default `"Foreign Uplift"`)  
+**Sheet name:** `"Foreign Uplift"` (both modes)
+
+| Col | Header | Juniper Indirect value | Notes |
+|---|---|---|---|
+| A | Item | `1`, `2`, `3`, … | Sequential numeric fallback (`LineItem.LineSequence` is `null`) |
+| B | Vendor Name | `"JUNIPER"` | `vendor.ToUpperInvariant()` |
+| D | Vendor Part Number | `vpn` | `SKU` |
+| E | Description | `description` | `SKU DESCRIPTION` |
+| F | Qty. | `qty` | `QUANTITY` |
+| K | Margin | `options.Margin` | Populated on `Foreign Uplift`; blank on `Foreign No Calculation` |
+| R | Comments | `"{term} Months"` | From `SERVICE DURATION` via `TermRendersAsComment => true`; blank when duration is empty |
+| S | Foreign Currency | `"USD"` | Validated per row from `CURRENCY` |
+| T | Foreign Cost | `cost` | `UNIT NET PRICE` (`0` → `0.0001` sentinel) |
+| U | Foreign MSRP | `msrp` | `LIST PRICE $` (`0` → `0.0001` sentinel) |
+| V | Foreign Exchange Rate | `options.FxRate` | Populated on `Foreign Uplift`; blank on `Foreign No Calculation` |
+
+All other columns (including local `MSRP` col H, local `Cost` col I, and `Warranty / Duration` col N): blank. End-loop sentinel row after last line item: col B = `"*"`. See `docs/juniper_indirect_xlsx.md`.

@@ -87,6 +87,7 @@ guidance is seeded for that format.
 | **Trellix** | Quote (PDF) | PDF | `trellix_quote_pdf` | No Calculation / Uplift | — |
 | **Trellix** | Quote (XLSM) | XLSM | `trellix_quote_xlsm` | No Calculation / Uplift | — |
 | **Juniper** | CPQ (XLSX) | XLSX | `juniper_cpq_xlsx` | Foreign Uplift / Foreign No Calculation | — |
+| **Juniper** | Indirect (XLSX) | XLSX | `juniper_indirect_xlsx` | Foreign Uplift / Foreign No Calculation | — |
 
 Notes on the table:
 

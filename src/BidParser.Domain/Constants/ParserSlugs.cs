@@ -36,5 +36,7 @@ public static class ParserSlugs
     public const string TrellixAuto = "trellix_auto";
     public const string TrellixQuotePdf = "trellix_quote_pdf";
     public const string TrellixQuoteXlsm = "trellix_quote_xlsm";
+    public const string JuniperAuto = "juniper_auto";
     public const string JuniperCpqXlsx = "juniper_cpq_xlsx";
+    public const string JuniperIndirectXlsx = "juniper_indirect_xlsx";
 }

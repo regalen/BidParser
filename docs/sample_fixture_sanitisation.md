@@ -61,6 +61,15 @@ retained to exercise structural option-summary exclusion and product line extrac
 sample in `frontend/public/samples/` is byte-identical to its root input, and both CRM goldens were
 generated from the synthetic input via the shared writer.
 
+`Juniper_Indirect_900001.xlsx` was generated from scratch with synthetic distributor/reseller/customer
+names, `example.invalid` placeholder contact emails, synthetic quote/deal/ship-and-debit identifiers
+(`90000101`, `CONFIG INSTANCE = 2`), invented unit and extended prices, and `regalen` workbook
+creator metadata. Public Juniper catalog SKUs and standard descriptions (`AP27-WW`, `SUB-1S-1Y`,
+`SUB-1S-3Y`, `SUB-1S-5Y`) are retained to exercise repeated-SKU flat extraction and subscription
+duration comments. The browser sample in `frontend/public/samples/` is byte-identical to its root
+input, and both CRM goldens were generated from the synthetic input via the shared writer. The two
+reference workbooks in the ignored `juniper/` directory were used only for local extraction checks.
+
 ## Adding or replacing fixtures
 
 Fixture sanitisation is a privacy and security requirement, not a filename convention. Review the

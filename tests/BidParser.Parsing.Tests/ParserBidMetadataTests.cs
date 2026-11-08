@@ -40,6 +40,7 @@ public sealed class ParserBidMetadataTests
             "1");
 
         // Formats carrying a source revision.
+        yield return Case(ParserSlugs.JuniperIndirectXlsx, "Juniper_Indirect_900001.xlsx", "90000101", "2");
         yield return Case(ParserSlugs.HpBidXlsx, "Deals_Sample_01_HPI.xlsx", "99010001", "2");
         yield return Case(ParserSlugs.HpBidXlsx, "Deals_Sample_02_HPI.xlsx", "99010002", "2");
         yield return Case(ParserSlugs.HpGlobalBidXlsx, "translate_quote_98000001_v25_all.xlsx", "98000001", "25");
