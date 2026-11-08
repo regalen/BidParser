@@ -57,6 +57,10 @@ Missing table headers raise a `detect` error; malformed product rows raise an `e
 Both `Foreign Uplift` and `Foreign No Calculation` write to the `Foreign Uplift` worksheet with
 `JUNIPER` in Column B and `"USD"` in Column S. See `docs/output_mapping.md` for full column layout.
 
+Web results show the affected line warnings while retaining the Download action. Large warning lists
+are bounded in the response header and include an omitted-warning summary; desktop retains the full
+in-memory warning list. Currency failures display the parser's USD requirement.
+
 ## Retained synthetic fixtures
 
 | Fixture | Coverage |

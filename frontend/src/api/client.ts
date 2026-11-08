@@ -86,6 +86,7 @@ export interface ParseResponse {
   currency: string;
   computedTotal: string;
   quotedTotal: string;
+  validationWarnings: string[];
   parserSlug: string | null;
   /** Workbook count from a Solution-ID ZIP response; null for a normal XLSX response. */
   outputWorkbookCount: number | null;
@@ -218,6 +219,16 @@ export const api = {
     const splitCountRaw = response.headers.get('X-Split-Count');
     const parsedSplitCount = splitCountRaw === null ? Number.NaN : Number.parseInt(splitCountRaw, 10);
 
+    let validationWarnings: string[] = [];
+    try {
+      const warnings: unknown = JSON.parse(response.headers.get('X-Validation-Warnings') ?? '[]');
+      if (Array.isArray(warnings) && warnings.every((warning) => typeof warning === 'string')) {
+        validationWarnings = warnings;
+      }
+    } catch {
+      // Older servers and malformed optional metadata must not prevent downloading the workbook.
+    }
+
     // Parse the X-Cancelled-Lines header: "line:VPN;line:VPN;..."
     const cancelledRaw = response.headers.get('X-Cancelled-Lines') ?? '';
     const cancelledLines: CancelledLineInfo[] = cancelledRaw
@@ -236,6 +247,7 @@ export const api = {
       currency: response.headers.get('X-Currency') ?? '',
       computedTotal: response.headers.get('X-Computed-Total') ?? '',
       quotedTotal: response.headers.get('X-Quoted-Total') ?? '',
+      validationWarnings,
       parserSlug: response.headers.get('X-Parser-Slug'),
       outputWorkbookCount: Number.isFinite(parsedSplitCount) ? parsedSplitCount : null,
       cancelledLines,

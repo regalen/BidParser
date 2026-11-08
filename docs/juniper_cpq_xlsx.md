@@ -5,7 +5,7 @@
 - **Accepted MIME:** `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
 - **CRM templates:** `Foreign Uplift` (default), `Foreign No Calculation`
 - **Additional settings:** none
-- **Selection:** Juniper Auto is preselected once Indirect is registered; manual `CPQ (XLSX)` remains available.
+- **Selection:** Juniper Auto (`juniper_auto`) is preselected; manual `CPQ (XLSX)` remains available.
 
 ## Recognition and extraction
 

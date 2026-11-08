@@ -65,7 +65,7 @@ export function DashboardPage() {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
-  const [currencyError, setCurrencyError] = useState(false);
+  const [currencyError, setCurrencyError] = useState<string | null>(null);
   const [dellApiError, setDellApiError] = useState<string | null>(null);
   const [fileTypeError, setFileTypeError] = useState<string | null>(null);
   const [resultPending, setResultPending] = useState<{
@@ -75,6 +75,7 @@ export function DashboardPage() {
     currency: string;
     computedTotal: string;
     quotedTotal: string;
+    validationWarnings: string[];
     cancelledLines: CancelledLineInfo[];
     hasRebateIneligibleItems: boolean;
     guidanceHtml: string | null;
@@ -286,6 +287,7 @@ export function DashboardPage() {
         currency: result.currency ?? '',
         computedTotal: result.computedTotal ?? '',
         quotedTotal: result.quotedTotal ?? '',
+        validationWarnings: result.validationWarnings,
         cancelledLines: result.cancelledLines,
         hasRebateIneligibleItems: result.hasRebateIneligibleItems,
         guidanceHtml,
@@ -296,7 +298,8 @@ export function DashboardPage() {
       setUploadState('idle');
       const fileTypeMessage = fileTypeErrorMessage(caught);
       if (isCurrencyError(caught)) {
-        setCurrencyError(true);
+        const detail = (caught as ApiError).detail as ApiErrorDetail;
+        setCurrencyError(detail.hint || detail.message || 'The quote currency is unsupported. Check the source file currency.');
       } else if (isDellApiError(caught)) {
         setDellApiError(errorMessage(caught));
       } else if (fileTypeMessage) {
@@ -412,7 +415,7 @@ export function DashboardPage() {
       <Footer />
       <ToastStack toasts={toasts} dismiss={(id) => setToasts((items) => items.filter((item) => item.id !== id))} />
       {currencyError && (
-        <CurrencyErrorModal onClose={() => setCurrencyError(false)} />
+        <CurrencyErrorModal message={currencyError} onClose={() => setCurrencyError(null)} />
       )}
       {dellApiError && (
         <DellApiErrorModal message={dellApiError} onClose={() => setDellApiError(null)} />
@@ -426,6 +429,7 @@ export function DashboardPage() {
           currency={resultPending.currency}
           computedTotal={resultPending.computedTotal}
           quotedTotal={resultPending.quotedTotal}
+          validationWarnings={resultPending.validationWarnings}
           cancelledLines={resultPending.cancelledLines}
           hasRebateIneligibleItems={resultPending.hasRebateIneligibleItems}
           guidanceHtml={resultPending.guidanceHtml}

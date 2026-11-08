@@ -1,7 +1,7 @@
 **Template:** `ANZ-GENERIC_*.xlsx`
 **Output Name:** `<BidNumber>_<BidRevision>_<FileToken>.xlsx` when both bid fields are available; otherwise `<input_basename>_<FileToken>.xlsx` (e.g. bid `XQ-9100002`, revision `1`, and `Foreign Uplift` → `XQ-9100002_1_ForeignUplift.xlsx`)
 
-This file describes how parsed `LineItem` fields are written into the standardised internal template. The template has a single sheet named per the CRM template (e.g. `Foreign Uplift`, `No Calculation`, `Uplift`, `% Off RRP with Uplift`) with 27 columns A→AA. Every output is a clean copy of the layout (no fills, no fonts, no borders, no merged cells) — only values, with date columns carrying a `DD/MM/YYYY` number format.
+This file describes how parsed `LineItem` fields are written into the standardised internal template. The output has a single sheet named per the CRM template, except that `Foreign No Calculation` uses the `Foreign Uplift` sheet (e.g. `Foreign Uplift`, `No Calculation`, `Uplift`, `% Off RRP with Uplift`) with 27 columns A→AA. Every output is a clean copy of the layout (no fills, no fonts, no borders, no merged cells) — only values, with date columns carrying a `DD/MM/YYYY` number format.
 
 **Output structure**
 - **Row 1**: column L only carries the literal note `(Optional for Software and/or Services)`. All other cells in row 1 are empty.
@@ -45,7 +45,7 @@ The `*` in column B is required — our quoting system uses it as the loop senti
 
 ## Foreign Uplift / Foreign No Calculation — field mapping
 
-The mapping below covers the foreign-currency writer profiles **`Foreign Uplift`** and **`Foreign No Calculation`**. Both write to the `Foreign Uplift` worksheet layout (`ANZ-GENERIC_ForeignUplift.xlsx`). `Foreign Uplift` writes the user's Margin (col K) and Foreign Exchange Rate (col V); `Foreign No Calculation` leaves both Margin (col K) and Foreign Exchange Rate (col V) blank while still writing Foreign Currency (col S), Foreign Cost (col T), and Foreign MSRP (col U). Every other vendor writes a local-currency template; those mappings are in the per-vendor sections further down.
+The mapping below covers the foreign-currency writer profiles **`Foreign Uplift`** and **`Foreign No Calculation`**. Both write to the `Foreign Uplift` worksheet layout (`ANZ-GENERIC_ForeignUplift.xlsx`). `Foreign Uplift` writes the user's Margin (col K) and Foreign Exchange Rate (col V); `Foreign No Calculation` leaves both Margin (col K) and Foreign Exchange Rate (col V) blank while still writing Foreign Currency (col S), Foreign Cost (col T), and Foreign MSRP (col U). Nutanix uses Foreign Uplift, and Juniper uses either foreign profile. Other vendors write a local-currency template; those mappings are in the per-vendor sections further down.
 
 `CrmWriter` is the single writer for all templates and is format-agnostic: the per-column behaviour
 comes from `CrmTemplateProfile`, and the values below marked as supplied by `options` come from the
@@ -54,7 +54,7 @@ comes from `CrmTemplateProfile`, and the values below marked as supplied by `opt
 | Col | Header | Source | Notes |
 |-----|--------|--------|-------|
 | A | Item | auto-increment from 1 | Row index in the output (1, 2, 3, …). Parsers using these profiles set no `LineSequence`, so the numeric fallback applies. |
-| B | Vendor Name | `options.VendorName` → `"NUTANIX"` | Supplied by `ParseService` from `parser.OutputVendorName.ToUpperInvariant()`. Not hardcoded — every vendor uses the same writer. |
+| B | Vendor Name | `options.VendorName` → `"NUTANIX"` or `"JUNIPER"` | Supplied by `ParseService` from `parser.OutputVendorName.ToUpperInvariant()`. Not hardcoded — every vendor uses the same writer. |
 | C | IMTH SKU | _empty_ | Manual / future enrichment. |
 | D | Vendor Part Number | `vpn` | Nutanix parsers normalize the value to uppercase for SAP SKU resolution; source casing remains in `Raw`. |
 | E | Description | `description` | Empty for Renewal when no Platform value is present. For the Platform-column variant (e.g. `XQ-9100001`), hardware rows carry `"Platform: {value}"` here (e.g. `"Platform: NX-8035N-G8-HY"`); software rows remain empty. |

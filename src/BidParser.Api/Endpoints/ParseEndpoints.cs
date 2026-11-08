@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using System.Diagnostics;
 using BidParser.Api.Auth;
 using BidParser.Api.Contracts;
@@ -254,6 +255,10 @@ public static class ParseEndpoints
 
         context.Response.Headers["X-Parser-Slug"] = result.Job.ParserSlug;
         context.Response.Headers["X-Validation"] = result.Validation.Matches ? "match" : "mismatch";
+        if (result.Validation.Warnings.Count > 0)
+        {
+            context.Response.Headers["X-Validation-Warnings"] = ValidationWarningsHeader(result.Validation.Warnings);
+        }
         context.Response.Headers["X-Currency"] = result.Currency;
         if (result.Job.SplitBySolutionId)
         {
@@ -293,5 +298,23 @@ public static class ParseEndpoints
                 ? "application/zip"
                 : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             fileDownloadName: result.OutputFilename);
+    }
+
+    private static string ValidationWarningsHeader(IReadOnlyList<string> warnings)
+    {
+        // Default JSON escaping keeps this ASCII-safe, including source SKUs with Unicode or newlines.
+        // Bound the header so a quote with many mismatches can still be downloaded through proxies.
+        var included = new List<string>();
+        foreach (var warning in warnings)
+        {
+            included.Add(warning);
+            if (JsonSerializer.Serialize(included).Length <= 3800) continue;
+
+            included.RemoveAt(included.Count - 1);
+            included.Add($"{warnings.Count - included.Count} additional validation warnings omitted. Check the remaining source lines.");
+            break;
+        }
+
+        return JsonSerializer.Serialize(included);
     }
 }

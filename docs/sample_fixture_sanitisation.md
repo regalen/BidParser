@@ -80,7 +80,9 @@ run the parser/output tests afterward.
 
 The contributor checklist and mandatory rules are in `CONTRIBUTING.md` and `AGENTS.md`.
 
-## Integrity checks
+## Initial sanitisation integrity checks
+
+The results below record the initial sanitisation pass before Juniper was added; they are not the current suite counts.
 
 - Every renamed fixture reference was updated in tests, documentation and the frontend sample map.
 - Each public sample selected by the frontend is byte-identical to its root input fixture.

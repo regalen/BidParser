@@ -104,11 +104,11 @@ Notes on the table:
   detection is the only option, enforced both in the UI and at the API layer. Dell is therefore
   web-only in desktop v1; the portable app does not expose manual JSON upload.
 - **Auto (detect format)** is an extra dropdown entry for Nutanix, Lenovo ISG, Zebra, Trellix,
-  and Dell. It is preselected for those vendors, and for all but Dell the user can still choose a
+  Juniper, and Dell. It is preselected for those vendors, and for all but Dell the user can still choose a
   specific format.
-- **Multi-template formats** (No Calculation / Uplift) render a template dropdown. The only
-  difference between the two is whether the Margin (Uplift) column is written; the layout is
-  otherwise identical.
+- **Multi-template formats** render a template dropdown. No Calculation / Uplift differ in
+  whether Margin is written. Juniper offers Foreign Uplift / Foreign No Calculation; the latter
+  retains foreign currency and prices while leaving Margin and FX blank.
 - **Lenovo ISG Solution ID split.** Both Lenovo ISG formats can optionally return one renumbered
   workbook per Solution ID, delivered as a single ZIP. The ZIP is what history and monitoring
   retain.
@@ -122,27 +122,27 @@ Every parse produces a clean copy of one of the standardised `ANZ-GENERIC_*.xlsx
 [docs/output_mapping.md](docs/output_mapping.md). All of them share a 27-column A→AA layout; they
 differ only in which columns carry pricing.
 
-Eight template workbooks are checked in, but **only four are wired up** — a CRM template is
-selectable only when it has a matching profile in
-[`CrmTemplateProfile.cs`](src/BidParser.Output/CrmTemplateProfile.cs). The remaining four workbooks
-are reference copies of CRM's other upload layouts, kept for when a future format needs one.
+Eight template workbooks are checked in, with **five selectable writer profiles** in
+[`CrmTemplateProfile.cs`](src/BidParser.Output/CrmTemplateProfile.cs). Foreign No Calculation shares
+the Foreign Uplift layout. Four other workbooks remain reference layouts for future formats.
 
 | Template | Sheet | Used by |
 |---|---|---|
-| **Foreign Uplift**<br>`ANZ-GENERIC_ForeignUplift.xlsx` | `Foreign Uplift` | All six Nutanix formats |
+| **Foreign Uplift**<br>`ANZ-GENERIC_ForeignUplift.xlsx` | `Foreign Uplift` | All six Nutanix formats and both Juniper formats |
+| **Foreign No Calculation**<br>Shares `ANZ-GENERIC_ForeignUplift.xlsx` | `Foreign Uplift` | Both Juniper formats; Margin and FX blank |
 | **No Calculation**<br>`ANZ-GENERIC_NoCalculation.xlsx` | `No Calculation` | HP Bid, HP Global Bid, HP Services, HPE Bid, all three Lenovo formats, both Zebra formats, both Dell formats, Cisco CCW, Datalogic, Epson, Strike, Trellix |
 | **Uplift**<br>`ANZ-GENERIC_Uplift.xlsx` | `Uplift` | HP Bid, HP Global Bid, HP Services, HPE Bid, all three Lenovo formats, both Zebra formats, Datalogic, Epson, Strike, and Trellix; additionally writes the Margin column. |
 | **% Off RRP with Uplift**<br>`ANZ-GENERIC_PercentOffWithUplift.xlsx` | `% Off RRP with Uplift` | HP OneConfig only |
 
-A single writer, [`CrmWriter`](src/BidParser.Output/CrmWriter.cs), produces all four. It never
+A single writer, [`CrmWriter`](src/BidParser.Output/CrmWriter.cs), produces all five profiles. It never
 special-cases a vendor or slug: the per-template column behaviour lives in `CrmTemplateProfile`, and
 per-format presentation traits are declared as properties on the parser.
 
 **How they differ:**
 
-- **Foreign Uplift** — the only template with foreign-currency columns (Foreign Currency / Cost /
-  MSRP / FX Rate). MSRP lands in column U, cost in column T. Used exclusively by Nutanix, whose
-  quotes are USD-denominated.
+- **Foreign Uplift / Foreign No Calculation** — foreign-currency layouts used by Juniper, with
+  Foreign Uplift also used by Nutanix. USD is written in S, cost in T, and MSRP in U. Foreign Uplift
+  additionally writes Margin in K and FX in V; Foreign No Calculation leaves those two cells blank.
 - **No Calculation / Uplift** — local-currency (AUD) layout. Cost lands in column I, MSRP in column
   H where the source provides one. `Uplift` additionally writes the Margin column (K); `No
   Calculation` leaves it blank. Same physical layout, selected per parse.
@@ -193,10 +193,10 @@ start just the database from the compose file with `docker compose up -d mssql`.
 dotnet test tests/BidParser.Parsing.Tests/BidParser.Parsing.Tests.csproj
 ```
 
-The parser/application/output suite is the fast one (699 tests) and needs no container runtime.
-The full suite, `dotnet test BidParser.sln`, additionally runs the 192 API integration tests
+The parser/application/output suite is the fast one (758 tests) and needs no container runtime.
+The full suite, `dotnet test BidParser.sln`, additionally runs the 198 API integration tests
 against a SQL Server testcontainer and 118 cross-platform desktop configuration/update tests
-(1009 tests total).
+(1074 tests total).
 
 **Build the desktop host**
 

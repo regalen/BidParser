@@ -87,7 +87,7 @@ from `GET /api/parsers`, and that choice routes the parse.
 reroute a manual selection. It has exactly two consumers:
 
 - **Auto (detect format)** — a synthesised dropdown entry for vendors listed in `AutoDetectTypes`
-  (Nutanix, Lenovo ISG, Zebra, Trellix, Dell). When the user parses with an Auto slug, `FormatDetection`
+  (Nutanix, Lenovo ISG, Zebra, Trellix, Juniper, Dell). When the user parses with an Auto slug, `FormatDetection`
   scores the vendor's parsers whose accepted MIME types match the upload and picks the best above a
   0.7 threshold. The resolved concrete slug is what gets persisted and returned in the
   `X-Parser-Slug` response header. A vendor's Auto entry may only advertise CRM templates common to
@@ -126,8 +126,9 @@ format".
    `FormatDetection`.
 5. **Parse.** The parser returns `ParseResult`. Validation is uniform across formats:
    `computed_total = Σ(cost × qty)` compared to the quoted total with a `0.01` tolerance. Formats
-   whose source carries no quoted total (HP, HPE, Zebra) construct a passing `ValidationResult`
-   directly rather than validating against null.
+   whose source carries no quoted total construct `ValidationResult` directly rather than validating
+   against null. HP, HPE, and Zebra return a passing result; Juniper Indirect checks each source line
+   total and can return a saveable mismatch with line-specific warnings.
 6. **Write the workbook.** `ParseService` builds `CrmWriterOptions` — vendor name, margin, FX rate,
    currency, IM%, on-cost, term placement — and calls `CrmWriter`, which copies the template and
    fills it per the `CrmTemplateProfile`. When a Solution ID split is requested,
@@ -137,7 +138,7 @@ format".
    A validation mismatch additionally records a `FailedParseJob` of category `ValidationMismatch`
    on a best-effort basis.
 8. **Respond.** The workbook is returned along with headers the SPA reads — `X-Parser-Slug`,
-   `X-Validation`, `X-Currency`, `X-Computed-Total`, `X-Quoted-Total`, and situational ones like
+   `X-Validation`, `X-Currency`, `X-Computed-Total`, `X-Quoted-Total`, optional `X-Validation-Warnings`, and situational ones like
    `X-Split-Count` and `X-Cancelled-Lines`. The SPA always shows a result modal with an explicit
    Download button; there is no auto-download and no review/edit screen.
 

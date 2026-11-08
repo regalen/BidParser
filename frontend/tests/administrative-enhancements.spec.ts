@@ -162,6 +162,10 @@ test('Juniper defaults to Auto and Foreign Uplift, and Foreign No Calculation hi
             'X-Currency': 'USD',
             'X-Computed-Total': '4186.10',
             'X-Quoted-Total': '',
+            'X-Validation-Warnings': JSON.stringify([
+              'Line 2 (SUB-1S-3Y) computed total 180.00 differs from EXTENDED NET TOTAL 150.00.',
+              'Line 3 (<sample> – SKU) computed total 70.00 differs from EXTENDED NET TOTAL 80.00.',
+            ]).replace(/[^\x00-\x7f]/g, (character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`),
             'X-Parser-Slug': 'juniper_indirect_xlsx',
           },
           body: 'mock-xlsx',
@@ -237,7 +241,11 @@ test('Juniper defaults to Auto and Foreign Uplift, and Foreign No Calculation hi
   await fileInput.setInputFiles('public/samples/Juniper_Indirect_900001.xlsx');
   await submitButton.click();
   await expect(dialog).toContainText('Parsed with warnings');
-  await expect(dialog).toContainText('Computed USD 4186.10 · Quoted USD —');
+  await expect(dialog).toContainText('Computed USD 4186.10');
+  await expect(dialog).not.toContainText('Quoted USD');
+  await expect(dialog).not.toContainText('not parsed fully');
+  await expect(dialog.getByRole('list', { name: 'Validation warnings' })).toContainText('Line 2 (SUB-1S-3Y)');
+  await expect(dialog.getByRole('list', { name: 'Validation warnings' })).toContainText('Line 3 (<sample> – SKU)');
   const download2Promise = page.waitForEvent('download');
   await dialog.getByRole('button', { name: 'Download' }).click();
   const download2 = await download2Promise;
@@ -252,6 +260,44 @@ test('Juniper defaults to Auto and Foreign Uplift, and Foreign No Calculation hi
     'The file is not recognised as Indirect (XLSX) and appears to be a CPQ (XLSX). Select the correct file type and try again.',
   );
   await alertDialog.getByRole('button', { name: 'OK' }).click();
+});
+
+test('currency errors display the server guidance for USD and AUD', async ({ page }) => {
+  let hint = '';
+  await mockCommonApi(page, async (route, path) => {
+    if (path === '/api/parsers') {
+      await fulfillJson(route, parsers);
+      return true;
+    }
+    if (path === '/api/parse-ui-config') {
+      await fulfillJson(route, { vendorDefaults: {}, guidanceByParserSlug: {} });
+      return true;
+    }
+    if (path !== '/api/parse') return false;
+    await route.fulfill({
+      status: 422, contentType: 'application/json',
+      body: JSON.stringify({ detail: { stage: 'currency', hint, message: 'Unsupported currency.' } }),
+    });
+    return true;
+  });
+
+  await page.goto('/dashboard');
+  for (const [vendor, template, extension, guidance] of [
+    ['Juniper', 'Foreign No Calculation', 'xlsx', 'This Juniper Indirect quote declares AUD on line 1; USD is required.'],
+    ['Trellix', 'No Calculation', 'xlsm', 'This Trellix quote declares USD; AUD is required.'],
+  ]) {
+    hint = guidance;
+    await page.locator('aside select').first().selectOption(vendor);
+    await page.getByLabel('CRM Import Template').selectOption(template);
+    await page.locator('input[type="file"]').setInputFiles({
+      name: `synthetic.${extension}`, mimeType: 'application/octet-stream', buffer: Buffer.from('synthetic'),
+    });
+    await page.getByRole('button', { name: 'Upload & parse' }).click();
+    const dialog = page.getByRole('alertdialog');
+    await expect(dialog).toContainText(guidance);
+    await expect(dialog).not.toContainText('please upload an AUD version');
+    await dialog.getByRole('button', { name: 'OK' }).click();
+  }
 });
 
 test('Trellix defaults to Auto and accepts PDF and XLSM uploads', async ({ page }) => {

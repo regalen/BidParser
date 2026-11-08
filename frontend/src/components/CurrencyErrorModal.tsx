@@ -1,10 +1,11 @@
 import { XCircle } from 'lucide-react';
 
 interface Props {
+  message: string;
   onClose: () => void;
 }
 
-export function CurrencyErrorModal({ onClose }: Props) {
+export function CurrencyErrorModal({ message, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div
@@ -23,7 +24,7 @@ export function CurrencyErrorModal({ onClose }: Props) {
 
         <div className="px-6 py-5">
           <p id="currency-err-body" className="text-sm leading-6 text-slate-700">
-            The input file does not appear to be in AUD, please upload an AUD version of this quote.
+            {message}
           </p>
         </div>
 

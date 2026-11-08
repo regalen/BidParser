@@ -92,7 +92,7 @@ and history untouched. Preserve that property.
 
 - **Anchor-based extraction is mandatory.** Every parser locates sections, headers, totals, and column positions by searching for anchor strings — never hard-code row numbers, column letters, or fixed offsets. The same workbook can contain multiple quote sections where rows shift and column letters differ between sections (Quote C uses column H for `Product Code`; Quote D in the same file uses column E). Hard-coded positions break on real quotes.
 - **Single parser contract.** Every parser returns `ParseResult { Metadata, LineItems, Validation }`. `LineItem` requires only `VPN`, `Cost`, `Qty`; the rest are nullable, populated per format. See `docs/project_memory.md` for the full contract.
-- **Validation is identical across formats**: `computed_total = Σ(cost × qty)` compared to `quoted_total` with `0.01` tolerance. For formats with **no quoted total** (e.g. HP), construct `ValidationResult` directly with `Matches = true`, `Difference = 0` — do **not** call `ParseValidation.Validate(items, null)`, which returns `Matches = false` and trips the frontend's mismatch modal on every parse.
+- **Validation is identical across formats**: `computed_total = Σ(cost × qty)` compared to `quoted_total` with `0.01` tolerance. For formats with **no quoted total**, construct `ValidationResult` directly. When no independent line totals exist (e.g. HP), use `Matches = true`, `Difference = 0`; Juniper Indirect instead checks each source line total and returns a saveable mismatch with line-specific warnings if any line differs beyond tolerance. Do **not** call `ParseValidation.Validate(items, null)`, which returns `Matches = false` and trips the frontend's mismatch modal on every parse.
 - **Format detection is a soft hint, not routing.** `Detect()` returns 0.0–1.0 and is **never** used to silently reroute a manual selection. Its only consumers are the wrong-file-type suggestion flow and the per-vendor **Auto** option (`AutoDetectTypes` — preselected for Nutanix, Lenovo ISG, Zebra, Trellix, and Juniper; the *only* option for Dell). Lenovo IDG has no Auto entry (single format). Parsers without a `Detect()` override default to `0.0` and are never suggested or auto-detected. Scoring detail: `docs/project_memory.md` §Auto file-type detection.
 - **Wrong file-type handling.** A recognition failure — `ParseError(stage: "detect")`, raised when the table anchor or a required column (`HeaderMap.Require`) is missing — is a *wrong file-type selection*, **not** a recorded failure. `ParseService` suggests the correct type via sibling `Detect()`, deletes the upload, writes **nothing** (no `FailedParseJob`/`ParseJob`/`ParseMetric`), and rethrows `stage: "fileType"` for `FileTypeErrorModal`. Failures *after* the table is located (`"currency"`, `"extract"`, magic-byte `"upload"`) remain genuine recorded failures. Mechanism: `docs/project_memory.md` §Wrong file-type detection.
 - **Registry is the single extension point** — `src/BidParser.Parsing/Registry/ParserRegistry.cs` holds an explicit `IReadOnlyList<IParser>`. No assembly scanning; registration order is visible. (Synthesized Auto entries emitted by `/api/parsers` via `AutoDetectTypes` are the single exception.) Each parser lives in its own subfolder.
@@ -174,8 +174,8 @@ inventory and workflows: `docs/agent_tooling.md`.**
   render, navigate, upload, walk the parse flow end to end, reproduce a defect, confirm a fix. It is
   a one-off manual-testing instrument; delete any `.playwright-mcp/` directory it leaves behind.
 - **MCP browser sessions are not tests.** `@playwright/test` is the separate, committed E2E harness.
-  Its current six mocked-API checks cover XLSM file selection, foreign multi-template selection,
-  parser-capability-driven On Cost, and runtime-configuration interactions; they are run locally
+  Its current seven mocked-API checks cover XLSM file selection, foreign multi-template selection,
+  currency guidance, parser-capability-driven On Cost, and runtime-configuration interactions; they are run locally
   with `npx playwright test` and have no CI job. Add another
   committed spec only when it buys durable regression protection; not for every frontend change,
   and never brittle ones merely because Playwright is available.
@@ -185,9 +185,9 @@ inventory and workflows: `docs/agent_tooling.md`.**
 
 ## Commands
 
-- `dotnet test BidParser.sln` — full suite (1073 tests; API tests need a container runtime).
+- `dotnet test BidParser.sln` — full suite (1074 tests; API tests need a container runtime).
 - `dotnet test tests/BidParser.Parsing.Tests/BidParser.Parsing.Tests.csproj` — fast parser/output suite (758 tests; no container runtime).
-- `dotnet test tests/BidParser.Api.Tests/BidParser.Api.Tests.csproj` — API integration suite (197 tests; needs a container runtime; takes several minutes).
+- `dotnet test tests/BidParser.Api.Tests/BidParser.Api.Tests.csproj` — API integration suite (198 tests; needs a container runtime; takes several minutes).
 - `dotnet test tests/BidParser.Desktop.Configuration.Tests/BidParser.Desktop.Configuration.Tests.csproj` — desktop remote-config/update suite (118 tests; no container runtime, runs on Linux).
 - `dotnet build src/BidParser.Desktop/BidParser.Desktop.csproj --configuration Release` — cross-platform desktop compile check; launch/native metadata verification still requires Windows.
 - `dotnet run --project src/BidParser.Api` — backend dev server (`http://localhost:5000`; needs a reachable SQL Server — `docker compose up -d mssql` starts just the database).

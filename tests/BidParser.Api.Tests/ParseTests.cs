@@ -391,9 +391,12 @@ public sealed class ParseTests
         me.GetProperty("margin").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
-    [Fact]
-    public async Task ParseQuotedTotalHeaderEmptyWhenNull()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(100)]
+    public async Task ParseQuotedTotalHeaderEmptyWhenNull_AndWarningsAreBounded(int warningCount)
     {
+        var warning = "Line 1 (SKU–例) computed total 20.00 differs from source total 10.00.\nCheck this line.";
         var nullTotalParser = new TestParser(
             "test-null-total", "TestVendor", "application/pdf",
             _ => new ParseResult
@@ -414,8 +417,9 @@ public sealed class ParseTests
                 {
                     ComputedTotal = 0m,
                     QuotedTotal = null,
-                    Matches = true,
-                    Difference = 0m
+                    Matches = false,
+                    Difference = 0m,
+                    Warnings = Enumerable.Repeat(warning, warningCount).ToArray()
                 }
             });
 
@@ -430,6 +434,15 @@ public sealed class ParseTests
         response.Headers.TryGetValues("X-Quoted-Total", out var values).Should().BeTrue(
             "X-Quoted-Total header must be present even when QuotedTotal is null");
         values!.Should().ContainSingle().Which.Should().Be("");
+        var header = response.Headers.GetValues("X-Validation-Warnings").Single();
+        header.Length.Should().BeLessThan(4096);
+        header.ToCharArray().Should().OnlyContain(character => character <= 127);
+        var received = JsonSerializer.Deserialize<string[]>(header)!;
+        received[0].Should().Be(warning);
+        if (warningCount == 1)
+            received.Should().ContainSingle();
+        else
+            received[^1].Should().Contain("additional validation warnings omitted");
     }
 
     [Fact]
@@ -647,6 +660,8 @@ public sealed class ParseTests
                 .Should().Be("CPQ-900001_1_ForeignNoCalculation.xlsx");
             response.Headers.GetValues("X-Validation").Should().ContainSingle().Which.Should().Be("match");
 
+            response.Headers.Contains("X-Validation-Warnings").Should().BeFalse();
+
             await using var outStream = await response.Content.ReadAsStreamAsync();
             using var outWb = new XLWorkbook(outStream);
             var outWs = outWb.Worksheet(1);
@@ -685,6 +700,8 @@ public sealed class ParseTests
             response.StatusCode.Should().Be(HttpStatusCode.OK);
             response.Headers.GetValues("X-Validation").Should().ContainSingle().Which.Should().Be("mismatch");
             response.Headers.GetValues("X-Quoted-Total").Should().ContainSingle().Which.Should().Be("");
+            var warnings = JsonSerializer.Deserialize<string[]>(response.Headers.GetValues("X-Validation-Warnings").Single());
+            warnings.Should().ContainSingle().Which.Should().Contain("Line 1 (AP27-WW)").And.Contain("99999.99");
         }
     }
 
