@@ -19,4 +19,5 @@ public static class Vendors
     public const string Epson = "Epson";
     public const string Strike = "Strike";
     public const string Trellix = "Trellix";
+    public const string Juniper = "Juniper";
 }

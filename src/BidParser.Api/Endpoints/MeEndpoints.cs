@@ -21,7 +21,7 @@ public static class MeEndpoints
     {
         Vendors.Nutanix, Vendors.Hp, Vendors.Hpe, Vendors.LenovoIsg, Vendors.LenovoIdg,
         Vendors.Zebra, Vendors.Dell, Vendors.Cisco, Vendors.Datalogic, Vendors.Epson, Vendors.Strike,
-        Vendors.Trellix
+        Vendors.Trellix, Vendors.Juniper
     };
 
     public static IEndpointRouteBuilder MapMeEndpoints(this IEndpointRouteBuilder app)

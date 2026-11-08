@@ -7,6 +7,7 @@ interface Props {
   currency: string;
   computedTotal: string;
   quotedTotal: string;
+  validationWarnings: string[];
   cancelledLines: CancelledLineInfo[];
   hasRebateIneligibleItems: boolean;
   guidanceHtml?: string | null;
@@ -21,6 +22,7 @@ export function ParseResultModal({
   currency,
   computedTotal,
   quotedTotal,
+  validationWarnings,
   cancelledLines,
   hasRebateIneligibleItems,
   guidanceHtml,
@@ -89,13 +91,19 @@ export function ParseResultModal({
           {hasMismatch && (
             <>
               <p className="text-sm leading-6 text-slate-700">
-                Validation of the total quote price against the line items extracted did not match. This indicates
-                the quote was not parsed fully. Please check the output before using this to create a new quote.
+                {quotedTotal
+                  ? 'The extracted line totals differ from the quoted total. Check the output before importing to CRM.'
+                  : 'One or more extracted line totals differ from the source line totals. Check the affected lines before importing to CRM.'}
               </p>
               <p className="mt-3 text-xs text-slate-500">
                 Computed&nbsp;{currency}&nbsp;<strong className="text-slate-700">{computedTotal || '—'}</strong>
-                &nbsp;·&nbsp;Quoted&nbsp;{currency}&nbsp;<strong className="text-slate-700">{quotedTotal || '—'}</strong>
+                {quotedTotal && <>&nbsp;·&nbsp;Quoted&nbsp;{currency}&nbsp;<strong className="text-slate-700">{quotedTotal}</strong></>}
               </p>
+              {validationWarnings.length > 0 && (
+                <ul aria-label="Validation warnings" className="mt-3 max-h-48 list-disc overflow-y-auto pl-5 text-sm text-slate-700">
+                  {validationWarnings.map((warning, index) => <li key={index}>{warning}</li>)}
+                </ul>
+              )}
             </>
           )}
 

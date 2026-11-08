@@ -14,6 +14,7 @@ matching browser-download copies in `frontend/public/samples/` was reviewed and 
 | Nutanix, Lenovo, Zebra, Datalogic, Epson and Strike PDFs | customer and reseller names, contacts, email addresses, phone numbers, addresses, quote/bid identifiers and filenames |
 | Trellix PDFs | Fully synthetic names, identifiers, serials, prices, totals, and PDF content; no source metadata retained |
 | Trellix XLSM workbooks | Newly generated synthetic names, identifiers, serials, dates, prices, totals, and workbook metadata; no VBA or private source sheets retained |
+| Juniper XLSX workbooks | Newly generated synthetic customer/partner details, transaction/quote identifiers, prices, totals, and `regalen` workbook metadata; only public Juniper catalog SKUs and product descriptions retained |
 | HP, HPE, Cisco, Lenovo and Nutanix spreadsheets | distributor/reseller/end-user names, contact details, postal addresses, deal/bid/quote identifiers, embedded document metadata and filenames |
 | Dell JSON fixtures | customer/account details, contact details, service tags and quote identifiers |
 | Golden outputs and CRM templates | customer/contact/identifier values and embedded workbook metadata |
@@ -51,6 +52,24 @@ type is macro-enabled, but no VBA project is present. The first browser sample i
 to its root input. CRM goldens were written from these synthetic inputs with the shared writer.
 The four private workbooks in the ignored inbox were used only for local extraction checks.
 
+`Juniper_CPQ_900001.xlsx` was generated from scratch with synthetic customer/partner names and
+addresses, a synthetic transaction identifier (`CPQ-900001`), invented unit list and extended net
+prices, and `regalen` workbook creator metadata. Public Juniper catalog SKUs and standard product
+descriptions (`EX4400-48MP`, `S-EX-P-C3-5-SD`, `S-EX-FBT-P`, `CBL-EX-PWR-C13-C14`,
+`JPSU-1600-C-AC-AFO`, `EX4400-EM-4Y`, `SFPP-10G-SR-C`, `JNP-100G-DAC-3M`, `JNP-100G-DAC-1M`) are
+retained to exercise structural option-summary exclusion and product line extraction. The browser
+sample in `frontend/public/samples/` is byte-identical to its root input, and both CRM goldens were
+generated from the synthetic input via the shared writer.
+
+`Juniper_Indirect_900001.xlsx` was generated from scratch with synthetic distributor/reseller/customer
+names, `example.invalid` placeholder contact emails, synthetic quote/deal/ship-and-debit identifiers
+(`90000101`, `CONFIG INSTANCE = 2`), invented unit and extended prices, and `regalen` workbook
+creator metadata. Public Juniper catalog SKUs and standard descriptions (`AP27-WW`, `SUB-1S-1Y`,
+`SUB-1S-3Y`, `SUB-1S-5Y`) are retained to exercise repeated-SKU flat extraction and subscription
+duration comments. The browser sample in `frontend/public/samples/` is byte-identical to its root
+input, and both CRM goldens were generated from the synthetic input via the shared writer. The two
+reference workbooks in the ignored `juniper/` directory were used only for local extraction checks.
+
 ## Adding or replacing fixtures
 
 Fixture sanitisation is a privacy and security requirement, not a filename convention. Review the
@@ -61,7 +80,9 @@ run the parser/output tests afterward.
 
 The contributor checklist and mandatory rules are in `CONTRIBUTING.md` and `AGENTS.md`.
 
-## Integrity checks
+## Initial sanitisation integrity checks
+
+The results below record the initial sanitisation pass before Juniper was added; they are not the current suite counts.
 
 - Every renamed fixture reference was updated in tests, documentation and the frontend sample map.
 - Each public sample selected by the frontend is byte-identical to its root input fixture.

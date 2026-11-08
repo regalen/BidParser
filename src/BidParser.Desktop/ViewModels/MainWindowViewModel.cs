@@ -317,7 +317,10 @@ public sealed class MainWindowViewModel : ObservableObject
         && !VisiblePricingFields.Any(input => input.HasError)
         && !IsBusy;
 
-    public bool CanSave => parsedQuote is not null && !IsBusy;
+    public bool CanSave =>
+        parsedQuote is not null
+        && !VisiblePricingFields.Any(input => input.HasError)
+        && !IsBusy;
 
     public string PrimaryActionText => isParsing
         ? "Parsing…"
@@ -665,13 +668,23 @@ public sealed class MainWindowViewModel : ObservableObject
         if (!validation.Matches)
         {
             facts.Add(new ResultFactViewModel("Sum of line totals", Money(currency, validation.ComputedTotal)));
-            facts.Add(new ResultFactViewModel("Difference", Money(currency, validation.Difference)));
+            if (validation.QuotedTotal is not null)
+            {
+                facts.Add(new ResultFactViewModel("Difference", Money(currency, validation.Difference)));
+            }
+            else
+            {
+                notes.AddRange(validation.Warnings);
+            }
 
             return new WarningResultViewModel
             {
                 Headline = "Parsed, but totals don't match the quote",
-                Detail = $"All {lineCount} line items were read from {file.DisplayName}. The sum of line totals "
-                    + "differs from the vendor's quoted total — check the totals before importing to CRM.",
+                Detail = validation.QuotedTotal is not null
+                    ? $"All {lineCount} line items were read from {file.DisplayName}. The sum of line totals "
+                        + "differs from the vendor's quoted total — check the totals before importing to CRM."
+                    : $"All {lineCount} line items were read from {file.DisplayName}. One or more line totals "
+                        + "differ from the vendor's extended net price — check the warnings before importing to CRM.",
                 Facts = facts,
                 Notes = notes,
                 Guidance = message

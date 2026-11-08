@@ -27,6 +27,7 @@ public sealed class ParserBidMetadataTests
         yield return Case(ParserSlugs.DatalogicQuotePdf, "Datalogic_PE930003.pdf", "PE930003", "1");
         yield return Case(ParserSlugs.EpsonQuotePdf, "Epson_96000002.pdf", "96000002", "1");
         yield return Case(ParserSlugs.StrikeQuotePdf, "Strike_Quote_9202.pdf", "9202", "1");
+        yield return Case(ParserSlugs.JuniperCpqXlsx, "Juniper_CPQ_900001.xlsx", "CPQ-900001", "1");
 
         // Multi-quote Nutanix Hardware files: the bid number is Quote D's parent quote, never the
         // filename — the second fixture's filename carries trailing customer text.
@@ -39,6 +40,7 @@ public sealed class ParserBidMetadataTests
             "1");
 
         // Formats carrying a source revision.
+        yield return Case(ParserSlugs.JuniperIndirectXlsx, "Juniper_Indirect_900001.xlsx", "90000101", "2");
         yield return Case(ParserSlugs.HpBidXlsx, "Deals_Sample_01_HPI.xlsx", "99010001", "2");
         yield return Case(ParserSlugs.HpBidXlsx, "Deals_Sample_02_HPI.xlsx", "99010002", "2");
         yield return Case(ParserSlugs.HpGlobalBidXlsx, "translate_quote_98000001_v25_all.xlsx", "98000001", "25");

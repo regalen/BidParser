@@ -22,6 +22,8 @@ using BidParser.Parsing.Epson.QuotePdf;
 using BidParser.Parsing.Strike.QuotePdf;
 using BidParser.Parsing.Trellix.QuotePdf;
 using BidParser.Parsing.Trellix.QuoteXlsm;
+using BidParser.Parsing.Juniper.CpqXlsx;
+using BidParser.Parsing.Juniper.IndirectXlsx;
 
 namespace BidParser.Parsing.Registry;
 
@@ -57,6 +59,8 @@ public sealed class ParserRegistry : IParserRegistry
         new EpsonQuotePdfParser(),
         new StrikeQuotePdfParser(),
         new TrellixQuotePdfParser(),
-        new TrellixQuoteXlsmParser()
+        new TrellixQuoteXlsmParser(),
+        new JuniperCpqXlsxParser(),
+        new JuniperIndirectXlsxParser()
     ];
 }

@@ -14,6 +14,8 @@ import { ParseSettingsCard } from '../components/ParseSettingsCard';
 import { RecentUploadsTable } from '../components/RecentUploadsTable';
 import { ToastStack, type ToastMessage } from '../components/Toast';
 import {
+  CRM_TEMPLATE_FOREIGN_NO_CALCULATION,
+  CRM_TEMPLATE_FOREIGN_UPLIFT,
   CRM_TEMPLATE_NO_CALCULATION,
   CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT,
   CRM_TEMPLATE_UPLIFT,
@@ -63,7 +65,7 @@ export function DashboardPage() {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
-  const [currencyError, setCurrencyError] = useState(false);
+  const [currencyError, setCurrencyError] = useState<string | null>(null);
   const [dellApiError, setDellApiError] = useState<string | null>(null);
   const [fileTypeError, setFileTypeError] = useState<string | null>(null);
   const [resultPending, setResultPending] = useState<{
@@ -73,6 +75,7 @@ export function DashboardPage() {
     currency: string;
     computedTotal: string;
     quotedTotal: string;
+    validationWarnings: string[];
     cancelledLines: CancelledLineInfo[];
     hasRebateIneligibleItems: boolean;
     guidanceHtml: string | null;
@@ -199,21 +202,19 @@ export function DashboardPage() {
   const canSubmit = useMemo(() => {
     const hasSource = isDellVendor ? DELL_QUOTE_ID_PATTERN.test(quoteId) : Boolean(file);
     if (!vendor || !parserSlug || !hasSource || uploadState !== 'idle') return false;
-    // Uplift requires margin; On Cost % is optional for parsers that support it.
-    // Multi-template (HP Bid, HPE, Dell, …): Uplift needs margin; No Calculation needs neither
-    if (selectedParser && selectedParser.availableTemplates.length > 1) {
-      const requiresMargin = selectedTemplate === CRM_TEMPLATE_UPLIFT;
-      return !requiresMargin || Boolean(margin);
+    const activeTemplate = selectedTemplate || selectedParser?.crmTemplate || '';
+    if (activeTemplate === CRM_TEMPLATE_FOREIGN_UPLIFT) {
+      return Boolean(fxRate && margin);
     }
-    // Single-template HP (HP OneConfig XLSX): % Off RRP with Uplift needs both margin and imPercent
-    if (selectedTemplate === CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT) {
+    if (activeTemplate === CRM_TEMPLATE_UPLIFT) {
+      return Boolean(margin);
+    }
+    if (activeTemplate === CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT) {
       return Boolean(margin && imPercent);
     }
-    // Single-template No Calculation (Cisco): needs no inputs
-    if (selectedParser?.crmTemplate === CRM_TEMPLATE_NO_CALCULATION) {
+    if (activeTemplate === CRM_TEMPLATE_NO_CALCULATION || activeTemplate === CRM_TEMPLATE_FOREIGN_NO_CALCULATION) {
       return true;
     }
-    // Single-template Foreign Uplift (Nutanix): needs both fxRate and margin
     return Boolean(fxRate && margin);
   }, [vendor, parserSlug, fxRate, margin, imPercent, selectedTemplate, file, quoteId, uploadState, selectedParser, isDellVendor]);
 
@@ -286,6 +287,7 @@ export function DashboardPage() {
         currency: result.currency ?? '',
         computedTotal: result.computedTotal ?? '',
         quotedTotal: result.quotedTotal ?? '',
+        validationWarnings: result.validationWarnings,
         cancelledLines: result.cancelledLines,
         hasRebateIneligibleItems: result.hasRebateIneligibleItems,
         guidanceHtml,
@@ -296,7 +298,8 @@ export function DashboardPage() {
       setUploadState('idle');
       const fileTypeMessage = fileTypeErrorMessage(caught);
       if (isCurrencyError(caught)) {
-        setCurrencyError(true);
+        const detail = (caught as ApiError).detail as ApiErrorDetail;
+        setCurrencyError(detail.hint || detail.message || 'The quote currency is unsupported. Check the source file currency.');
       } else if (isDellApiError(caught)) {
         setDellApiError(errorMessage(caught));
       } else if (fileTypeMessage) {
@@ -412,7 +415,7 @@ export function DashboardPage() {
       <Footer />
       <ToastStack toasts={toasts} dismiss={(id) => setToasts((items) => items.filter((item) => item.id !== id))} />
       {currencyError && (
-        <CurrencyErrorModal onClose={() => setCurrencyError(false)} />
+        <CurrencyErrorModal message={currencyError} onClose={() => setCurrencyError(null)} />
       )}
       {dellApiError && (
         <DellApiErrorModal message={dellApiError} onClose={() => setDellApiError(null)} />
@@ -426,6 +429,7 @@ export function DashboardPage() {
           currency={resultPending.currency}
           computedTotal={resultPending.computedTotal}
           quotedTotal={resultPending.quotedTotal}
+          validationWarnings={resultPending.validationWarnings}
           cancelledLines={resultPending.cancelledLines}
           hasRebateIneligibleItems={resultPending.hasRebateIneligibleItems}
           guidanceHtml={resultPending.guidanceHtml}

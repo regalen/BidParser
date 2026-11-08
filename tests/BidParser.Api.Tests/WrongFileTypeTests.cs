@@ -82,6 +82,37 @@ public sealed class WrongFileTypeTests
         (await db.FailedParseJobs.CountAsync()).Should().Be(0);
     }
 
+    [Theory]
+    [InlineData("Juniper_CPQ_900001.xlsx", "juniper_indirect_xlsx", "The file is not recognised as Indirect (XLSX) and appears to be a CPQ (XLSX). Select the correct file type and try again.")]
+    [InlineData("Juniper_Indirect_900001.xlsx", "juniper_cpq_xlsx", "The file is not recognised as CPQ (XLSX) and appears to be a Indirect (XLSX). Select the correct file type and try again.")]
+    public async Task WrongFileType_Juniper_SuggestsSibling_AndRecordsNothing(string filename, string selectedSlug, string expectedMessage)
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var root = FindRepoRoot();
+        var bytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", filename));
+
+        using var response = await PostParseAsync(
+            client, bytes, filename,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "Juniper", selectedSlug);
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var detail = json.GetProperty("detail");
+        detail.GetProperty("stage").GetString().Should().Be("fileType");
+        detail.GetProperty("message").GetString().Should().Be(expectedMessage);
+
+        using var scope = fixture.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        (await db.FailedParseJobs.CountAsync()).Should().Be(0);
+        (await db.ParseJobs.CountAsync()).Should().Be(0);
+        (await db.ParseMetrics.CountAsync()).Should().Be(0);
+    }
+
     private static Task<HttpResponseMessage> PostParseAsync(
         HttpClient client, byte[] fileBytes, string filename, string contentType,
         string vendor, string parserSlug)

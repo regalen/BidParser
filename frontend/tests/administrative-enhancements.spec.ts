@@ -85,7 +85,220 @@ const parsers = [
     supportsSolutionIdSplit: false,
     supportsOnCost: false,
   },
+  {
+    slug: 'juniper_auto',
+    displayName: 'Auto (detect format)',
+    vendor: 'Juniper',
+    acceptedMime: '',
+    acceptedMimes: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+    crmTemplate: 'Foreign Uplift',
+    availableTemplates: ['Foreign Uplift', 'Foreign No Calculation'],
+    supportsSubComponentDetail: false,
+    supportsSolutionIdSplit: false,
+    supportsOnCost: false,
+  },
+  {
+    slug: 'juniper_cpq_xlsx',
+    displayName: 'CPQ (XLSX)',
+    vendor: 'Juniper',
+    acceptedMime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    acceptedMimes: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+    crmTemplate: 'Foreign Uplift',
+    availableTemplates: ['Foreign Uplift', 'Foreign No Calculation'],
+    supportsSubComponentDetail: false,
+    supportsSolutionIdSplit: false,
+    supportsOnCost: false,
+  },
+  {
+    slug: 'juniper_indirect_xlsx',
+    displayName: 'Indirect (XLSX)',
+    vendor: 'Juniper',
+    acceptedMime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    acceptedMimes: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+    crmTemplate: 'Foreign Uplift',
+    availableTemplates: ['Foreign Uplift', 'Foreign No Calculation'],
+    supportsSubComponentDetail: false,
+    supportsSolutionIdSplit: false,
+    supportsOnCost: false,
+  },
 ];
+
+test('Juniper defaults to Auto and Foreign Uplift, and Foreign No Calculation hides FX/Uplift without losing values', async ({ page }) => {
+  let parseAttempt = 0;
+  await mockCommonApi(page, async (route, path) => {
+    if (path === '/api/parsers') {
+      await fulfillJson(route, parsers);
+      return true;
+    }
+    if (path === '/api/parse-ui-config') {
+      await fulfillJson(route, { vendorDefaults: {}, guidanceByParserSlug: {} });
+      return true;
+    }
+    if (path === '/api/parse') {
+      parseAttempt += 1;
+      if (parseAttempt === 1) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          headers: {
+            'Content-Disposition': 'attachment; filename="CPQ-900001_1_ForeignUplift.xlsx"',
+            'X-Validation': 'match',
+            'X-Currency': 'USD',
+            'X-Computed-Total': '31072.82',
+            'X-Quoted-Total': '31072.82',
+            'X-Parser-Slug': 'juniper_cpq_xlsx',
+          },
+          body: 'mock-xlsx',
+        });
+        return true;
+      }
+      if (parseAttempt === 2) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          headers: {
+            'Content-Disposition': 'attachment; filename="900001_2_ForeignNoCalculation.xlsx"',
+            'X-Validation': 'mismatch',
+            'X-Currency': 'USD',
+            'X-Computed-Total': '4186.10',
+            'X-Quoted-Total': '',
+            'X-Validation-Warnings': JSON.stringify([
+              'Line 2 (SUB-1S-3Y) computed total 180.00 differs from EXTENDED NET TOTAL 150.00.',
+              'Line 3 (<sample> – SKU) computed total 70.00 differs from EXTENDED NET TOTAL 80.00.',
+            ]).replace(/[^\x00-\x7f]/g, (character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`),
+            'X-Parser-Slug': 'juniper_indirect_xlsx',
+          },
+          body: 'mock-xlsx',
+        });
+        return true;
+      }
+      await route.fulfill({
+        status: 422,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          detail: {
+            stage: 'fileType',
+            message:
+              'The file is not recognised as Indirect (XLSX) and appears to be a CPQ (XLSX). Select the correct file type and try again.',
+          },
+        }),
+      });
+      return true;
+    }
+    return false;
+  });
+
+  await page.goto('/dashboard');
+  await page.locator('aside select').first().selectOption('Juniper');
+  await expect(page.getByLabel('File type')).toHaveValue('juniper_auto');
+  await expect(page.getByLabel('File type').locator('option')).toHaveCount(4);
+
+  const crmTemplate = page.getByLabel('CRM Import Template');
+  await expect(crmTemplate).toHaveValue('Foreign Uplift');
+
+  const fxInput = page.getByLabel(/Exchange rate/i);
+  const upliftInput = page.getByLabel(/^Uplift/i);
+  await expect(fxInput).toBeVisible();
+  await expect(upliftInput).toBeVisible();
+
+  const fileInput = page.locator('input[type="file"]');
+  await fileInput.setInputFiles('public/samples/Juniper_CPQ_900001.xlsx');
+  await expect(page.getByText('Juniper_CPQ_900001.xlsx', { exact: true })).toBeVisible();
+
+  const submitButton = page.getByRole('button', { name: 'Upload & parse' });
+  await expect(submitButton).toBeDisabled();
+
+  await fxInput.fill('0.6500');
+  await expect(submitButton).toBeDisabled();
+
+  await upliftInput.fill('5.00');
+  await expect(submitButton).toBeEnabled();
+
+  await crmTemplate.selectOption('Foreign No Calculation');
+  await expect(fxInput).toHaveCount(0);
+  await expect(upliftInput).toHaveCount(0);
+  await expect(submitButton).toBeEnabled();
+
+  await crmTemplate.selectOption('Foreign Uplift');
+  await expect(fxInput).toHaveValue('0.6500');
+  await expect(upliftInput).toHaveValue('5.00');
+  await expect(submitButton).toBeEnabled();
+
+  // 1. Parse via Auto + Foreign Uplift and verify detected format callout + download
+  await submitButton.click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('Parse successful');
+  await expect(dialog).toContainText('Detected file type: CPQ (XLSX)');
+  const download1Promise = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: 'Download' }).click();
+  const download1 = await download1Promise;
+  expect(download1.suggestedFilename()).toBe('CPQ-900001_1_ForeignUplift.xlsx');
+  await dialog.getByRole('button', { name: 'Close' }).click();
+
+  // 2. Parse Indirect + Foreign No Calculation with a saveable per-row mismatch
+  await page.getByLabel('File type').selectOption('juniper_indirect_xlsx');
+  await crmTemplate.selectOption('Foreign No Calculation');
+  await fileInput.setInputFiles('public/samples/Juniper_Indirect_900001.xlsx');
+  await submitButton.click();
+  await expect(dialog).toContainText('Parsed with warnings');
+  await expect(dialog).toContainText('Computed USD 4186.10');
+  await expect(dialog).not.toContainText('Quoted USD');
+  await expect(dialog).not.toContainText('not parsed fully');
+  await expect(dialog.getByRole('list', { name: 'Validation warnings' })).toContainText('Line 2 (SUB-1S-3Y)');
+  await expect(dialog.getByRole('list', { name: 'Validation warnings' })).toContainText('Line 3 (<sample> – SKU)');
+  const download2Promise = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: 'Download' }).click();
+  const download2 = await download2Promise;
+  expect(download2.suggestedFilename()).toBe('900001_2_ForeignNoCalculation.xlsx');
+  await dialog.getByRole('button', { name: 'Close' }).click();
+
+  // 3. Wrong-format suggestion modal
+  await fileInput.setInputFiles('public/samples/Juniper_CPQ_900001.xlsx');
+  await submitButton.click();
+  const alertDialog = page.getByRole('alertdialog');
+  await expect(alertDialog).toContainText(
+    'The file is not recognised as Indirect (XLSX) and appears to be a CPQ (XLSX). Select the correct file type and try again.',
+  );
+  await alertDialog.getByRole('button', { name: 'OK' }).click();
+});
+
+test('currency errors display the server guidance for USD and AUD', async ({ page }) => {
+  let hint = '';
+  await mockCommonApi(page, async (route, path) => {
+    if (path === '/api/parsers') {
+      await fulfillJson(route, parsers);
+      return true;
+    }
+    if (path === '/api/parse-ui-config') {
+      await fulfillJson(route, { vendorDefaults: {}, guidanceByParserSlug: {} });
+      return true;
+    }
+    if (path !== '/api/parse') return false;
+    await route.fulfill({
+      status: 422, contentType: 'application/json',
+      body: JSON.stringify({ detail: { stage: 'currency', hint, message: 'Unsupported currency.' } }),
+    });
+    return true;
+  });
+
+  await page.goto('/dashboard');
+  for (const [vendor, template, extension, guidance] of [
+    ['Juniper', 'Foreign No Calculation', 'xlsx', 'This Juniper Indirect quote declares AUD on line 1; USD is required.'],
+    ['Trellix', 'No Calculation', 'xlsm', 'This Trellix quote declares USD; AUD is required.'],
+  ]) {
+    hint = guidance;
+    await page.locator('aside select').first().selectOption(vendor);
+    await page.getByLabel('CRM Import Template').selectOption(template);
+    await page.locator('input[type="file"]').setInputFiles({
+      name: `synthetic.${extension}`, mimeType: 'application/octet-stream', buffer: Buffer.from('synthetic'),
+    });
+    await page.getByRole('button', { name: 'Upload & parse' }).click();
+    const dialog = page.getByRole('alertdialog');
+    await expect(dialog).toContainText(guidance);
+    await expect(dialog).not.toContainText('please upload an AUD version');
+    await dialog.getByRole('button', { name: 'OK' }).click();
+  }
+});
 
 test('Trellix defaults to Auto and accepts PDF and XLSM uploads', async ({ page }) => {
   await mockCommonApi(page, async (route, path) => {

@@ -8,6 +8,7 @@ using BidParser.Domain.Constants;
 using BidParser.Domain.Models;
 using BidParser.Infrastructure.Entities;
 using BidParser.Infrastructure.Persistence;
+using ClosedXML.Excel;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -390,9 +391,12 @@ public sealed class ParseTests
         me.GetProperty("margin").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
-    [Fact]
-    public async Task ParseQuotedTotalHeaderEmptyWhenNull()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(100)]
+    public async Task ParseQuotedTotalHeaderEmptyWhenNull_AndWarningsAreBounded(int warningCount)
     {
+        var warning = "Line 1 (SKU–例) computed total 20.00 differs from source total 10.00.\nCheck this line.";
         var nullTotalParser = new TestParser(
             "test-null-total", "TestVendor", "application/pdf",
             _ => new ParseResult
@@ -413,8 +417,9 @@ public sealed class ParseTests
                 {
                     ComputedTotal = 0m,
                     QuotedTotal = null,
-                    Matches = true,
-                    Difference = 0m
+                    Matches = false,
+                    Difference = 0m,
+                    Warnings = Enumerable.Repeat(warning, warningCount).ToArray()
                 }
             });
 
@@ -429,6 +434,15 @@ public sealed class ParseTests
         response.Headers.TryGetValues("X-Quoted-Total", out var values).Should().BeTrue(
             "X-Quoted-Total header must be present even when QuotedTotal is null");
         values!.Should().ContainSingle().Which.Should().Be("");
+        var header = response.Headers.GetValues("X-Validation-Warnings").Single();
+        header.Length.Should().BeLessThan(4096);
+        header.ToCharArray().Should().OnlyContain(character => character <= 127);
+        var received = JsonSerializer.Deserialize<string[]>(header)!;
+        received[0].Should().Be(warning);
+        if (warningCount == 1)
+            received.Should().ContainSingle();
+        else
+            received[^1].Should().Contain("additional validation warnings omitted");
     }
 
     [Fact]
@@ -556,7 +570,7 @@ public sealed class ParseTests
                  {
                      Vendors.Hp, Vendors.Hpe, Vendors.LenovoIsg, Vendors.LenovoIdg, Vendors.Zebra,
                      Vendors.Dell, Vendors.Cisco, Vendors.Datalogic, Vendors.Epson, Vendors.Strike,
-                     Vendors.Trellix
+                     Vendors.Trellix, Vendors.Juniper
                  })
         {
             var res = await ApiTestFixture.PatchJsonWithCsrfAsync(client, "/api/me/settings",
@@ -616,6 +630,79 @@ public sealed class ParseTests
             "Nutanix", "nutanix_software_only_pdf", "0.7400", "0");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task ParseRoundtrip_Juniper_ForeignNoCalculation_And_PerRowMismatch()
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+
+        var root = FindRepoRoot();
+        var cpqBytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "Juniper_CPQ_900001.xlsx"));
+
+        using (var form = new MultipartFormDataContent())
+        {
+            var fileContent = new ByteArrayContent(cpqBytes);
+            fileContent.Headers.ContentType = new("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            form.Add(fileContent, "file", "Juniper_CPQ_900001.xlsx");
+            form.Add(new StringContent(Vendors.Juniper), "vendor");
+            form.Add(new StringContent(ParserSlugs.JuniperCpqXlsx), "parserSlug");
+            form.Add(new StringContent(CrmTemplates.ForeignNoCalculation), "crmTemplate");
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/parse") { Content = form };
+            request.Headers.Add("X-Requested-With", "BidParser");
+            using var response = await client.SendAsync(request);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            response.Content.Headers.ContentDisposition!.FileName!.Trim('"')
+                .Should().Be("CPQ-900001_1_ForeignNoCalculation.xlsx");
+            response.Headers.GetValues("X-Validation").Should().ContainSingle().Which.Should().Be("match");
+
+            response.Headers.Contains("X-Validation-Warnings").Should().BeFalse();
+
+            await using var outStream = await response.Content.ReadAsStreamAsync();
+            using var outWb = new XLWorkbook(outStream);
+            var outWs = outWb.Worksheet(1);
+            outWs.Cell(3, 19).GetFormattedString().Should().Be("USD");
+            outWs.Cell(3, 22).IsEmpty().Should().BeTrue();
+            outWs.Cell(3, 25).IsEmpty().Should().BeTrue();
+        }
+
+        // Mutate one Indirect row's EXTENDED NET TOTAL to verify per-row mismatch stays saveable (200 OK + X-Validation: mismatch).
+        var indirectBytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "Juniper_Indirect_900001.xlsx"));
+        byte[] mismatchBytes;
+        using (var inStream = new MemoryStream(indirectBytes))
+        using (var wb = new XLWorkbook(inStream))
+        {
+            var ws = wb.Worksheet(1);
+            var headerCell = ws.CellsUsed(c => string.Equals(c.GetFormattedString().Trim(), "EXTENDED NET TOTAL", StringComparison.OrdinalIgnoreCase)).Single();
+            ws.Cell(headerCell.Address.RowNumber + 1, headerCell.Address.ColumnNumber).Value = 99999.99m;
+            using var ms = new MemoryStream();
+            wb.SaveAs(ms);
+            mismatchBytes = ms.ToArray();
+        }
+
+        using (var form = new MultipartFormDataContent())
+        {
+            var fileContent = new ByteArrayContent(mismatchBytes);
+            fileContent.Headers.ContentType = new("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            form.Add(fileContent, "file", "Juniper_Indirect_900001.xlsx");
+            form.Add(new StringContent(Vendors.Juniper), "vendor");
+            form.Add(new StringContent(ParserSlugs.JuniperIndirectXlsx), "parserSlug");
+            form.Add(new StringContent(CrmTemplates.ForeignNoCalculation), "crmTemplate");
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/parse") { Content = form };
+            request.Headers.Add("X-Requested-With", "BidParser");
+            using var response = await client.SendAsync(request);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            response.Headers.GetValues("X-Validation").Should().ContainSingle().Which.Should().Be("mismatch");
+            response.Headers.GetValues("X-Quoted-Total").Should().ContainSingle().Which.Should().Be("");
+            var warnings = JsonSerializer.Deserialize<string[]>(response.Headers.GetValues("X-Validation-Warnings").Single());
+            warnings.Should().ContainSingle().Which.Should().Contain("Line 1 (AP27-WW)").And.Contain("99999.99");
+        }
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
