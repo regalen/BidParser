@@ -50,15 +50,10 @@
   },
   {
     "fileTypes": [
+      "juniper_cpq_xlsx",
+      "juniper_indirect_xlsx",
       "juniper_iris_xlsx"
     ],
-    "html": "<p>When importing this quote into CRM, use the <strong>Foreign % Off RRP with Uplift</strong> calculation type.</p><p>When sending the quote to the partner, choose from the following report templates:</p><ul><li><strong>Hardware SOH Disc%</strong> - Shows the discount off list and stock on hand (SOH).</li><li><strong>Hardware SOH</strong> - Shows stock on hand (SOH).</li><li><strong>Standard</strong> - Does not show discount or SOH.</li></ul>"
-  },
-  {
-    "fileTypes": [
-      "juniper_cpq_xlsx",
-      "juniper_indirect_xlsx"
-    ],
-    "html": "<p>When importing this quote into CRM, use the <strong>Foreign % Off RRP with Uplift</strong> calculation type.</p><p>When sending the quote to the partner, choose from the following report templates:</p><ul><li><strong>Hardware SOH Disc%</strong> - Shows the discount off list and stock on hand (SOH).</li><li><strong>Hardware SOH</strong> - Shows stock on hand (SOH).</li><li><strong>Standard</strong> - Does not show discount or SOH.</li></ul>"
+    "html": "<p>When importing this quote into CRM, use the <strong>Foreign Uplif</strong> calculation type.</p><p>When sending the quote to the partner, choose from the following report templates:</p><ul><li><strong>Hardware SOH Disc%</strong> - Shows the discount off list and stock on hand (SOH).</li><li><strong>Hardware SOH</strong> - Shows stock on hand (SOH).</li><li><strong>Standard</strong> - Does not show discount or SOH.</li></ul>"
   }
 ]
