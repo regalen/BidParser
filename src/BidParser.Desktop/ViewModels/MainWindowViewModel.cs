@@ -170,16 +170,15 @@ public sealed class MainWindowViewModel : ObservableObject
         get => selectedTemplate;
         set
         {
-            if (!SetProperty(ref selectedTemplate, value))
-            {
-                return;
-            }
+            // Parsers can share a template while requiring different pricing inputs.
+            SetProperty(ref selectedTemplate, value);
 
             Capabilities = selectedParser is null || value is null
                 ? EffectiveCapabilities.None
                 : EffectiveCapabilities.From(selectedParser.Descriptor, value.Name);
 
-            var foreignDiscount = value?.Name == CrmTemplates.ForeignPercentOffWithUplift;
+            var foreignDiscount = selectedParser?.Descriptor.CalculatesCostFromMsrp == true
+                || value?.Name == CrmTemplates.ForeignPercentOffWithUplift;
             DiscountOffMsrp.Label = foreignDiscount ? "IM% (Discount Off MSRP)" : "Discount Off MSRP";
             DiscountOffMsrp.RejectExcessPrecision = foreignDiscount;
             FxRate.IsRequired = Capabilities.SupportsFx && Capabilities.RequiresFx;

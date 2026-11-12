@@ -10,9 +10,10 @@ public sealed record CrmWriterOptions(
     string Currency = "USD",
     decimal? ImPercent = null,
     decimal? OnCost = null,
-    bool TermAsComment = false);
+    bool TermAsComment = false,
+    bool CalculatesCostFromMsrp = false);
 
-/// <summary>Input capabilities projected from the same profile that drives workbook columns.</summary>
+/// <summary>Input capabilities projected from the workbook profile and parser pricing trait.</summary>
 public sealed record CrmTemplateCapabilities(
     bool UsesFxRate,
     bool RequiresFxRate,
@@ -37,7 +38,7 @@ public static class CrmWriter
     public static bool IsSupported(string crmTemplate) => CrmTemplateProfile.For(crmTemplate) is not null;
 
     /// <summary>Returns UI/input capabilities without duplicating template rules in a host.</summary>
-    public static CrmTemplateCapabilities? GetCapabilities(string crmTemplate)
+    public static CrmTemplateCapabilities? GetCapabilities(string crmTemplate, bool calculatesCostFromMsrp = false)
     {
         var profile = CrmTemplateProfile.For(crmTemplate);
         return profile is null
@@ -47,8 +48,8 @@ public static class CrmWriter
                 RequiresFxRate: profile.ForeignExchangeRate,
                 UsesUplift: profile.Margin,
                 RequiresUplift: profile.Margin,
-                UsesDiscountOffMsrp: profile.ImPercent,
-                RequiresDiscountOffMsrp: profile.ImPercent,
+                UsesDiscountOffMsrp: profile.ImPercent || calculatesCostFromMsrp,
+                RequiresDiscountOffMsrp: profile.ImPercent || calculatesCostFromMsrp,
                 SupportsOnCost: profile.OnCost);
     }
 
@@ -60,6 +61,11 @@ public static class CrmWriter
     {
         var profile = CrmTemplateProfile.For(crmTemplate)
             ?? throw new ArgumentException($"Unsupported CRM template: '{crmTemplate}'", nameof(crmTemplate));
+
+        if (options.CalculatesCostFromMsrp && options.ImPercent is null)
+        {
+            throw new ArgumentException("IM% is required to calculate cost from MSRP.", nameof(options));
+        }
 
         using var workbook = new XLWorkbook();
         var sheet = workbook.AddWorksheet(profile.SheetName);
@@ -151,7 +157,12 @@ public static class CrmWriter
                 // "always" coincide; only Never is distinct.
                 if (profile.Cost != PriceWrite.Never)
                 {
-                    sheet.Cell(rowNumber, profile.CostColumn).Value = TemplateLayout.NonZeroPrice(item.Cost);
+                    var cost = options.CalculatesCostFromMsrp
+                        ? decimal.Round(
+                            (item.Msrp ?? throw new ArgumentException("MSRP is required to calculate cost.", nameof(items)))
+                            * (1m - options.ImPercent!.Value / 100m), 2, MidpointRounding.AwayFromZero)
+                        : item.Cost;
+                    sheet.Cell(rowNumber, profile.CostColumn).Value = TemplateLayout.NonZeroPrice(cost);
                 }
 
                 // Col K — Margin

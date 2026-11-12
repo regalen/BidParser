@@ -17,7 +17,8 @@ public sealed class JuniperIrisXlsxParser : IParser
     public string DisplayName => "Iris (XLSX)";
     public string Vendor => Vendors.Juniper;
     public string AcceptedMime => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-    public string CrmTemplate => CrmTemplates.ForeignPercentOffWithUplift;
+    public string CrmTemplate => CrmTemplates.ForeignUplift;
+    public bool CalculatesCostFromMsrp => true;
 
     public double Detect(string path)
     {

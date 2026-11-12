@@ -31,7 +31,8 @@ public static class ParsersEndpoints
             parser.SupportsSubComponentDetail,
             parser.SupportsSolutionIdSplit,
             parser.SupportsOnCost,
-            parser.SolutionSplitLabel)));
+            parser.SolutionSplitLabel,
+            parser.CalculatesCostFromMsrp)));
     }
 
     /// <summary>Per-parser info surfaced to the SPA.</summary>
@@ -46,5 +47,6 @@ public static class ParsersEndpoints
         bool SupportsSubComponentDetail,
         bool SupportsSolutionIdSplit,
         bool SupportsOnCost,
-        string SolutionSplitLabel);
+        string SolutionSplitLabel,
+        bool CalculatesCostFromMsrp);
 }

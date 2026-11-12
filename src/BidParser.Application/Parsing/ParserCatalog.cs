@@ -51,7 +51,8 @@ public sealed class ParserCatalog(IParserRegistry registry)
                 parser.SupportsSolutionIdSplit,
                 parser.SupportsOnCost,
                 parser.SolutionSplitLabel,
-                IsAuto: false));
+                IsAuto: false,
+                parser.CalculatesCostFromMsrp));
         }
 
         return descriptors;

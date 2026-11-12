@@ -14,4 +14,5 @@ public sealed record ParserDescriptor(
     bool SupportsSolutionIdSplit,
     bool SupportsOnCost,
     string SolutionSplitLabel,
-    bool IsAuto);
+    bool IsAuto,
+    bool CalculatesCostFromMsrp = false);

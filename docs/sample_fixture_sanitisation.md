@@ -98,5 +98,6 @@ before publishing if prior commits may contain the original fixtures.
 MSRP values (410 and 280 USD), quantities (2 and 1), and total (1100 USD). Public Juniper SKUs
 and generic supplier descriptions retain the table structure. Creator/editor metadata is `regalen`.
 The browser sample is byte-identical to the input; the shared writer generated the matching
-ForeignPercentOffWithUplift golden using FX 1.5, Uplift 5, and IM% 30.25. The private Iris workbook
+ForeignUplift golden using FX 1.5, Uplift 5, and IM% 30.25, with calculated unit costs
+285.98 and 195.30 USD and an empty IM% column. The private Iris workbook
 is used only for local acceptance and its personal metadata is not copied into fixtures.

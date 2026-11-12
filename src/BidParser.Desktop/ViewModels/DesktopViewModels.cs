@@ -181,7 +181,7 @@ public sealed record EffectiveCapabilities(
 
     public static EffectiveCapabilities From(ParserDescriptor parser, string template)
     {
-        var templateCapabilities = CrmWriter.GetCapabilities(template);
+        var templateCapabilities = CrmWriter.GetCapabilities(template, parser.CalculatesCostFromMsrp);
         if (templateCapabilities is null)
         {
             return None with { SupportsSplit = parser.SupportsSolutionIdSplit };

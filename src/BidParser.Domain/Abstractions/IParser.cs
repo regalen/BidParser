@@ -52,6 +52,12 @@ public interface IParser
     bool SupportsOnCost => false;
 
     /// <summary>
+    /// Calculate output unit cost from MSRP less the user's IM% discount, rounded to cents.
+    /// Requires IM% independently of the template; parsed values and validation stay unchanged.
+    /// </summary>
+    bool CalculatesCostFromMsrp => false;
+
+    /// <summary>
     /// Name of the dimension SupportsSolutionIdSplit groups by, used for UI labels and
     /// messages. A presentation trait of the format, so the parser declares it and generic code
     /// obeys. Defaults to "Solution ID".

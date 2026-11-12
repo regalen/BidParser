@@ -193,7 +193,8 @@ See [troubleshooting.md](troubleshooting.md#portable-windows-desktop) for known 
 
 ### Juniper file types
 
-Juniper requires explicit CPQ, Indirect, or Iris selection; no Auto entry is offered. CPQ and
-Indirect use Foreign Uplift only. Iris uses Foreign %Off RRP with Uplift and requires Exchange
-Rate, Uplift, and IM% (nonnegative, at most two decimal places, no upper limit). Its cost columns
-stay blank for CRM calculation, and validation uses MSRP totals. Bid metadata remains blank.
+Juniper requires explicit CPQ, Indirect, or Iris selection; no Auto entry is offered. All three
+formats use Foreign Uplift only. Iris requires Exchange Rate, Uplift, and IM% (nonnegative,
+at most two decimal places, no upper limit). BidParser calculates Foreign Cost from MSRP less
+IM%, rounded to cents, and leaves the output IM% column blank. Validation uses MSRP totals.
+Bid metadata remains blank. See the [Iris pricing spec](juniper_iris_xlsx.md).
