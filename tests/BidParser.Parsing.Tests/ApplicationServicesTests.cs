@@ -39,11 +39,11 @@ public sealed class ApplicationServicesTests
 
         var juniper = catalog.Where(item => item.Vendor == Vendors.Juniper).ToList();
         juniper.Select(item => item.Slug).Should().Equal(
-            ParserSlugs.JuniperAuto, ParserSlugs.JuniperCpqXlsx, ParserSlugs.JuniperIndirectXlsx);
-        juniper[0].IsAuto.Should().BeTrue();
+            ParserSlugs.JuniperCpqXlsx, ParserSlugs.JuniperIndirectXlsx, ParserSlugs.JuniperIrisXlsx);
+        juniper[0].IsAuto.Should().BeFalse();
         juniper[0].AcceptedExtensions.Should().Equal(".xlsx");
         juniper[0].CrmTemplate.Should().Be(CrmTemplates.ForeignUplift);
-        juniper[0].AvailableTemplates.Should().Equal(CrmTemplates.ForeignUplift, CrmTemplates.ForeignNoCalculation);
+        juniper[0].AvailableTemplates.Should().Equal(CrmTemplates.ForeignUplift);
         juniper[0].SupportsOnCost.Should().BeFalse();
         juniper[0].SupportsSolutionIdSplit.Should().BeFalse();
     }
@@ -152,8 +152,6 @@ public sealed class ApplicationServicesTests
     [InlineData("Zebra_PC_97000002_V2.0.pdf", Vendors.Zebra, ParserSlugs.ZebraAuto, ParserSlugs.ZebraPcrPdf)]
     [InlineData("Trellix_Quote_900001.pdf", Vendors.Trellix, ParserSlugs.TrellixAuto, ParserSlugs.TrellixQuotePdf)]
     [InlineData("Trellix_Quote_900003.xlsm", Vendors.Trellix, ParserSlugs.TrellixAuto, ParserSlugs.TrellixQuoteXlsm)]
-    [InlineData("Juniper_CPQ_900001.xlsx", Vendors.Juniper, ParserSlugs.JuniperAuto, ParserSlugs.JuniperCpqXlsx)]
-    [InlineData("Juniper_Indirect_900001.xlsx", Vendors.Juniper, ParserSlugs.JuniperAuto, ParserSlugs.JuniperIndirectXlsx)]
     public async Task Auto_resolves_the_concrete_parser(
         string filename, string vendor, string autoSlug, string expectedSlug)
     {

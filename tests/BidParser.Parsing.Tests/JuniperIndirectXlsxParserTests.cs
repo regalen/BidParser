@@ -22,7 +22,7 @@ public sealed class JuniperIndirectXlsxParserTests
         ((IParser)_parser).OutputVendorName.Should().Be(Vendors.Juniper);
         _parser.AcceptedMime.Should().Be("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         _parser.CrmTemplate.Should().Be(CrmTemplates.ForeignUplift);
-        _parser.AvailableTemplates.Should().Equal(CrmTemplates.ForeignUplift, CrmTemplates.ForeignNoCalculation);
+        _parser.AvailableTemplates.Should().Equal(CrmTemplates.ForeignUplift);
         _parser.TermRendersAsComment.Should().BeTrue();
         ((IParser)_parser).SupportsOnCost.Should().BeFalse();
         ((IParser)_parser).SupportsSolutionIdSplit.Should().BeFalse();

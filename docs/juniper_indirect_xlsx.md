@@ -3,9 +3,9 @@
 - **Parser:** `JuniperIndirectXlsxParser`
 - **Slug:** `juniper_indirect_xlsx`
 - **Accepted MIME:** `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
-- **CRM templates:** `Foreign Uplift` (default), `Foreign No Calculation`
+- **CRM templates:** `Foreign Uplift` only
 - **Additional settings:** none
-- **Selection:** Juniper Auto (`juniper_auto`) is preselected; manual `Indirect (XLSX)` remains available.
+- **Selection:** Explicit file-type selection is required; Juniper has no Auto entry.
 
 ## Recognition and extraction
 
@@ -54,7 +54,7 @@ Missing table headers raise a `detect` error; malformed product rows raise an `e
   rows cancel out in the net difference—producing a saveable validation mismatch rather than a hard
   parse error.
 
-Both `Foreign Uplift` and `Foreign No Calculation` write to the `Foreign Uplift` worksheet with
+`Foreign Uplift` writes to the `Foreign Uplift` worksheet with
 `JUNIPER` in Column B and `"USD"` in Column S. See `docs/output_mapping.md` for full column layout.
 
 Web results show the affected line warnings while retaining the Download action. Large warning lists

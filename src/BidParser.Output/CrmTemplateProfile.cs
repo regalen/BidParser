@@ -45,6 +45,14 @@ internal sealed record CrmTemplateProfile(
     /// <summary>Returns the profile for a CRM template, or null when the template is unknown.</summary>
     public static CrmTemplateProfile? For(string crmTemplate) => crmTemplate switch
     {
+        CrmTemplates.ForeignPercentOffWithUplift => new(
+            SheetName: CrmTemplates.ForeignPercentOffWithUplift,
+            Msrp: PriceWrite.AlwaysWithSentinel, MsrpColumn: 21,
+            Cost: PriceWrite.Never, CostColumn: 20,
+            Margin: true, ImPercent: true, OnCost: false, MinQty: false,
+            Term: false, Dates: false, Comments: false,
+            ForeignCurrency: true, ForeignExchangeRate: true, NumericItemFallback: true),
+
         CrmTemplates.ForeignUplift => new(
             SheetName: CrmTemplates.ForeignUplift,
             Msrp: PriceWrite.AlwaysWithSentinel, MsrpColumn: 21,

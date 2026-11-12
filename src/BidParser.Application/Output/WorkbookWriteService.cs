@@ -122,9 +122,17 @@ public sealed class WorkbookWriteService
         var parser = request.Quote.Parser;
         var template = ResolveTemplate(request.Quote, request.CrmTemplate, request.SplitBySolutionId);
 
-        if (template == CrmTemplates.PercentOffWithUplift && request.ImPercent is null)
+        if (CrmWriter.GetCapabilities(template)!.RequiresDiscountOffMsrp && request.ImPercent is null)
         {
-            throw new ParseInputException(ParseInputErrorKind.MissingRequiredOption, "IM% is required for OneConfig (XLSX).");
+            throw new ParseInputException(ParseInputErrorKind.MissingRequiredOption, $"IM% is required for {parser.DisplayName}.");
+        }
+
+        if (template == CrmTemplates.ForeignPercentOffWithUplift
+            && request.ImPercent is { } discount
+            && (discount < 0m || discount != decimal.Round(discount, 2)))
+        {
+            throw new ParseInputException(ParseInputErrorKind.MissingRequiredOption,
+                "IM% must be nonnegative with at most two decimal places.");
         }
 
         ct.ThrowIfCancellationRequested();

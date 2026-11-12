@@ -23,6 +23,7 @@ const sampleFiles: Record<string, string> = {
   trellix_quote_pdf: 'Trellix_Quote_900001.pdf',
   trellix_quote_xlsm: 'Trellix_Quote_900003.xlsm',
   cisco_ccw_quote_xls: 'Quote_9400000001.xls',
+  juniper_iris_xlsx: 'Juniper_Iris_Synthetic.xlsx',
   juniper_cpq_xlsx: 'Juniper_CPQ_900001.xlsx',
   juniper_indirect_xlsx: 'Juniper_Indirect_900001.xlsx',
 };

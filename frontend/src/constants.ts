@@ -2,6 +2,7 @@
 // BidParser.Domain.Constants.CrmTemplates on the backend.
 export const CRM_TEMPLATE_NO_CALCULATION = 'No Calculation';
 export const CRM_TEMPLATE_UPLIFT = 'Uplift';
+export const CRM_TEMPLATE_FOREIGN_PERCENT_OFF_WITH_UPLIFT = 'Foreign %Off RRP with Uplift';
 export const CRM_TEMPLATE_FOREIGN_UPLIFT = 'Foreign Uplift';
 export const CRM_TEMPLATE_FOREIGN_NO_CALCULATION = 'Foreign No Calculation';
 export const CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT = '% Off RRP with Uplift';
@@ -34,7 +35,6 @@ const autoParserSlugs = new Set<string>([
   PARSER_SLUG_ZEBRA_AUTO,
   PARSER_SLUG_DELL_AUTO,
   PARSER_SLUG_TRELLIX_AUTO,
-  PARSER_SLUG_JUNIPER_AUTO,
 ]);
 
 export function isAutoParserSlug(slug: string): boolean {

@@ -1,7 +1,7 @@
 namespace BidParser.Domain.Models;
 
 /// <summary>
-/// Outcome of total-validation: the computed Σ(cost × qty), the quoted total (if any),
+/// Outcome of total-validation: the computed Σ(cost × qty), or MSRP × qty for Iris, the quoted total (if any),
 /// whether they match within tolerance, their signed difference, and any warnings.
 /// </summary>
 public sealed record ValidationResult

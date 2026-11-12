@@ -44,9 +44,6 @@ public static class AutoDetectTypes
         // Trellix PDF and XLSM share both templates and have independent Detect signatures.
         new(Vendors.Trellix, ParserSlugs.TrellixAuto, CrmTemplates.NoCalculation,
             [CrmTemplates.NoCalculation, CrmTemplates.Uplift]),
-        // Juniper CPQ and Indirect XLSX share both foreign templates and have independent Detect signatures.
-        new(Vendors.Juniper, ParserSlugs.JuniperAuto, CrmTemplates.ForeignUplift,
-            [CrmTemplates.ForeignUplift, CrmTemplates.ForeignNoCalculation])
     ];
 
     public static AutoDetectType? ForVendor(string vendor) =>

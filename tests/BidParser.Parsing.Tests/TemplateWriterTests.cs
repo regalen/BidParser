@@ -819,9 +819,7 @@ public sealed class TemplateWriterTests
 
     [Theory]
     [InlineData(ParserSlugs.JuniperCpqXlsx, "Juniper_CPQ_900001.xlsx", "Juniper_CPQ_900001_ForeignUplift.xlsx", CrmTemplates.ForeignUplift)]
-    [InlineData(ParserSlugs.JuniperCpqXlsx, "Juniper_CPQ_900001.xlsx", "Juniper_CPQ_900001_ForeignNoCalculation.xlsx", CrmTemplates.ForeignNoCalculation)]
     [InlineData(ParserSlugs.JuniperIndirectXlsx, "Juniper_Indirect_900001.xlsx", "Juniper_Indirect_900001_ForeignUplift.xlsx", CrmTemplates.ForeignUplift)]
-    [InlineData(ParserSlugs.JuniperIndirectXlsx, "Juniper_Indirect_900001.xlsx", "Juniper_Indirect_900001_ForeignNoCalculation.xlsx", CrmTemplates.ForeignNoCalculation)]
     public void Juniper_writer_matches_synthetic_goldens(string slug, string inputName, string expectedName, string template)
     {
         var root = TestSample.Root;
