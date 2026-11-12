@@ -18,7 +18,20 @@ public sealed class NumericFieldViewModel(
     private string text = string.Empty;
     private bool isRequired;
 
-    public string Label { get; } = label;
+    private string fieldLabel = label;
+    private bool rejectExcessPrecision;
+    public string Label
+    {
+        get => fieldLabel;
+        set { if (SetProperty(ref fieldLabel, value)) Validate(); }
+    }
+
+    /// <summary>Reject excess decimals instead of normalizing them for templates requiring exact input precision.</summary>
+    public bool RejectExcessPrecision
+    {
+        get => rejectExcessPrecision;
+        set { if (SetProperty(ref rejectExcessPrecision, value)) Validate(); }
+    }
 
     /// <summary>Suffix rendered inside the input (e.g. "%"); never part of the parsed value.</summary>
     public string Unit { get; } = unit;
@@ -126,6 +139,11 @@ public sealed class NumericFieldViewModel(
         {
             Value = null;
             ErrorMessage = $"{Label} must be greater than 0.";
+        }
+        else if (RejectExcessPrecision && parsed != Math.Round(parsed, decimals))
+        {
+            Value = null;
+            ErrorMessage = $"{Label} must have at most {decimals} decimal places.";
         }
         else
         {

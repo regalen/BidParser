@@ -24,6 +24,7 @@ using BidParser.Parsing.Trellix.QuotePdf;
 using BidParser.Parsing.Trellix.QuoteXlsm;
 using BidParser.Parsing.Juniper.CpqXlsx;
 using BidParser.Parsing.Juniper.IndirectXlsx;
+using BidParser.Parsing.Juniper.IrisXlsx;
 
 namespace BidParser.Parsing.Registry;
 
@@ -61,6 +62,7 @@ public sealed class ParserRegistry : IParserRegistry
         new TrellixQuotePdfParser(),
         new TrellixQuoteXlsmParser(),
         new JuniperCpqXlsxParser(),
-        new JuniperIndirectXlsxParser()
+        new JuniperIndirectXlsxParser(),
+        new JuniperIrisXlsxParser()
     ];
 }

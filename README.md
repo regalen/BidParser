@@ -86,8 +86,9 @@ guidance is seeded for that format.
 | **Strike** | Quote (PDF) | PDF | `strike_quote_pdf` | No Calculation / Uplift | Standard |
 | **Trellix** | Quote (PDF) | PDF | `trellix_quote_pdf` | No Calculation / Uplift | — |
 | **Trellix** | Quote (XLSM) | XLSM | `trellix_quote_xlsm` | No Calculation / Uplift | — |
-| **Juniper** | CPQ (XLSX) | XLSX | `juniper_cpq_xlsx` | Foreign Uplift / Foreign No Calculation | — |
-| **Juniper** | Indirect (XLSX) | XLSX | `juniper_indirect_xlsx` | Foreign Uplift / Foreign No Calculation | — |
+| **Juniper** | CPQ (XLSX) | XLSX | `juniper_cpq_xlsx` | Foreign Uplift | — |
+| **Juniper** | Indirect (XLSX) | XLSX | `juniper_indirect_xlsx` | Foreign Uplift | — |
+| **Juniper** | Iris (XLSX) | XLSX | `juniper_iris_xlsx` | Foreign %Off RRP with Uplift | — |
 
 Notes on the table:
 
@@ -104,11 +105,10 @@ Notes on the table:
   detection is the only option, enforced both in the UI and at the API layer. Dell is therefore
   web-only in desktop v1; the portable app does not expose manual JSON upload.
 - **Auto (detect format)** is an extra dropdown entry for Nutanix, Lenovo ISG, Zebra, Trellix,
-  Juniper, and Dell. It is preselected for those vendors, and for all but Dell the user can still choose a
+  and Dell. It is preselected for those vendors, and for all but Dell the user can still choose a
   specific format.
 - **Multi-template formats** render a template dropdown. No Calculation / Uplift differ in
-  whether Margin is written. Juniper offers Foreign Uplift / Foreign No Calculation; the latter
-  retains foreign currency and prices while leaving Margin and FX blank.
+  whether Margin is written. Juniper requires an explicit file type; CPQ and Indirect use Foreign Uplift, and Iris uses Foreign %Off RRP with Uplift.
 - **Lenovo ISG Solution ID split.** Both Lenovo ISG formats can optionally return one renumbered
   workbook per Solution ID, delivered as a single ZIP. The ZIP is what history and monitoring
   retain.
@@ -122,27 +122,29 @@ Every parse produces a clean copy of one of the standardised `ANZ-GENERIC_*.xlsx
 [docs/output_mapping.md](docs/output_mapping.md). All of them share a 27-column A→AA layout; they
 differ only in which columns carry pricing.
 
-Eight template workbooks are checked in, with **five selectable writer profiles** in
+Eight template workbooks are checked in, with **six writer profiles** in
 [`CrmTemplateProfile.cs`](src/BidParser.Output/CrmTemplateProfile.cs). Foreign No Calculation shares
-the Foreign Uplift layout. Four other workbooks remain reference layouts for future formats.
+the Foreign Uplift layout. Three other workbooks remain reference layouts for future formats.
 
 | Template | Sheet | Used by |
 |---|---|---|
-| **Foreign Uplift**<br>`ANZ-GENERIC_ForeignUplift.xlsx` | `Foreign Uplift` | All six Nutanix formats and both Juniper formats |
-| **Foreign No Calculation**<br>Shares `ANZ-GENERIC_ForeignUplift.xlsx` | `Foreign Uplift` | Both Juniper formats; Margin and FX blank |
+| **Foreign Uplift**<br>`ANZ-GENERIC_ForeignUplift.xlsx` | `Foreign Uplift` | All six Nutanix formats and Juniper CPQ/Indirect |
+| **Foreign No Calculation**<br>Shares `ANZ-GENERIC_ForeignUplift.xlsx` | `Foreign Uplift` | Historical layout; no current parser offers it |
 | **No Calculation**<br>`ANZ-GENERIC_NoCalculation.xlsx` | `No Calculation` | HP Bid, HP Global Bid, HP Services, HPE Bid, all three Lenovo formats, both Zebra formats, both Dell formats, Cisco CCW, Datalogic, Epson, Strike, Trellix |
 | **Uplift**<br>`ANZ-GENERIC_Uplift.xlsx` | `Uplift` | HP Bid, HP Global Bid, HP Services, HPE Bid, all three Lenovo formats, both Zebra formats, Datalogic, Epson, Strike, and Trellix; additionally writes the Margin column. |
 | **% Off RRP with Uplift**<br>`ANZ-GENERIC_PercentOffWithUplift.xlsx` | `% Off RRP with Uplift` | HP OneConfig only |
+| **Foreign %Off RRP with Uplift**<br>`ANZ-GENERIC_ForeignPercentOffWithUplift.xlsx` | `Foreign %Off RRP with Uplift` | Juniper Iris; MSRP, Uplift, FX and IM%, with cost blank |
 
-A single writer, [`CrmWriter`](src/BidParser.Output/CrmWriter.cs), produces all five profiles. It never
+A single writer, [`CrmWriter`](src/BidParser.Output/CrmWriter.cs), produces all six profiles. It never
 special-cases a vendor or slug: the per-template column behaviour lives in `CrmTemplateProfile`, and
 per-format presentation traits are declared as properties on the parser.
 
 **How they differ:**
 
-- **Foreign Uplift / Foreign No Calculation** — foreign-currency layouts used by Juniper, with
-  Foreign Uplift also used by Nutanix. USD is written in S, cost in T, and MSRP in U. Foreign Uplift
+- **Foreign Uplift / Foreign No Calculation** — Foreign Uplift serves Juniper CPQ/Indirect and Nutanix; Foreign No Calculation remains a historical layout. USD is written in S, cost in T, and MSRP in U. Foreign Uplift
   additionally writes Margin in K and FX in V; Foreign No Calculation leaves those two cells blank.
+- **Foreign %Off RRP with Uplift** — Juniper Iris writes USD in S, MSRP in U, FX in V,
+  Uplift in K, and IM% in X. All cost columns are blank for CRM calculation.
 - **No Calculation / Uplift** — local-currency (AUD) layout. Cost lands in column I, MSRP in column
   H where the source provides one. `Uplift` additionally writes the Margin column (K); `No
   Calculation` leaves it blank. Same physical layout, selected per parse.
@@ -193,10 +195,10 @@ start just the database from the compose file with `docker compose up -d mssql`.
 dotnet test tests/BidParser.Parsing.Tests/BidParser.Parsing.Tests.csproj
 ```
 
-The parser/application/output suite is the fast one (758 tests) and needs no container runtime.
-The full suite, `dotnet test BidParser.sln`, additionally runs the 198 API integration tests
-against a SQL Server testcontainer and 118 cross-platform desktop configuration/update tests
-(1074 tests total).
+The parser/application/output suite is the fast one (782 tests) and needs no container runtime.
+The full suite, `dotnet test BidParser.sln`, additionally runs the 201 API integration tests
+against a SQL Server testcontainer and 119 cross-platform desktop configuration/update tests
+(1102 tests total).
 
 **Build the desktop host**
 

@@ -73,6 +73,7 @@ public sealed class FormatDetectionTests
     }
 
     [Theory]
+    [InlineData("Juniper_Iris_Synthetic.xlsx", ParserSlugs.JuniperIrisXlsx)]
     [InlineData("Juniper_CPQ_900001.xlsx", ParserSlugs.JuniperCpqXlsx)]
     [InlineData("Juniper_Indirect_900001.xlsx", ParserSlugs.JuniperIndirectXlsx)]
     public void Resolve_identifies_correct_juniper_format(string inputName, string expectedSlug)

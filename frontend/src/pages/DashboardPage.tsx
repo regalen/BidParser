@@ -16,6 +16,7 @@ import { ToastStack, type ToastMessage } from '../components/Toast';
 import {
   CRM_TEMPLATE_FOREIGN_NO_CALCULATION,
   CRM_TEMPLATE_FOREIGN_UPLIFT,
+  CRM_TEMPLATE_FOREIGN_PERCENT_OFF_WITH_UPLIFT,
   CRM_TEMPLATE_NO_CALCULATION,
   CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT,
   CRM_TEMPLATE_UPLIFT,
@@ -203,6 +204,9 @@ export function DashboardPage() {
     const hasSource = isDellVendor ? DELL_QUOTE_ID_PATTERN.test(quoteId) : Boolean(file);
     if (!vendor || !parserSlug || !hasSource || uploadState !== 'idle') return false;
     const activeTemplate = selectedTemplate || selectedParser?.crmTemplate || '';
+    if (activeTemplate === CRM_TEMPLATE_FOREIGN_PERCENT_OFF_WITH_UPLIFT) {
+      return Boolean(fxRate && margin && /^\d+(?:\.\d{1,2})?$/.test(imPercent.trim()));
+    }
     if (activeTemplate === CRM_TEMPLATE_FOREIGN_UPLIFT) {
       return Boolean(fxRate && margin);
     }

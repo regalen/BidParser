@@ -179,6 +179,9 @@ public sealed class MainWindowViewModel : ObservableObject
                 ? EffectiveCapabilities.None
                 : EffectiveCapabilities.From(selectedParser.Descriptor, value.Name);
 
+            var foreignDiscount = value?.Name == CrmTemplates.ForeignPercentOffWithUplift;
+            DiscountOffMsrp.Label = foreignDiscount ? "IM% (Discount Off MSRP)" : "Discount Off MSRP";
+            DiscountOffMsrp.RejectExcessPrecision = foreignDiscount;
             FxRate.IsRequired = Capabilities.SupportsFx && Capabilities.RequiresFx;
             Uplift.IsRequired = Capabilities.SupportsUplift && Capabilities.RequiresUplift;
             DiscountOffMsrp.IsRequired = Capabilities.SupportsDiscountOffMsrp && Capabilities.RequiresDiscountOffMsrp;

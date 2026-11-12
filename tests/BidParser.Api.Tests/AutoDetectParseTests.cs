@@ -226,11 +226,11 @@ public sealed class AutoDetectParseTests
 
         var juniperEntries = parsers.Where(p => p.GetProperty("vendor").GetString() == Vendors.Juniper).ToList();
         juniperEntries.Select(p => p.GetProperty("slug").GetString()).Should().Equal(
-            ParserSlugs.JuniperAuto, ParserSlugs.JuniperCpqXlsx, ParserSlugs.JuniperIndirectXlsx);
+            ParserSlugs.JuniperCpqXlsx, ParserSlugs.JuniperIndirectXlsx, ParserSlugs.JuniperIrisXlsx);
         juniperEntries[0].GetProperty("acceptedMimes").EnumerateArray().Select(mime => mime.GetString())
             .Should().Equal(SourceFormatInspector.XlsxMime);
         juniperEntries[0].GetProperty("availableTemplates").EnumerateArray().Select(template => template.GetString())
-            .Should().Equal(CrmTemplates.ForeignUplift, CrmTemplates.ForeignNoCalculation);
+            .Should().Equal(CrmTemplates.ForeignUplift);
         juniperEntries[0].GetProperty("supportsOnCost").GetBoolean().Should().BeFalse();
     }
 
@@ -361,9 +361,9 @@ public sealed class AutoDetectParseTests
     }
 
     [Theory]
-    [InlineData("Juniper_CPQ_900001.xlsx", SourceFormatInspector.XlsxMime, ParserSlugs.JuniperCpqXlsx)]
-    [InlineData("Juniper_Indirect_900001.xlsx", SourceFormatInspector.XlsxMime, ParserSlugs.JuniperIndirectXlsx)]
-    public async Task AutoDetect_Juniper_Resolves_Cpq_Or_Indirect(string inputName, string mime, string expectedSlug)
+    [InlineData("Juniper_CPQ_900001.xlsx", SourceFormatInspector.XlsxMime)]
+    [InlineData("Juniper_Indirect_900001.xlsx", SourceFormatInspector.XlsxMime)]
+    public async Task AutoDetect_Juniper_is_rejected(string inputName, string mime)
     {
         using var fixture = await ApiTestFixture.CreateAsync();
         using var client = fixture.Factory.CreateClient();
@@ -373,17 +373,11 @@ public sealed class AutoDetectParseTests
         using var response = await PostParseAsync(
             client, bytes, inputName, mime, Vendors.Juniper, ParserSlugs.JuniperAuto);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        response.Headers.GetValues("X-Parser-Slug").Should().ContainSingle().Which.Should().Be(expectedSlug);
-
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         using var scope = fixture.Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var job = await db.ParseJobs.SingleAsync();
-        job.ParserSlug.Should().Be(expectedSlug);
-        job.ImportType.Should().Be(ImportType.Auto);
-        var metric = await db.ParseMetrics.SingleAsync();
-        metric.ParserSlug.Should().Be(expectedSlug);
-        metric.ImportType.Should().Be(ImportType.Auto);
+        (await db.ParseJobs.CountAsync()).Should().Be(0);
+        (await db.ParseMetrics.CountAsync()).Should().Be(0);
     }
 
     [Fact]

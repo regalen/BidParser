@@ -91,3 +91,12 @@ The results below record the initial sanitisation pass before Juniper was added;
 
 Repository history is intentionally out of scope for this change. It must be rewritten separately
 before publishing if prior commits may contain the original fixtures.
+
+### Juniper Iris
+
+`Juniper_Iris_Synthetic.xlsx` was authored from scratch outside the repository with invented
+MSRP values (410 and 280 USD), quantities (2 and 1), and total (1100 USD). Public Juniper SKUs
+and generic supplier descriptions retain the table structure. Creator/editor metadata is `regalen`.
+The browser sample is byte-identical to the input; the shared writer generated the matching
+ForeignPercentOffWithUplift golden using FX 1.5, Uplift 5, and IM% 30.25. The private Iris workbook
+is used only for local acceptance and its personal metadata is not copied into fixtures.

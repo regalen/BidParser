@@ -1,5 +1,6 @@
 import {
   CRM_TEMPLATE_FOREIGN_UPLIFT,
+  CRM_TEMPLATE_FOREIGN_PERCENT_OFF_WITH_UPLIFT,
   CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT,
   CRM_TEMPLATE_UPLIFT,
 } from '../constants';
@@ -61,9 +62,10 @@ export function VendorSettingsBlock({
   onImPercent,
   onOnCostPct,
 }: VendorSettingsBlockProps) {
-  const foreign = selectedTemplate === CRM_TEMPLATE_FOREIGN_UPLIFT;
+  const foreignIm = selectedTemplate === CRM_TEMPLATE_FOREIGN_PERCENT_OFF_WITH_UPLIFT;
+  const foreign = foreignIm || selectedTemplate === CRM_TEMPLATE_FOREIGN_UPLIFT;
   const uplift = foreign || selectedTemplate === CRM_TEMPLATE_UPLIFT || selectedTemplate === CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT;
-  const im = selectedTemplate === CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT;
+  const im = foreignIm || selectedTemplate === CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT;
 
   if (!foreign && !uplift && !im && !supportsOnCost) {
     return null;
@@ -93,7 +95,7 @@ export function VendorSettingsBlock({
       )}
       {uplift && <PercentInput label="Uplift" value={margin} placeholder="5.25" onChange={onMargin} />}
       {im && (
-        <PercentInput label="Discount Off MSRP" value={imPercent} placeholder="30.00" onChange={onImPercent} />
+        <PercentInput label={foreignIm ? "IM% (Discount Off MSRP)" : "Discount Off MSRP"} value={imPercent} placeholder="30.00" onChange={onImPercent} />
       )}
       {supportsOnCost && <PercentInput label="On Cost %" value={onCostPct} placeholder="" onChange={onOnCostPct} />}
     </>

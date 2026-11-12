@@ -41,7 +41,7 @@ public sealed class JuniperCpqXlsxParser : IParser
     public string Vendor => Vendors.Juniper;
     public string AcceptedMime => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     public string CrmTemplate => CrmTemplates.ForeignUplift;
-    public IReadOnlyList<string> AvailableTemplates => [CrmTemplates.ForeignUplift, CrmTemplates.ForeignNoCalculation];
+    public IReadOnlyList<string> AvailableTemplates => [CrmTemplates.ForeignUplift];
     public bool TermRendersAsComment => true;
 
     public double Detect(string path)

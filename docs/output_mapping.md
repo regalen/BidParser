@@ -45,7 +45,7 @@ The `*` in column B is required — our quoting system uses it as the loop senti
 
 ## Foreign Uplift / Foreign No Calculation — field mapping
 
-The mapping below covers the foreign-currency writer profiles **`Foreign Uplift`** and **`Foreign No Calculation`**. Both write to the `Foreign Uplift` worksheet layout (`ANZ-GENERIC_ForeignUplift.xlsx`). `Foreign Uplift` writes the user's Margin (col K) and Foreign Exchange Rate (col V); `Foreign No Calculation` leaves both Margin (col K) and Foreign Exchange Rate (col V) blank while still writing Foreign Currency (col S), Foreign Cost (col T), and Foreign MSRP (col U). Nutanix uses Foreign Uplift, and Juniper uses either foreign profile. Other vendors write a local-currency template; those mappings are in the per-vendor sections further down.
+The mapping below covers the foreign-currency writer profiles **`Foreign Uplift`** and **`Foreign No Calculation`**. Both write to the `Foreign Uplift` worksheet layout (`ANZ-GENERIC_ForeignUplift.xlsx`). `Foreign Uplift` writes the user's Margin (col K) and Foreign Exchange Rate (col V); `Foreign No Calculation` leaves both Margin (col K) and Foreign Exchange Rate (col V) blank while still writing Foreign Currency (col S), Foreign Cost (col T), and Foreign MSRP (col U). Nutanix and Juniper CPQ/Indirect use Foreign Uplift. Foreign No Calculation is retained for historical output only. Juniper Iris uses the separate Foreign %Off RRP with Uplift mapping below. Other vendors write a local-currency template; those mappings are in the per-vendor sections further down.
 
 `CrmWriter` is the single writer for all templates and is format-agnostic: the per-column behaviour
 comes from `CrmTemplateProfile`, and the values below marked as supplied by `options` come from the
@@ -140,11 +140,11 @@ All 8 CRM upload template workbooks are checked in under `samples/template/` and
 same 27-column layout (A→AA) and shared strings. They differ only in sheet tab name, default
 formatting, and column visibility.
 
-**Five profiles are wired up.** A template is selectable only when `CrmTemplateProfile.For` returns a
+**Six profiles are wired up.** A template is selectable only when `CrmTemplateProfile.For` returns a
 profile for it — today `Foreign Uplift`, `Foreign No Calculation` (which writes the `Foreign Uplift`
 worksheet layout without Margin or Foreign Exchange Rate), `No Calculation`, `Uplift`, and
-`% Off RRP with Uplift`. The other four workbooks in the table below (`RRPDiscount`,
-`PercentOffWithDiff`, `ForeignPercentOffWithUplift`, `ForeignPercentOffWithDiff`) are reference
+`% Off RRP with Uplift`, and `Foreign %Off RRP with Uplift`. The other three workbooks in the table below (`RRPDiscount`,
+`PercentOffWithDiff`, `ForeignPercentOffWithDiff`) are reference
 copies of CRM's other upload layouts, retained for when a future format needs one; adding one means
 adding a `CrmTemplateProfile` entry and a `CrmTemplates` constant, not a new writer.
 
@@ -559,11 +559,11 @@ All other columns: blank. End-loop sentinel row after last line item: col B = `"
 
 ---
 
-## Juniper CPQ (ANZ-GENERIC — Foreign Uplift / Foreign No Calculation)
+## Juniper CPQ (ANZ-GENERIC — Foreign Uplift)
 
 **Parser:** `JuniperCpqXlsxParser` (`juniper_cpq_xlsx`)  
-**Template / Writer:** `CrmWriter.Write(items, outputPath, crmTemplate, options)` (`crmTemplate` ∈ `{"Foreign Uplift", "Foreign No Calculation"}`, default `"Foreign Uplift"`)  
-**Sheet name:** `"Foreign Uplift"` (both modes)
+**Template / Writer:** `CrmWriter.Write(items, outputPath, crmTemplate, options)` (`crmTemplate` is `"Foreign Uplift"` only)
+**Sheet name:** `"Foreign Uplift"`
 
 | Col | Header | Juniper CPQ value | Notes |
 |---|---|---|---|
@@ -572,22 +572,22 @@ All other columns: blank. End-loop sentinel row after last line item: col B = `"
 | D | Vendor Part Number | `vpn` | `SKU` |
 | E | Description | `description` | `Description` |
 | F | Qty. | `qty` | `Quantity` |
-| K | Margin | `options.Margin` | Populated on `Foreign Uplift`; blank on `Foreign No Calculation` |
+| K | Margin | `options.Margin` | User supplied |
 | R | Comments | `"{term} Months"` | From `Service Duration` via `TermRendersAsComment => true`; blank when duration is empty |
 | S | Foreign Currency | `"USD"` | Fixed literal |
 | T | Foreign Cost | `cost` | `Extended Net Price / Quantity` (`0` → `0.0001` sentinel) |
 | U | Foreign MSRP | `msrp` | `List Price Per` (`0` → `0.0001` sentinel) |
-| V | Foreign Exchange Rate | `options.FxRate` | Populated on `Foreign Uplift`; blank on `Foreign No Calculation` |
+| V | Foreign Exchange Rate | `options.FxRate` | User supplied |
 
 All other columns (including local `MSRP` col H, local `Cost` col I, and `Warranty / Duration` col N): blank. End-loop sentinel row after last line item: col B = `"*"`. See `docs/juniper_cpq_xlsx.md`.
 
 ---
 
-## Juniper Indirect (ANZ-GENERIC — Foreign Uplift / Foreign No Calculation)
+## Juniper Indirect (ANZ-GENERIC — Foreign Uplift)
 
 **Parser:** `JuniperIndirectXlsxParser` (`juniper_indirect_xlsx`)  
-**Template / Writer:** `CrmWriter.Write(items, outputPath, crmTemplate, options)` (`crmTemplate` ∈ `{"Foreign Uplift", "Foreign No Calculation"}`, default `"Foreign Uplift"`)  
-**Sheet name:** `"Foreign Uplift"` (both modes)
+**Template / Writer:** `CrmWriter.Write(items, outputPath, crmTemplate, options)` (`crmTemplate` is `"Foreign Uplift"` only)
+**Sheet name:** `"Foreign Uplift"`
 
 | Col | Header | Juniper Indirect value | Notes |
 |---|---|---|---|
@@ -596,11 +596,30 @@ All other columns (including local `MSRP` col H, local `Cost` col I, and `Warran
 | D | Vendor Part Number | `vpn` | `SKU` |
 | E | Description | `description` | `SKU DESCRIPTION` |
 | F | Qty. | `qty` | `QUANTITY` |
-| K | Margin | `options.Margin` | Populated on `Foreign Uplift`; blank on `Foreign No Calculation` |
+| K | Margin | `options.Margin` | User supplied |
 | R | Comments | `"{term} Months"` | From `SERVICE DURATION` via `TermRendersAsComment => true`; blank when duration is empty |
 | S | Foreign Currency | `"USD"` | Validated per row from `CURRENCY` |
 | T | Foreign Cost | `cost` | `UNIT NET PRICE` (`0` → `0.0001` sentinel) |
 | U | Foreign MSRP | `msrp` | `LIST PRICE $` (`0` → `0.0001` sentinel) |
-| V | Foreign Exchange Rate | `options.FxRate` | Populated on `Foreign Uplift`; blank on `Foreign No Calculation` |
+| V | Foreign Exchange Rate | `options.FxRate` | User supplied |
 
 All other columns (including local `MSRP` col H, local `Cost` col I, and `Warranty / Duration` col N): blank. End-loop sentinel row after last line item: col B = `"*"`. See `docs/juniper_indirect_xlsx.md`.
+
+## Juniper Iris (Foreign %Off RRP with Uplift)
+
+`juniper_iris_xlsx` uses the new Foreign %Off RRP with Uplift profile, with the worksheet named
+`Foreign %Off RRP with Uplift` (the reference workbook's old Diff label is not used).
+
+| Column | Value |
+|---|---|
+| A / B | Numeric sequence / `JUNIPER` |
+| D / E / F | Source `Part Number` / `Description` / `Quantity` |
+| K | User Uplift |
+| S / U | `USD` / source `Unit Price` as Foreign MSRP |
+| V / X | User Exchange Rate / IM% |
+
+Local MSRP (H), local Cost (I), and Foreign Cost (T) are blank. Remaining optional columns are
+blank; standard headers and end-loop sentinel apply. Genuine zero MSRP uses `NonZeroPrice`.
+IM% is required, nonnegative, at most two decimal places, with no upper limit. CRM calculates
+cost; BidParser does not. The output filename falls back to the source stem, for example
+`Iris_ForeignPercentOffWithUplift.xlsx`, because bid number and revision are null.

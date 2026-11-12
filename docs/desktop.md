@@ -190,3 +190,10 @@ Windows x64 without a separately installed .NET runtime or elevation. Verify:
   registry writes, services, scheduled tasks, and leftover staging files.
 
 See [troubleshooting.md](troubleshooting.md#portable-windows-desktop) for known desktop failure modes.
+
+### Juniper file types
+
+Juniper requires explicit CPQ, Indirect, or Iris selection; no Auto entry is offered. CPQ and
+Indirect use Foreign Uplift only. Iris uses Foreign %Off RRP with Uplift and requires Exchange
+Rate, Uplift, and IM% (nonnegative, at most two decimal places, no upper limit). Its cost columns
+stay blank for CRM calculation, and validation uses MSRP totals. Bid metadata remains blank.

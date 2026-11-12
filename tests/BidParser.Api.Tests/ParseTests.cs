@@ -633,7 +633,7 @@ public sealed class ParseTests
     }
 
     [Fact]
-    public async Task ParseRoundtrip_Juniper_ForeignNoCalculation_And_PerRowMismatch()
+    public async Task ParseRoundtrip_Juniper_ForeignUplift_And_PerRowMismatch()
     {
         using var fixture = await ApiTestFixture.CreateAsync();
         using var client = fixture.Factory.CreateClient();
@@ -649,7 +649,7 @@ public sealed class ParseTests
             form.Add(fileContent, "file", "Juniper_CPQ_900001.xlsx");
             form.Add(new StringContent(Vendors.Juniper), "vendor");
             form.Add(new StringContent(ParserSlugs.JuniperCpqXlsx), "parserSlug");
-            form.Add(new StringContent(CrmTemplates.ForeignNoCalculation), "crmTemplate");
+            form.Add(new StringContent(CrmTemplates.ForeignUplift), "crmTemplate");
 
             using var request = new HttpRequestMessage(HttpMethod.Post, "/api/parse") { Content = form };
             request.Headers.Add("X-Requested-With", "BidParser");
@@ -657,7 +657,7 @@ public sealed class ParseTests
 
             response.StatusCode.Should().Be(HttpStatusCode.OK);
             response.Content.Headers.ContentDisposition!.FileName!.Trim('"')
-                .Should().Be("CPQ-900001_1_ForeignNoCalculation.xlsx");
+                .Should().Be("CPQ-900001_1_ForeignUplift.xlsx");
             response.Headers.GetValues("X-Validation").Should().ContainSingle().Which.Should().Be("match");
 
             response.Headers.Contains("X-Validation-Warnings").Should().BeFalse();
@@ -666,7 +666,7 @@ public sealed class ParseTests
             using var outWb = new XLWorkbook(outStream);
             var outWs = outWb.Worksheet(1);
             outWs.Cell(3, 19).GetFormattedString().Should().Be("USD");
-            outWs.Cell(3, 22).IsEmpty().Should().BeTrue();
+            outWs.Cell(3, 22).GetDouble().Should().Be(1);
             outWs.Cell(3, 25).IsEmpty().Should().BeTrue();
         }
 
@@ -691,7 +691,7 @@ public sealed class ParseTests
             form.Add(fileContent, "file", "Juniper_Indirect_900001.xlsx");
             form.Add(new StringContent(Vendors.Juniper), "vendor");
             form.Add(new StringContent(ParserSlugs.JuniperIndirectXlsx), "parserSlug");
-            form.Add(new StringContent(CrmTemplates.ForeignNoCalculation), "crmTemplate");
+            form.Add(new StringContent(CrmTemplates.ForeignUplift), "crmTemplate");
 
             using var request = new HttpRequestMessage(HttpMethod.Post, "/api/parse") { Content = form };
             request.Headers.Add("X-Requested-With", "BidParser");
@@ -703,6 +703,43 @@ public sealed class ParseTests
             var warnings = JsonSerializer.Deserialize<string[]>(response.Headers.GetValues("X-Validation-Warnings").Single());
             warnings.Should().ContainSingle().Which.Should().Contain("Line 1 (AP27-WW)").And.Contain("99999.99");
         }
+    }
+
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData("1.234", false)]
+    [InlineData("130.25", true)]
+    public async Task Iris_roundtrip_requires_precise_im_and_returns_msrp_validation(string? im, bool success)
+    {
+        using var fixture = await ApiTestFixture.CreateAsync();
+        using var client = fixture.Factory.CreateClient();
+        await ApiTestFixture.UnlockAdminAsync(client);
+        using var form = new MultipartFormDataContent();
+        var bytes = File.ReadAllBytes(Path.Combine(FindRepoRoot(), "samples", "inputs", "Juniper_Iris_Synthetic.xlsx"));
+        var content = new ByteArrayContent(bytes);
+        content.Headers.ContentType = new("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        form.Add(content, "file", "Iris.xlsx");
+        form.Add(new StringContent(Vendors.Juniper), "vendor");
+        form.Add(new StringContent(ParserSlugs.JuniperIrisXlsx), "parserSlug");
+        form.Add(new StringContent("1.5"), "fxRate");
+        form.Add(new StringContent("5"), "margin");
+        if (im is not null) form.Add(new StringContent(im), "imPercent");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/parse") { Content = form };
+        request.Headers.Add("X-Requested-With", "BidParser");
+        using var response = await client.SendAsync(request);
+        response.StatusCode.Should().Be(success ? HttpStatusCode.OK : HttpStatusCode.BadRequest);
+        if (!success) return;
+        response.Headers.GetValues("X-Computed-Total").Should().Equal("1100.00");
+        response.Headers.GetValues("X-Quoted-Total").Should().Equal("1100.00");
+        response.Headers.GetValues("X-Validation").Should().Equal("match");
+        response.Content.Headers.ContentDisposition!.FileName!.Trim('"')
+            .Should().Be("Iris_ForeignPercentOffWithUplift.xlsx");
+        await using var stream = await response.Content.ReadAsStreamAsync();
+        using var workbook = new XLWorkbook(stream);
+        var sheet = workbook.Worksheet(CrmTemplates.ForeignPercentOffWithUplift);
+        sheet.Cell(3, 20).IsEmpty().Should().BeTrue();
+        sheet.Cell(3, 21).GetDouble().Should().Be(410);
+        sheet.Cell(3, 24).GetDouble().Should().Be(130.25);
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

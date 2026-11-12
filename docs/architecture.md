@@ -87,7 +87,7 @@ from `GET /api/parsers`, and that choice routes the parse.
 reroute a manual selection. It has exactly two consumers:
 
 - **Auto (detect format)** — a synthesised dropdown entry for vendors listed in `AutoDetectTypes`
-  (Nutanix, Lenovo ISG, Zebra, Trellix, Juniper, Dell). When the user parses with an Auto slug, `FormatDetection`
+  (Nutanix, Lenovo ISG, Zebra, Trellix, Dell). When the user parses with an Auto slug, `FormatDetection`
   scores the vendor's parsers whose accepted MIME types match the upload and picks the best above a
   0.7 threshold. The resolved concrete slug is what gets persisted and returned in the
   `X-Parser-Slug` response header. A vendor's Auto entry may only advertise CRM templates common to
@@ -124,7 +124,7 @@ format".
    extension, so a renamed file is rejected rather than mis-parsed.
 4. **Resolve the parser.** A concrete slug is used directly; an Auto slug goes through
    `FormatDetection`.
-5. **Parse.** The parser returns `ParseResult`. Validation is uniform across formats:
+5. **Parse.** The parser returns `ParseResult`. Validation normally uses cost; Juniper Iris uses MSRP because no cost is supplied:
    `computed_total = Σ(cost × qty)` compared to the quoted total with a `0.01` tolerance. Formats
    whose source carries no quoted total construct `ValidationResult` directly rather than validating
    against null. HP, HPE, and Zebra return a passing result; Juniper Indirect checks each source line

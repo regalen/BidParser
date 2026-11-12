@@ -39,7 +39,8 @@ public sealed class ParserRegistryTests
                 ParserSlugs.TrellixQuotePdf,
                 ParserSlugs.TrellixQuoteXlsm,
                 ParserSlugs.JuniperCpqXlsx,
-                ParserSlugs.JuniperIndirectXlsx);
+                ParserSlugs.JuniperIndirectXlsx,
+                ParserSlugs.JuniperIrisXlsx);
     }
 
     [Fact]
