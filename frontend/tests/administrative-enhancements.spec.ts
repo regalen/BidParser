@@ -87,12 +87,13 @@ const parsers = [
   },
   {
     slug: 'juniper_iris_xlsx',
+    calculatesCostFromMsrp: true,
     displayName: 'Iris (XLSX)',
     vendor: 'Juniper',
     acceptedMime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     acceptedMimes: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
-    crmTemplate: 'Foreign %Off RRP with Uplift',
-    availableTemplates: ['Foreign %Off RRP with Uplift'],
+    crmTemplate: 'Foreign Uplift',
+    availableTemplates: ['Foreign Uplift'],
     supportsSubComponentDetail: false,
     supportsSolutionIdSplit: false,
     supportsOnCost: false,
@@ -276,13 +277,13 @@ test('Iris submits all three pricing inputs and presents the explicit download',
     }
     if (path !== '/api/parse') return false;
     const body = route.request().postDataBuffer()!.toString();
-    for (const value of ['juniper_iris_xlsx', 'imPercent', '130.25', 'fxRate', '1.5000', 'margin', '5.00']) {
+    for (const value of ['juniper_iris_xlsx', 'Foreign Uplift', 'imPercent', '27.53', 'fxRate', '1.5000', 'margin', '5.00']) {
       expect(body).toContain(value);
     }
     await route.fulfill({
       status: 200, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       headers: {
-        'Content-Disposition': 'attachment; filename="Iris_ForeignPercentOffWithUplift.xlsx"',
+        'Content-Disposition': 'attachment; filename="Iris_ForeignUplift.xlsx"',
         'X-Validation': 'match', 'X-Currency': 'USD', 'X-Computed-Total': '1100.00',
         'X-Quoted-Total': '1100.00', 'X-Parser-Slug': 'juniper_iris_xlsx',
       }, body: 'mock-xlsx',
@@ -295,13 +296,13 @@ test('Iris submits all three pricing inputs and presents the explicit download',
   await page.locator('input[type="file"]').setInputFiles('public/samples/Juniper_Iris_Synthetic.xlsx');
   await page.getByLabel(/Exchange rate/i).fill('1.5000');
   await page.getByLabel(/^Uplift/i).fill('5.00');
-  await page.getByLabel(/IM% \(Discount Off MSRP\)/i).fill('130.25');
+  await page.getByLabel(/IM% \(Discount Off MSRP\)/i).fill('27.53');
   await page.getByRole('button', { name: 'Upload & parse' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText('Parse successful');
   const download = page.waitForEvent('download');
   await dialog.getByRole('button', { name: 'Download' }).click();
-  expect((await download).suggestedFilename()).toBe('Iris_ForeignPercentOffWithUplift.xlsx');
+  expect((await download).suggestedFilename()).toBe('Iris_ForeignUplift.xlsx');
 });
 
 test('currency errors display the server guidance for USD and AUD', async ({ page }) => {

@@ -204,7 +204,7 @@ export function DashboardPage() {
     const hasSource = isDellVendor ? DELL_QUOTE_ID_PATTERN.test(quoteId) : Boolean(file);
     if (!vendor || !parserSlug || !hasSource || uploadState !== 'idle') return false;
     const activeTemplate = selectedTemplate || selectedParser?.crmTemplate || '';
-    if (activeTemplate === CRM_TEMPLATE_FOREIGN_PERCENT_OFF_WITH_UPLIFT) {
+    if (selectedParser?.calculatesCostFromMsrp || activeTemplate === CRM_TEMPLATE_FOREIGN_PERCENT_OFF_WITH_UPLIFT) {
       return Boolean(fxRate && margin && /^\d+(?:\.\d{1,2})?$/.test(imPercent.trim()));
     }
     if (activeTemplate === CRM_TEMPLATE_FOREIGN_UPLIFT) {

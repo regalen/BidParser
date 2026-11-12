@@ -89,24 +89,32 @@ public sealed class JuniperIrisXlsxParserTests
     }
 
     [Fact]
-    public void Writer_populates_foreign_msrp_and_inputs_and_leaves_all_cost_columns_blank()
+    public async Task Writer_populates_foreign_cost_from_im_and_preserves_msrp_validation()
     {
+        var quote = await new QuoteParseService(new ParserRegistry(), new SourceFormatInspector())
+            .ParseAsync(new QuoteParseRequest(Fixture, Vendors.Juniper, parser.Slug));
         var path = Path.Combine(Path.GetTempPath(), $"iris-{Guid.NewGuid():N}.xlsx");
         try
         {
-            CrmWriter.Write(parser.Parse(Fixture).LineItems, path, parser.CrmTemplate,
-                new CrmWriterOptions("JUNIPER", Margin: 5m, FxRate: 1.5m, ImPercent: 30.25m));
+            var output = await new WorkbookWriteService().WriteAsync(
+                new WorkbookWriteRequest(quote, path, Margin: 5m, FxRate: 1.5m, ImPercent: 30.25m));
+            output.CrmTemplate.Should().Be(CrmTemplates.ForeignUplift);
+            output.OutputFilename.Should().Be("Juniper_Iris_Synthetic_ForeignUplift.xlsx");
             using var wb = new XLWorkbook(path);
-            var sheet = wb.Worksheet(CrmTemplates.ForeignPercentOffWithUplift);
+            var sheet = wb.Worksheet(CrmTemplates.ForeignUplift);
             sheet.Cell(3, 21).GetDouble().Should().Be(410);
-            sheet.Cell(3, 24).GetDouble().Should().Be(30.25);
+            sheet.Cell(3, 20).GetDouble().Should().Be(285.98);
+            sheet.Cell(4, 20).GetDouble().Should().Be(195.30);
             sheet.Cell(3, 22).GetDouble().Should().Be(1.5);
             sheet.Cell(3, 11).GetDouble().Should().Be(5);
             sheet.Cell(3, 19).GetString().Should().Be("USD");
-            foreach (var col in new[] { 8, 9, 20 }) sheet.Cell(3, col).IsEmpty().Should().BeTrue();
+            foreach (var col in new[] { 8, 9, 24 }) sheet.Cell(3, col).IsEmpty().Should().BeTrue();
             sheet.Cell(5, 2).GetString().Should().Be("*");
+            quote.Result.LineItems.Select(item => item.Cost).Should().OnlyContain(cost => cost == 0m);
+            quote.Result.Validation.ComputedTotal.Should().Be(1100m);
+            quote.Result.Validation.Matches.Should().BeTrue();
             WorkbookComparer.AssertEqual(path, Path.Combine(TestSample.Root, "samples", "outputs",
-                "Juniper_Iris_Synthetic_ForeignPercentOffWithUplift.xlsx"));
+                "Juniper_Iris_Synthetic_ForeignUplift.xlsx"));
         }
         finally { File.Delete(path); }
     }
@@ -129,9 +137,67 @@ public sealed class JuniperIrisXlsxParserTests
             if (valid)
             {
                 var output = await writer.WriteAsync(request);
-                output.OutputFilename.Should().Be("Juniper_Iris_Synthetic_ForeignPercentOffWithUplift.xlsx");
+                output.OutputFilename.Should().Be("Juniper_Iris_Synthetic_ForeignUplift.xlsx");
             }
             else await ((Func<Task>)(async () => await writer.WriteAsync(request))).Should().ThrowAsync<ParseInputException>();
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Theory]
+    [InlineData("427", "15", "362.95")]
+    [InlineData("427", "27.53", "309.45")]
+    [InlineData("1", "12.5", "0.88")]
+    [InlineData("427", "0", "427")]
+    [InlineData("427", "100", "0.0001")]
+    [InlineData("0", "15", "0.0001")]
+    [InlineData("427", "130.25", "-129.17")]
+    public async Task Output_discounts_each_unit_rounds_to_cents_and_uses_zero_sentinel(
+        string msrp, string discount, string expected)
+    {
+        var culture = System.Globalization.CultureInfo.InvariantCulture;
+        var quote = await new QuoteParseService(new ParserRegistry(), new SourceFormatInspector())
+            .ParseAsync(new QuoteParseRequest(Fixture, Vendors.Juniper, parser.Slug));
+        quote = quote with
+        {
+            Result = quote.Result with
+            {
+                LineItems = [quote.Result.LineItems[0] with { Msrp = decimal.Parse(msrp, culture) }]
+            }
+        };
+        var path = Path.Combine(Path.GetTempPath(), $"iris-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            await new WorkbookWriteService().WriteAsync(new WorkbookWriteRequest(
+                quote, path, ImPercent: decimal.Parse(discount, culture)));
+            using var workbook = new XLWorkbook(path);
+            var sheet = workbook.Worksheet(CrmTemplates.ForeignUplift);
+            sheet.Cell(3, 20).GetValue<decimal>().Should().Be(decimal.Parse(expected, culture));
+            sheet.Cell(3, 6).GetDouble().Should().Be(2);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task Rewriting_with_a_different_im_recalculates_cost_and_rejects_old_template()
+    {
+        var quote = await new QuoteParseService(new ParserRegistry(), new SourceFormatInspector())
+            .ParseAsync(new QuoteParseRequest(Fixture, Vendors.Juniper, parser.Slug));
+        var writer = new WorkbookWriteService();
+        ((Action)(() => writer.Describe(quote, CrmTemplates.ForeignPercentOffWithUplift, false)))
+            .Should().Throw<ParseInputException>();
+        var path = Path.Combine(Path.GetTempPath(), $"iris-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            foreach (var (discount, expected) in new[] { (15m, 348.50m), (27.53m, 297.13m) })
+            {
+                await writer.WriteAsync(new WorkbookWriteRequest(quote, path, ImPercent: discount));
+                using var workbook = new XLWorkbook(path);
+                workbook.Worksheet(CrmTemplates.ForeignUplift).Cell(3, 20).GetValue<decimal>()
+                    .Should().Be(expected);
+            }
+            quote.Result.LineItems[0].Cost.Should().Be(0m);
+            quote.Result.Validation.ComputedTotal.Should().Be(1100m);
         }
         finally { File.Delete(path); }
     }

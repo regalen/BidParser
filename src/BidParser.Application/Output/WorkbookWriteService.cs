@@ -122,12 +122,12 @@ public sealed class WorkbookWriteService
         var parser = request.Quote.Parser;
         var template = ResolveTemplate(request.Quote, request.CrmTemplate, request.SplitBySolutionId);
 
-        if (CrmWriter.GetCapabilities(template)!.RequiresDiscountOffMsrp && request.ImPercent is null)
+        if (CrmWriter.GetCapabilities(template, parser.CalculatesCostFromMsrp)!.RequiresDiscountOffMsrp && request.ImPercent is null)
         {
             throw new ParseInputException(ParseInputErrorKind.MissingRequiredOption, $"IM% is required for {parser.DisplayName}.");
         }
 
-        if (template == CrmTemplates.ForeignPercentOffWithUplift
+        if ((parser.CalculatesCostFromMsrp || template == CrmTemplates.ForeignPercentOffWithUplift)
             && request.ImPercent is { } discount
             && (discount < 0m || discount != decimal.Round(discount, 2)))
         {
@@ -143,7 +143,8 @@ public sealed class WorkbookWriteService
             Currency: request.Quote.Result.Metadata.Currency,
             ImPercent: request.ImPercent,
             OnCost: parser.SupportsOnCost ? request.OnCostPercent : null,
-            TermAsComment: parser.TermRendersAsComment);
+            TermAsComment: parser.TermRendersAsComment,
+            CalculatesCostFromMsrp: parser.CalculatesCostFromMsrp);
 
         var filename = OutputFilenameFor(request.Quote, template, request.SplitBySolutionId);
 

@@ -185,10 +185,10 @@ inventory and workflows: `docs/agent_tooling.md`.**
 
 ## Commands
 
-- `dotnet test BidParser.sln` — full suite (1102 tests; API tests need a container runtime).
-- `dotnet test tests/BidParser.Parsing.Tests/BidParser.Parsing.Tests.csproj` — fast parser/output suite (782 tests; no container runtime).
-- `dotnet test tests/BidParser.Api.Tests/BidParser.Api.Tests.csproj` — API integration suite (201 tests; needs a container runtime; takes several minutes).
-- `dotnet test tests/BidParser.Desktop.Configuration.Tests/BidParser.Desktop.Configuration.Tests.csproj` — desktop remote-config/update suite (119 tests; no container runtime, runs on Linux).
+- `dotnet test BidParser.sln` — full suite (1114 tests; API tests need a container runtime).
+- `dotnet test tests/BidParser.Parsing.Tests/BidParser.Parsing.Tests.csproj` — fast parser/output suite (790 tests; no container runtime).
+- `dotnet test tests/BidParser.Api.Tests/BidParser.Api.Tests.csproj` — API integration suite (203 tests; needs a container runtime; takes several minutes).
+- `dotnet test tests/BidParser.Desktop.Configuration.Tests/BidParser.Desktop.Configuration.Tests.csproj` — desktop remote-config/update suite (121 tests; no container runtime, runs on Linux).
 - `dotnet build src/BidParser.Desktop/BidParser.Desktop.csproj --configuration Release` — cross-platform desktop compile check; launch/native metadata verification still requires Windows.
 - `dotnet run --project src/BidParser.Api` — backend dev server (`http://localhost:5000`; needs a reachable SQL Server — `docker compose up -d mssql` starts just the database).
 - `cd frontend && npm run dev` — Vite dev server, proxies `/api` to `http://127.0.0.1:5000` (`VITE_API_PROXY_TARGET=…` to point elsewhere).

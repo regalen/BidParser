@@ -708,6 +708,8 @@ public sealed class ParseTests
     [Theory]
     [InlineData(null, false)]
     [InlineData("1.234", false)]
+    [InlineData("15", true)]
+    [InlineData("27.53", true)]
     [InlineData("130.25", true)]
     public async Task Iris_roundtrip_requires_precise_im_and_returns_msrp_validation(string? im, bool success)
     {
@@ -733,13 +735,14 @@ public sealed class ParseTests
         response.Headers.GetValues("X-Quoted-Total").Should().Equal("1100.00");
         response.Headers.GetValues("X-Validation").Should().Equal("match");
         response.Content.Headers.ContentDisposition!.FileName!.Trim('"')
-            .Should().Be("Iris_ForeignPercentOffWithUplift.xlsx");
+            .Should().Be("Iris_ForeignUplift.xlsx");
         await using var stream = await response.Content.ReadAsStreamAsync();
         using var workbook = new XLWorkbook(stream);
-        var sheet = workbook.Worksheet(CrmTemplates.ForeignPercentOffWithUplift);
-        sheet.Cell(3, 20).IsEmpty().Should().BeTrue();
+        var sheet = workbook.Worksheet(CrmTemplates.ForeignUplift);
+        var expectedCost = im switch { "15" => 348.50m, "27.53" => 297.13m, _ => -124.03m };
+        sheet.Cell(3, 20).GetValue<decimal>().Should().Be(expectedCost);
         sheet.Cell(3, 21).GetDouble().Should().Be(410);
-        sheet.Cell(3, 24).GetDouble().Should().Be(130.25);
+        foreach (var column in new[] { 8, 9, 24 }) sheet.Cell(3, column).IsEmpty().Should().BeTrue();
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

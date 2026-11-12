@@ -9,6 +9,7 @@ interface VendorSettingsBlockProps {
   vendorLabel: string;
   selectedTemplate: string;
   supportsOnCost: boolean;
+  calculatesCostFromMsrp: boolean;
   fxRate: string;
   margin: string;
   imPercent: string;
@@ -53,6 +54,7 @@ export function VendorSettingsBlock({
   vendorLabel,
   selectedTemplate,
   supportsOnCost,
+  calculatesCostFromMsrp,
   fxRate,
   margin,
   imPercent,
@@ -62,7 +64,7 @@ export function VendorSettingsBlock({
   onImPercent,
   onOnCostPct,
 }: VendorSettingsBlockProps) {
-  const foreignIm = selectedTemplate === CRM_TEMPLATE_FOREIGN_PERCENT_OFF_WITH_UPLIFT;
+  const foreignIm = calculatesCostFromMsrp || selectedTemplate === CRM_TEMPLATE_FOREIGN_PERCENT_OFF_WITH_UPLIFT;
   const foreign = foreignIm || selectedTemplate === CRM_TEMPLATE_FOREIGN_UPLIFT;
   const uplift = foreign || selectedTemplate === CRM_TEMPLATE_UPLIFT || selectedTemplate === CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT;
   const im = foreignIm || selectedTemplate === CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT;

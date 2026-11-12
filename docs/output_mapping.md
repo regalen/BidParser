@@ -45,7 +45,7 @@ The `*` in column B is required — our quoting system uses it as the loop senti
 
 ## Foreign Uplift / Foreign No Calculation — field mapping
 
-The mapping below covers the foreign-currency writer profiles **`Foreign Uplift`** and **`Foreign No Calculation`**. Both write to the `Foreign Uplift` worksheet layout (`ANZ-GENERIC_ForeignUplift.xlsx`). `Foreign Uplift` writes the user's Margin (col K) and Foreign Exchange Rate (col V); `Foreign No Calculation` leaves both Margin (col K) and Foreign Exchange Rate (col V) blank while still writing Foreign Currency (col S), Foreign Cost (col T), and Foreign MSRP (col U). Nutanix and Juniper CPQ/Indirect use Foreign Uplift. Foreign No Calculation is retained for historical output only. Juniper Iris uses the separate Foreign %Off RRP with Uplift mapping below. Other vendors write a local-currency template; those mappings are in the per-vendor sections further down.
+The mapping below covers the foreign-currency writer profiles **`Foreign Uplift`** and **`Foreign No Calculation`**. Both write to the `Foreign Uplift` worksheet layout (`ANZ-GENERIC_ForeignUplift.xlsx`). `Foreign Uplift` writes the user's Margin (col K) and Foreign Exchange Rate (col V); `Foreign No Calculation` leaves both Margin (col K) and Foreign Exchange Rate (col V) blank while still writing Foreign Currency (col S), Foreign Cost (col T), and Foreign MSRP (col U). Nutanix and all three Juniper formats use Foreign Uplift. Foreign No Calculation is retained for historical output only. Juniper Iris calculates Foreign Cost from MSRP less the user’s IM% discount, as detailed below. Other vendors write a local-currency template; those mappings are in the per-vendor sections further down.
 
 `CrmWriter` is the single writer for all templates and is format-agnostic: the per-column behaviour
 comes from `CrmTemplateProfile`, and the values below marked as supplied by `options` come from the
@@ -605,21 +605,26 @@ All other columns (including local `MSRP` col H, local `Cost` col I, and `Warran
 
 All other columns (including local `MSRP` col H, local `Cost` col I, and `Warranty / Duration` col N): blank. End-loop sentinel row after last line item: col B = `"*"`. See `docs/juniper_indirect_xlsx.md`.
 
-## Juniper Iris (Foreign %Off RRP with Uplift)
+## Juniper Iris (Foreign Uplift)
 
-`juniper_iris_xlsx` uses the new Foreign %Off RRP with Uplift profile, with the worksheet named
-`Foreign %Off RRP with Uplift` (the reference workbook's old Diff label is not used).
+`juniper_iris_xlsx` uses the Foreign Uplift profile and worksheet. The parser declares
+`CalculatesCostFromMsrp`, so the shared writer requires IM% and calculates the cost at write time.
 
 | Column | Value |
 |---|---|
 | A / B | Numeric sequence / `JUNIPER` |
 | D / E / F | Source `Part Number` / `Description` / `Quantity` |
 | K | User Uplift |
-| S / U | `USD` / source `Unit Price` as Foreign MSRP |
-| V / X | User Exchange Rate / IM% |
+| S | `USD` |
+| T | `Msrp × (1 − IM% / 100)`, rounded to cents, midpoint away from zero |
+| U | Source `Unit Price` as Foreign MSRP |
+| V | User Exchange Rate |
 
-Local MSRP (H), local Cost (I), and Foreign Cost (T) are blank. Remaining optional columns are
-blank; standard headers and end-loop sentinel apply. Genuine zero MSRP uses `NonZeroPrice`.
-IM% is required, nonnegative, at most two decimal places, with no upper limit. CRM calculates
-cost; BidParser does not. The output filename falls back to the source stem, for example
-`Iris_ForeignPercentOffWithUplift.xlsx`, because bid number and revision are null.
+Local MSRP (H), local Cost (I), and IM% (X) are blank. Remaining optional columns are
+blank; standard headers and end-loop sentinel apply. Genuine zero MSRP or calculated cost uses
+`NonZeroPrice`. IM% is required, nonnegative, at most two decimal places, with no upper limit.
+For MSRP 427, IM% 15 produces Foreign Cost 362.95; IM% 27.53 produces 309.45.
+The calculation is per unit, independent of quantity, FX, and Uplift. Parsed values and MSRP-based
+source-total validation stay unchanged, and saving again with another IM% recalculates cost.
+The output filename falls back to the source stem, for example `Iris_ForeignUplift.xlsx`,
+because bid number and revision are null.

@@ -89,6 +89,7 @@ export function ParseSettingsCard({
             vendorLabel={selectedParser.vendor}
             selectedTemplate={selectedTemplate}
             supportsOnCost={selectedParser.supportsOnCost}
+            calculatesCostFromMsrp={selectedParser.calculatesCostFromMsrp}
             fxRate={fxRate}
             margin={margin}
             imPercent={imPercent}

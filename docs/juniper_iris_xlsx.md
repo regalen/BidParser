@@ -1,7 +1,7 @@
 # Juniper Iris (XLSX)
 
 - Parser: `JuniperIrisXlsxParser`, slug `juniper_iris_xlsx`.
-- Template: `Foreign %Off RRP with Uplift` only.
+- Template: `Foreign Uplift` only.
 - MIME: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`.
 - Explicit selection is required on web and desktop. `Detect()` only supports wrong-file-type suggestions.
 
@@ -19,7 +19,8 @@ until a row containing `Quote Total`; skip wholly blank rows and preserve repeat
 | Quantity | `Qty`, positive integer |
 | Unit Price | `Msrp`, nonnegative decimal |
 
-`Cost` is zero only as an internal placeholder and is never exported. No term is inferred from
+`Cost` is zero as an internal placeholder. The parser declares `CalculatesCostFromMsrp`; the
+shared writer calculates output cost from MSRP and the user’s IM% at write time. No term is inferred from
 SKU or description. Raw source values retain the original header keys.
 
 Every row must have manufacturer `Juniper Networks` or `Juniper` and a price-list label ending
@@ -38,8 +39,12 @@ Product `Total` values are source provenance, not a substitute for computing MSR
 
 Bid number and revision are null. Quote identity and output naming use the existing source-stem
 fallback. USD is the only supported currency. Exchange Rate, Uplift, and IM% are user inputs;
-IM% must be nonnegative with at most two decimal places and has no upper limit. CRM calculates
-cost. See [output mapping](output_mapping.md#juniper-iris-foreign-off-rrp-with-uplift).
+IM% must be nonnegative with at most two decimal places and has no upper limit. BidParser
+calculates Foreign Cost per unit as `Msrp × (1 − IM% / 100)`, rounded to two decimal places
+with midpoint rounding away from zero. For MSRP 427, IM% 15 gives 362.95, and IM% 27.53
+gives 309.45. A calculated zero uses the standard zero-price sentinel. The output uses the
+Foreign Uplift sheet and filename suffix, with IM% column X blank. Parsed MSRP and
+source-total validation remain unchanged. See [output mapping](output_mapping.md#juniper-iris-foreign-uplift).
 
 The retained fixture `Juniper_Iris_Synthetic.xlsx` contains two products totaling 1100 USD.
 See [fixture sanitisation](sample_fixture_sanitisation.md#juniper-iris) for publication review.

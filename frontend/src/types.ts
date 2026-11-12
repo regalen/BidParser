@@ -58,6 +58,8 @@ export interface ParserInfo {
   supportsSolutionIdSplit: boolean;
   /** True when the parser accepts an optional On Cost percentage. */
   supportsOnCost: boolean;
+  /** True when IM% is required to calculate output unit cost from MSRP. */
+  calculatesCostFromMsrp: boolean;
   solutionSplitLabel: string;
 }
 

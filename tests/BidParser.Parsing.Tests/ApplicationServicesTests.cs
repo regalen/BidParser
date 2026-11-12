@@ -46,6 +46,9 @@ public sealed class ApplicationServicesTests
         juniper[0].AvailableTemplates.Should().Equal(CrmTemplates.ForeignUplift);
         juniper[0].SupportsOnCost.Should().BeFalse();
         juniper[0].SupportsSolutionIdSplit.Should().BeFalse();
+        juniper.Should().OnlyContain(item => item.CrmTemplate == CrmTemplates.ForeignUplift);
+        catalog.Where(item => item.CalculatesCostFromMsrp).Select(item => item.Slug)
+            .Should().Equal(ParserSlugs.JuniperIrisXlsx);
     }
 
     [Fact]
@@ -58,6 +61,8 @@ public sealed class ApplicationServicesTests
         CrmWriter.GetCapabilities(CrmTemplates.NoCalculation)!.SupportsOnCost.Should().BeTrue();
         CrmWriter.GetCapabilities(CrmTemplates.PercentOffWithUplift)!.RequiresDiscountOffMsrp.Should().BeTrue();
         CrmWriter.GetCapabilities("not-a-template").Should().BeNull();
+        CrmWriter.GetCapabilities(CrmTemplates.ForeignUplift, calculatesCostFromMsrp: true).Should().Be(
+            new CrmTemplateCapabilities(true, true, true, true, true, true, false));
     }
 
     [Fact]

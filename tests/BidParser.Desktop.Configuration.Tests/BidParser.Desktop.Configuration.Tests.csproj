@@ -13,19 +13,24 @@
     must run everywhere the rest of the suite runs. BidParser.Desktop targets net10.0-windows and
     needs the Windows Desktop runtime to load, which would confine these tests to Windows CI, so the
     source is compiled into this cross-platform assembly instead. The linked configuration,
-    service, and numeric-field model files do not reference WPF; WPF-facing MVVM behavior and
-    guidance rendering are deliberately not linked here.
+    services, commands, and workflow view models do not reference WPF; UI behaviors and guidance
+    rendering are deliberately not linked here.
   -->
   <ItemGroup>
     <Compile Include="..\..\src\BidParser.Desktop\Configuration\*.cs" LinkBase="Linked\Configuration" />
     <Compile Include="..\..\src\BidParser.Desktop\Mvvm\NumericFieldViewModel.cs" LinkBase="Linked\Mvvm" />
     <Compile Include="..\..\src\BidParser.Desktop\Mvvm\ObservableObject.cs" LinkBase="Linked\Mvvm" />
+    <Compile Include="..\..\src\BidParser.Desktop\Mvvm\RelayCommand.cs" LinkBase="Linked\Mvvm" />
+    <Compile Include="..\..\src\BidParser.Desktop\Mvvm\AsyncRelayCommand.cs" LinkBase="Linked\Mvvm" />
+    <Compile Include="..\..\src\BidParser.Desktop\ViewModels\DesktopViewModels.cs" LinkBase="Linked\ViewModels" />
+    <Compile Include="..\..\src\BidParser.Desktop\ViewModels\MainWindowViewModel.cs" LinkBase="Linked\ViewModels" />
     <Compile Include="..\..\src\BidParser.Desktop\Services\DesktopServices.cs" LinkBase="Linked\Services" />
     <Compile Include="..\..\src\BidParser.Desktop\Services\DesktopVersion.cs" LinkBase="Linked\Services" />
     <EmbeddedResource Include="..\..\src\BidParser.Desktop\Configuration\Bundled\*.json" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\BidParser.Application\BidParser.Application.csproj" />
     <ProjectReference Include="..\..\src\BidParser.Parsing\BidParser.Parsing.csproj" />
   </ItemGroup>
 

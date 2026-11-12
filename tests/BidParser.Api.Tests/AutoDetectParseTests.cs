@@ -232,6 +232,14 @@ public sealed class AutoDetectParseTests
         juniperEntries[0].GetProperty("availableTemplates").EnumerateArray().Select(template => template.GetString())
             .Should().Equal(CrmTemplates.ForeignUplift);
         juniperEntries[0].GetProperty("supportsOnCost").GetBoolean().Should().BeFalse();
+        foreach (var entry in juniperEntries)
+        {
+            entry.GetProperty("crmTemplate").GetString().Should().Be(CrmTemplates.ForeignUplift);
+            entry.GetProperty("availableTemplates").EnumerateArray().Select(template => template.GetString())
+                .Should().Equal(CrmTemplates.ForeignUplift);
+            entry.GetProperty("calculatesCostFromMsrp").GetBoolean().Should().Be(
+                entry.GetProperty("slug").GetString() == ParserSlugs.JuniperIrisXlsx);
+        }
     }
 
     [Fact]
