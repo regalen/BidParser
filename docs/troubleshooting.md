@@ -240,7 +240,11 @@ schema-v1 documents and no-update state. Confirm the machine/proxy can reach bot
 and the GitHub Releases API listed in [desktop.md](desktop.md#remote-configuration-and-trust-boundary).
 A redirect, non-success status, response over the cap, unsupported schema, duplicate known entry,
 unsafe markup, timeout, TLS failure, or malformed JSON all cause fallback. Before the public
-repository's first commit/release, these endpoints legitimately return 404.
+repository's first commit/release, these endpoints legitimately return 404. A guidance file that
+contains valid JSON can still fail the schema check: its root must be an object with
+`schemaVersion: 1` and a `guidanceMessages` array. A bare array exported from the web admin
+editor is not a desktop guidance document. The configuration tests validate both tracked
+public documents before release.
 
 **The single-file executable extracts runtime files under `%TEMP%/.net`.**
 Expected. `IncludeNativeLibrariesForSelfExtract=true` is required for the one-file distribution;

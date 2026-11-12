@@ -21,6 +21,21 @@ public sealed class ConfigurationDocumentTests
         $$"""{"schemaVersion": 1, "vendorDefaults": [{{entries}}]}""";
 
     [Fact]
+    public void Published_configuration_documents_follow_the_desktop_schema()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "BidParser.sln")))
+            directory = directory.Parent;
+        directory.Should().NotBeNull("the published configuration lives in the repository");
+        var config = Path.Combine(directory!.FullName, "config");
+
+        GuidanceCatalogReader.TryRead(File.ReadAllText(Path.Combine(config, "guidanceMessages.json")), KnownSlugs)
+            .Should().NotBeNull();
+        VendorDefaultsCatalogReader.TryRead(File.ReadAllText(Path.Combine(config, "vendorDefaults.json")), KnownVendors)
+            .Should().NotBeNull();
+    }
+
+    [Fact]
     public void The_bundled_documents_are_valid_and_cover_every_parser_with_seeded_guidance()
     {
         var guidance = DesktopConfiguration.ReadBundledGuidance(KnownSlugs);
