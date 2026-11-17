@@ -61,6 +61,13 @@ export function formatMoney2dp(v: bigint | null): string {
   return `${negative ? '-' : ''}${wholeFormatted}.${frac}`;
 }
 
+/** Money with a leading dollar sign, e.g. "$1,035.35" or "-$12.50"; "—" when absent. */
+export function formatDollars2dp(v: bigint | null): string {
+  if (v === null) return '—';
+  const money = formatMoney2dp(v);
+  return money.startsWith('-') ? `-$${money.slice(1)}` : `$${money}`;
+}
+
 export function formatPercent2dp(v: bigint | null): string {
   if (v === null) return '—';
   const rounded = round2Scaled(v);

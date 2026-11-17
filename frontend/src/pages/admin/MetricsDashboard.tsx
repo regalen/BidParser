@@ -78,7 +78,7 @@ export function MetricsDashboard() {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
-      <AppHeader />
+      <AppHeader contentClassName="max-w-6xl px-8" />
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-8 py-8">
         <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">

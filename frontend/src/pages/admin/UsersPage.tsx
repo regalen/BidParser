@@ -76,7 +76,7 @@ export function UsersPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
-      <AppHeader />
+      <AppHeader contentClassName="max-w-6xl px-6 lg:px-8" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8 lg:px-8">
         <div className="flex items-end justify-between gap-4">
           <div>

@@ -286,8 +286,8 @@ test('Juniper requires manual selection and hides main-page pricing while switch
   // Parse the manually selected CPQ format through the pricing popup and download.
   await submitButton.click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog).toContainText('Line pricing');
-  await dialog.getByLabel('Exchange rate').fill('0.6500');
+  await expect(dialog).toContainText('Line Pricing Editor');
+  await dialog.getByLabel('FX (AUD:USD)').fill('0.6500');
   await dialog.getByLabel('Line 1 Uplift%').fill('5.00');
   await dialog.getByRole('button', { name: 'Submit' }).click();
 
@@ -303,8 +303,8 @@ test('Juniper requires manual selection and hides main-page pricing while switch
   await page.getByLabel('File type').selectOption('juniper_indirect_xlsx');
   await fileInput.setInputFiles('public/samples/Juniper_Indirect_900001.xlsx');
   await submitButton.click();
-  await expect(dialog).toContainText('Line pricing');
-  await dialog.getByLabel('Exchange rate').fill('0.6500');
+  await expect(dialog).toContainText('Line Pricing Editor');
+  await dialog.getByLabel('FX (AUD:USD)').fill('0.6500');
   await dialog.getByLabel('Line 1 Uplift%').fill('5.00');
   await dialog.getByRole('button', { name: 'Submit' }).click();
 
@@ -383,8 +383,8 @@ test('Iris submits per-line pricing via modal and presents the explicit download
   await page.locator('input[type="file"]').setInputFiles('public/samples/Juniper_Iris_Synthetic.xlsx');
   await page.getByRole('button', { name: 'Upload & parse' }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog).toContainText('Line pricing');
-  await dialog.getByLabel('Exchange rate').fill('1.5000');
+  await expect(dialog).toContainText('Line Pricing Editor');
+  await dialog.getByLabel('FX (AUD:USD)').fill('1.5000');
   await dialog.getByLabel('Line 1 IM%').fill('27.53');
   await dialog.getByLabel('Line 1 Uplift%').fill('5.00');
   await dialog.getByRole('button', { name: 'Submit' }).click();

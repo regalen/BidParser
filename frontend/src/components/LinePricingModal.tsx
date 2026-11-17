@@ -5,6 +5,7 @@ import type { ParseResponse } from '../api/client';
 import type { LinePricingPayloadEntry, ParsePreview, RuntimeVendorDefaults } from '../types';
 import {
   computeLine,
+  formatDollars2dp,
   formatMoney2dp,
   formatPercent2dp,
   isFxRate4dp,
@@ -252,7 +253,7 @@ export function LinePricingModal({
           {/* Dialog Header */}
           <div className="flex flex-wrap items-center gap-2.5 border-b border-slate-200 px-5 py-3.5">
             <span id="line-pricing-title" className="text-sm font-bold uppercase tracking-wider text-slate-900">
-              Line pricing
+              Line Pricing Editor
             </span>
             <span className="text-xs text-slate-500">
               {sourceFilename} · {preview.parserDisplayName} · {preview.lines.length}{' '}
@@ -280,10 +281,10 @@ export function LinePricingModal({
             {preview.usesFxRate && (
               <label className="flex flex-col">
                 <span className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Exchange rate <span className="font-medium normal-case tracking-normal">· USD to AUD</span>
+                  FX (AUD:USD)
                 </span>
                 <input
-                  aria-label="Exchange rate"
+                  aria-label="FX (AUD:USD)"
                   aria-invalid={fxRate.trim().length > 0 && !validFxRate}
                   inputMode="decimal"
                   value={fxRate}
@@ -299,11 +300,11 @@ export function LinePricingModal({
             )}
 
             {preview.imPercentEditable && (
-              <div className="flex items-end gap-1.5">
-                <label className="flex flex-col">
-                  <span className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    IM% <span className="font-medium normal-case tracking-normal">· Discount off MSRP</span>
-                  </span>
+              <div className="flex flex-col">
+                <span className="mb-1 text-center text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  IM% <span className="font-medium normal-case tracking-normal">· Discount off MSRP</span>
+                </span>
+                <div className="flex items-end gap-1.5">
                   <div className="relative">
                     <input
                       aria-label="IM% · Discount off MSRP"
@@ -322,27 +323,27 @@ export function LinePricingModal({
                       %
                     </span>
                   </div>
-                </label>
-                <button
-                  type="button"
-                  aria-label="Apply IM% to all"
-                  disabled={!validHeaderIm}
-                  onClick={handleApplyImToAll}
-                  className="h-[34px] rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Apply to all
-                </button>
+                  <button
+                    type="button"
+                    aria-label="Apply IM% to all"
+                    disabled={!validHeaderIm}
+                    onClick={handleApplyImToAll}
+                    className="h-[34px] rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Apply to all
+                  </button>
+                </div>
               </div>
             )}
 
-            <div className="flex items-end gap-1.5">
-              <label className="flex flex-col">
-                <span className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Uplift <span className="font-medium normal-case tracking-normal">· margin on sale price</span>
-                </span>
+            <div className="flex flex-col">
+              <span className="mb-1 text-center text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Uplift %
+              </span>
+              <div className="flex items-end gap-1.5">
                 <div className="relative">
                   <input
-                    aria-label="Uplift · margin on sale price"
+                    aria-label="Uplift %"
                     aria-invalid={headerUplift.trim().length > 0 && !validHeaderUplift}
                     inputMode="decimal"
                     value={headerUplift}
@@ -358,20 +359,20 @@ export function LinePricingModal({
                     %
                   </span>
                 </div>
-              </label>
-              <button
-                type="button"
-                aria-label="Apply Uplift to all"
-                disabled={!validHeaderUplift}
-                onClick={handleApplyUpliftToAll}
-                className="h-[34px] rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Apply to all
-              </button>
+                <button
+                  type="button"
+                  aria-label="Apply Uplift to all"
+                  disabled={!validHeaderUplift}
+                  onClick={handleApplyUpliftToAll}
+                  className="h-[34px] rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Apply to all
+                </button>
+              </div>
             </div>
 
             <span className="ml-auto self-center rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-accent">
-              All values {preview.currency || 'USD'}
+              Bid Currency: {preview.currency || 'USD'}
             </span>
           </div>
 
@@ -560,16 +561,6 @@ export function LinePricingModal({
             </table>
           </div>
 
-          {/* Legend */}
-          <div className="flex flex-wrap gap-4 px-5 pt-2 text-[11px] text-slate-500">
-            <span>* editable</span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-[3px] border border-amber-400 bg-amber-50" />
-              edited after Apply
-            </span>
-            <span>Cost = supplier net cost (blank for Iris; filled for CPQ / Indirect)</span>
-          </div>
-
           {submitError && (
             <div role="alert" className="mx-5 mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
               {submitError}
@@ -580,29 +571,20 @@ export function LinePricingModal({
           <div className="mt-2.5 flex flex-wrap items-center gap-5 border-t border-slate-200 bg-slate-50 px-5 py-3">
             <div>
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total cost</div>
-              <div data-testid="total-cost" className="mt-0.5 text-[15px] font-bold tabular-nums text-slate-900">
-                <small className="mr-1 text-[10px] font-semibold text-slate-400">{preview.currency || 'USD'}</small>
-                {formatMoney2dp(totals.totalCost)}
+              <div data-testid="total-cost" className="mt-0.5 text-xs font-semibold tabular-nums text-slate-900">
+                {formatDollars2dp(totals.totalCost)}
               </div>
             </div>
             <div>
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total price</div>
-              <div data-testid="total-price" className="mt-0.5 text-[15px] font-bold tabular-nums text-slate-900">
-                <small className="mr-1 text-[10px] font-semibold text-slate-400">{preview.currency || 'USD'}</small>
-                {formatMoney2dp(totals.totalPrice)}
+              <div data-testid="total-price" className="mt-0.5 text-xs font-semibold tabular-nums text-slate-900">
+                {formatDollars2dp(totals.totalPrice)}
               </div>
             </div>
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total margin $</div>
-              <div data-testid="total-margin-amount" className="mt-0.5 text-[15px] font-bold tabular-nums text-emerald-800">
-                <small className="mr-1 text-[10px] font-semibold text-slate-400">{preview.currency || 'USD'}</small>
-                {formatMoney2dp(totals.totalMargin)}
-              </div>
-            </div>
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total margin %</div>
-              <div data-testid="total-margin-percent" className="mt-0.5 text-[15px] font-bold tabular-nums text-emerald-800">
-                {formatPercent2dp(totals.totalMarginPercent)}
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total margin</div>
+              <div data-testid="total-margin" className="mt-0.5 text-xs font-semibold tabular-nums text-emerald-800">
+                {formatDollars2dp(totals.totalMargin)} ({formatPercent2dp(totals.totalMarginPercent)})
               </div>
             </div>
 

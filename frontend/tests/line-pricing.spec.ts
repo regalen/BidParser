@@ -144,8 +144,8 @@ test('per-line pricing modal applies header defaults, honours row edits, compute
 
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  await expect(dialog).toContainText('Line pricing');
-  await expect(dialog).toContainText('All values USD');
+  await expect(dialog).toContainText('Line Pricing Editor');
+  await expect(dialog).toContainText('Bid Currency: USD');
 
   // 3. Description truncates and exposes full text via title
   const firstDescCell = dialog.locator('tbody tr').first().locator('td').nth(2);
@@ -160,10 +160,10 @@ test('per-line pricing modal applies header defaults, honours row edits, compute
   await expect(submitButton).toBeDisabled();
 
   // 4. Fill header FX, IM%, and Uplift, then Apply to all
-  await dialog.getByLabel('Exchange rate').fill('0.6520');
+  await dialog.getByLabel('FX (AUD:USD)').fill('0.6520');
   await dialog.getByLabel('IM% · Discount off MSRP').fill('15.00');
   await dialog.getByRole('button', { name: 'Apply IM% to all' }).click();
-  await dialog.getByLabel('Uplift · margin on sale price').fill('4.76');
+  await dialog.getByLabel('Uplift %', { exact: true }).fill('4.76');
   await dialog.getByRole('button', { name: 'Apply Uplift to all' }).click();
 
   await expect(dialog.getByLabel('Line 1 IM%')).toHaveValue('15.00');
@@ -187,11 +187,10 @@ test('per-line pricing modal applies header defaults, honours row edits, compute
   await expect(row2).toContainText('309.45');
   await expect(row2).toContainText('343.83');
 
-  // 6. Assert R5 totals: Cost 1,035.35, Price 1,106.01, Margin $ 70.66, Margin % 6.39%
-  await expect(dialog.getByTestId('total-cost')).toContainText('1,035.35');
-  await expect(dialog.getByTestId('total-price')).toContainText('1,106.01');
-  await expect(dialog.getByTestId('total-margin-amount')).toContainText('70.66');
-  await expect(dialog.getByTestId('total-margin-percent')).toHaveText('6.39%');
+  // 6. Assert R5 totals: Cost 1,035.35, Price 1,106.01, Margin 70.66 (6.39%)
+  await expect(dialog.getByTestId('total-cost')).toHaveText('$1,035.35');
+  await expect(dialog.getByTestId('total-price')).toHaveText('$1,106.01');
+  await expect(dialog.getByTestId('total-margin')).toHaveText('$70.66 (6.39%)');
 
   // 7. Submit and inspect request body (linePricing JSON sent, no header margin/imPercent)
   await submitButton.click();
