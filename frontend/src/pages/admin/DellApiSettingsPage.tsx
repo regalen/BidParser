@@ -80,7 +80,7 @@ export function DellApiSettingsPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
-      <AppHeader />
+      <AppHeader contentClassName="max-w-4xl px-6 lg:px-8" />
       <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-8 lg:px-8">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Dell API</h1>

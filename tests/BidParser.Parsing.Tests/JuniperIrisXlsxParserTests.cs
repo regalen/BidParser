@@ -96,8 +96,11 @@ public sealed class JuniperIrisXlsxParserTests
         var path = Path.Combine(Path.GetTempPath(), $"iris-{Guid.NewGuid():N}.xlsx");
         try
         {
+            var linePricing = quote.Result.LineItems
+                .Select((item, idx) => new LinePricingEntry(idx, item.Vpn, Margin: 5m, ImPercent: 30.25m))
+                .ToList();
             var output = await new WorkbookWriteService().WriteAsync(
-                new WorkbookWriteRequest(quote, path, Margin: 5m, FxRate: 1.5m, ImPercent: 30.25m));
+                new WorkbookWriteRequest(quote, path, FxRate: 1.5m, LinePricing: linePricing));
             output.CrmTemplate.Should().Be(CrmTemplates.ForeignUplift);
             output.OutputFilename.Should().Be("Juniper_Iris_Synthetic_ForeignUplift.xlsx");
             using var wb = new XLWorkbook(path);
@@ -133,7 +136,11 @@ public sealed class JuniperIrisXlsxParserTests
         try
         {
             var writer = new WorkbookWriteService();
-            var request = new WorkbookWriteRequest(quote, path, ImPercent: input is null ? null : decimal.Parse(input, System.Globalization.CultureInfo.InvariantCulture));
+            decimal? im = input is null ? null : decimal.Parse(input, System.Globalization.CultureInfo.InvariantCulture);
+            var linePricing = quote.Result.LineItems
+                .Select((item, idx) => new LinePricingEntry(idx, item.Vpn, Margin: 5m, ImPercent: im))
+                .ToList();
+            var request = new WorkbookWriteRequest(quote, path, LinePricing: linePricing);
             if (valid)
             {
                 var output = await writer.WriteAsync(request);
@@ -158,18 +165,20 @@ public sealed class JuniperIrisXlsxParserTests
         var culture = System.Globalization.CultureInfo.InvariantCulture;
         var quote = await new QuoteParseService(new ParserRegistry(), new SourceFormatInspector())
             .ParseAsync(new QuoteParseRequest(Fixture, Vendors.Juniper, parser.Slug));
+        var item0 = quote.Result.LineItems[0] with { Msrp = decimal.Parse(msrp, culture) };
         quote = quote with
         {
             Result = quote.Result with
             {
-                LineItems = [quote.Result.LineItems[0] with { Msrp = decimal.Parse(msrp, culture) }]
+                LineItems = [item0]
             }
         };
         var path = Path.Combine(Path.GetTempPath(), $"iris-{Guid.NewGuid():N}.xlsx");
         try
         {
+            var im = decimal.Parse(discount, culture);
             await new WorkbookWriteService().WriteAsync(new WorkbookWriteRequest(
-                quote, path, ImPercent: decimal.Parse(discount, culture)));
+                quote, path, LinePricing: [new LinePricingEntry(0, item0.Vpn, Margin: 5m, ImPercent: im)]));
             using var workbook = new XLWorkbook(path);
             var sheet = workbook.Worksheet(CrmTemplates.ForeignUplift);
             sheet.Cell(3, 20).GetValue<decimal>().Should().Be(decimal.Parse(expected, culture));
@@ -191,7 +200,10 @@ public sealed class JuniperIrisXlsxParserTests
         {
             foreach (var (discount, expected) in new[] { (15m, 348.50m), (27.53m, 297.13m) })
             {
-                await writer.WriteAsync(new WorkbookWriteRequest(quote, path, ImPercent: discount));
+                var linePricing = quote.Result.LineItems
+                    .Select((item, idx) => new LinePricingEntry(idx, item.Vpn, Margin: 5m, ImPercent: discount))
+                    .ToList();
+                await writer.WriteAsync(new WorkbookWriteRequest(quote, path, LinePricing: linePricing));
                 using var workbook = new XLWorkbook(path);
                 workbook.Worksheet(CrmTemplates.ForeignUplift).Cell(3, 20).GetValue<decimal>()
                     .Should().Be(expected);

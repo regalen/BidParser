@@ -49,6 +49,7 @@ public sealed class JuniperIndirectXlsxParser : IParser
     public string CrmTemplate => CrmTemplates.ForeignUplift;
     public IReadOnlyList<string> AvailableTemplates => [CrmTemplates.ForeignUplift];
     public bool TermRendersAsComment => true;
+    public bool SupportsLinePricing => true;
 
     public double Detect(string path)
     {

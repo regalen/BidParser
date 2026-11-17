@@ -144,7 +144,7 @@ export function RuntimeConfigurationPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
-      <AppHeader />
+      <AppHeader contentClassName="max-w-6xl px-6 lg:px-8" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8 lg:px-8">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Runtime Configuration</h1>
         <p className="mt-1 text-sm text-slate-500">Manage parse defaults and result guidance without restarting the application.</p>

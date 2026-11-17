@@ -640,7 +640,11 @@ public sealed class ParseTests
         await ApiTestFixture.UnlockAdminAsync(client);
 
         var root = FindRepoRoot();
-        var cpqBytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "Juniper_CPQ_900001.xlsx"));
+        var cpqPath = Path.Combine(root, "samples", "inputs", "Juniper_CPQ_900001.xlsx");
+        var cpqBytes = File.ReadAllBytes(cpqPath);
+        var cpqParsed = new BidParser.Parsing.Juniper.CpqXlsx.JuniperCpqXlsxParser().Parse(cpqPath);
+        var cpqPricingJson = JsonSerializer.Serialize(
+            cpqParsed.LineItems.Select((item, idx) => new { index = idx, vpn = item.Vpn, margin = "5.00", imPercent = (string?)null }));
 
         using (var form = new MultipartFormDataContent())
         {
@@ -650,6 +654,8 @@ public sealed class ParseTests
             form.Add(new StringContent(Vendors.Juniper), "vendor");
             form.Add(new StringContent(ParserSlugs.JuniperCpqXlsx), "parserSlug");
             form.Add(new StringContent(CrmTemplates.ForeignUplift), "crmTemplate");
+            form.Add(new StringContent("1.0000"), "fxRate");
+            form.Add(new StringContent(cpqPricingJson), "linePricing");
 
             using var request = new HttpRequestMessage(HttpMethod.Post, "/api/parse") { Content = form };
             request.Headers.Add("X-Requested-With", "BidParser");
@@ -671,7 +677,11 @@ public sealed class ParseTests
         }
 
         // Mutate one Indirect row's EXTENDED NET TOTAL to verify per-row mismatch stays saveable (200 OK + X-Validation: mismatch).
-        var indirectBytes = File.ReadAllBytes(Path.Combine(root, "samples", "inputs", "Juniper_Indirect_900001.xlsx"));
+        var indirectPath = Path.Combine(root, "samples", "inputs", "Juniper_Indirect_900001.xlsx");
+        var indirectBytes = File.ReadAllBytes(indirectPath);
+        var indirectParsed = new BidParser.Parsing.Juniper.IndirectXlsx.JuniperIndirectXlsxParser().Parse(indirectPath);
+        var indirectPricingJson = JsonSerializer.Serialize(
+            indirectParsed.LineItems.Select((item, idx) => new { index = idx, vpn = item.Vpn, margin = "5.00", imPercent = (string?)null }));
         byte[] mismatchBytes;
         using (var inStream = new MemoryStream(indirectBytes))
         using (var wb = new XLWorkbook(inStream))
@@ -692,6 +702,8 @@ public sealed class ParseTests
             form.Add(new StringContent(Vendors.Juniper), "vendor");
             form.Add(new StringContent(ParserSlugs.JuniperIndirectXlsx), "parserSlug");
             form.Add(new StringContent(CrmTemplates.ForeignUplift), "crmTemplate");
+            form.Add(new StringContent("1.0000"), "fxRate");
+            form.Add(new StringContent(indirectPricingJson), "linePricing");
 
             using var request = new HttpRequestMessage(HttpMethod.Post, "/api/parse") { Content = form };
             request.Headers.Add("X-Requested-With", "BidParser");
@@ -717,15 +729,18 @@ public sealed class ParseTests
         using var client = fixture.Factory.CreateClient();
         await ApiTestFixture.UnlockAdminAsync(client);
         using var form = new MultipartFormDataContent();
-        var bytes = File.ReadAllBytes(Path.Combine(FindRepoRoot(), "samples", "inputs", "Juniper_Iris_Synthetic.xlsx"));
+        var irisPath = Path.Combine(FindRepoRoot(), "samples", "inputs", "Juniper_Iris_Synthetic.xlsx");
+        var bytes = File.ReadAllBytes(irisPath);
+        var irisParsed = new BidParser.Parsing.Juniper.IrisXlsx.JuniperIrisXlsxParser().Parse(irisPath);
+        var pricingJson = JsonSerializer.Serialize(
+            irisParsed.LineItems.Select((item, idx) => new { index = idx, vpn = item.Vpn, margin = "5.00", imPercent = im }));
         var content = new ByteArrayContent(bytes);
         content.Headers.ContentType = new("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         form.Add(content, "file", "Iris.xlsx");
         form.Add(new StringContent(Vendors.Juniper), "vendor");
         form.Add(new StringContent(ParserSlugs.JuniperIrisXlsx), "parserSlug");
         form.Add(new StringContent("1.5"), "fxRate");
-        form.Add(new StringContent("5"), "margin");
-        if (im is not null) form.Add(new StringContent(im), "imPercent");
+        form.Add(new StringContent(pricingJson), "linePricing");
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/parse") { Content = form };
         request.Headers.Add("X-Requested-With", "BidParser");
         using var response = await client.SendAsync(request);

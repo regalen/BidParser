@@ -60,7 +60,47 @@ export interface ParserInfo {
   supportsOnCost: boolean;
   /** True when IM% is required to calculate output unit cost from MSRP. */
   calculatesCostFromMsrp: boolean;
+  /** True when per-line pricing is used instead of header-level FX/IM%/Uplift. */
+  supportsLinePricing: boolean;
   solutionSplitLabel: string;
+}
+
+export interface ParsePreviewValidation {
+  matches: boolean;
+  computedTotal: string;
+  quotedTotal: string | null;
+  warnings: string[];
+}
+
+export interface ParsePreviewLine {
+  index: number;
+  lineNumber: string;
+  vpn: string;
+  description: string | null;
+  qty: number;
+  msrp: string | null;
+  sourceCost: string | null;
+  derivedImPercent: string | null;
+  isCancelled: boolean;
+}
+
+export interface ParsePreview {
+  parserSlug: string;
+  parserDisplayName: string;
+  currency: string;
+  crmTemplate: string;
+  usesFxRate: boolean;
+  imPercentEditable: boolean;
+  imPercentRequired: boolean;
+  validation: ParsePreviewValidation;
+  lines: ParsePreviewLine[];
+}
+
+export interface LinePricingPayloadEntry {
+  index: number;
+  vpn: string;
+  margin: string;
+  imPercent: string | null;
 }
 
 export interface RuntimeVendorDefaults {

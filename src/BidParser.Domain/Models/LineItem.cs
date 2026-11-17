@@ -38,4 +38,8 @@ public sealed record LineItem
     public string? LineSequence { get; init; }
     /// <summary>True when the source marks the line cancelled — the line is quoted but not bid-priced, so writers emit qty 1 and the no-bid price (a literal 0 that CRM answers from SAP), not the zero-price sentinel.</summary>
     public bool IsCancelled { get; init; }
+    /// <summary>User-entered per-line Uplift (margin %). Null means use the header <c>CrmWriterOptions.Margin</c>.</summary>
+    public decimal? Margin { get; init; }
+    /// <summary>User-entered per-line IM% (discount off MSRP). Null means not overridden; for <c>CalculatesCostFromMsrp</c> parsers it falls back to the header <c>CrmWriterOptions.ImPercent</c>.</summary>
+    public decimal? ImPercent { get; init; }
 }

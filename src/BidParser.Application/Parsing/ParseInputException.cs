@@ -14,7 +14,8 @@ public enum ParseInputErrorKind
     UnsupportedSplit,
     SourceTooLarge,
     InvalidDestination,
-    DestinationExists
+    DestinationExists,
+    InvalidLinePricing
 }
 
 /// <summary>A host-neutral validation/selection error for local quote processing.</summary>

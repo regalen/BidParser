@@ -5,6 +5,7 @@ using BidParser.Api.Auth;
 using BidParser.Api.Contracts;
 using Microsoft.Extensions.Primitives;
 using BidParser.Api.Options;
+using BidParser.Application.Output;
 using BidParser.Domain;
 using BidParser.Domain.Constants;
 using BidParser.Domain.Models;
@@ -16,13 +17,16 @@ using BidParser.Infrastructure.Storage;
 namespace BidParser.Api.Endpoints;
 
 /// <summary>
-/// POST /api/parse (active users; CSRF-guarded, rate-limited "parse"): the core upload endpoint. Reads the
-/// multipart form (file + vendor/parser/template + numeric inputs), delegates to <see cref="ParseService"/>,
-/// and streams back the generated workbook or Solution-ID ZIP — surfacing cancelled lines via the
-/// X-Cancelled-Lines header and parser errors as typed 4xx bodies.
+/// POST /api/parse and POST /api/parse/preview (active users; CSRF-guarded, rate-limited):
+/// core upload and per-line pricing preview endpoints.
 /// </summary>
 public static class ParseEndpoints
 {
+    private static readonly JsonSerializerOptions LinePricingJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     public static IEndpointRouteBuilder MapParseEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/api/parse", ParseAsync)
@@ -30,7 +34,174 @@ public static class ParseEndpoints
             .AddEndpointFilter<RequireCsrfHeader>()
             .RequireRateLimiting("parse");
 
+        app.MapPost("/api/parse/preview", PreviewAsync)
+            .RequireAuthorization(AuthPolicies.ActiveUser)
+            .AddEndpointFilter<RequireCsrfHeader>()
+            .RequireRateLimiting("parsePreview");
+
         return app;
+    }
+
+    private sealed record CommonParseForm(
+        IFormCollection Form,
+        IFormFile? File,
+        string Vendor,
+        string ParserSlug,
+        string? CrmTemplate,
+        string? QuoteId);
+
+    private static async Task<(CommonParseForm? Parsed, IResult? Error)> ReadCommonFormAsync(
+        HttpContext context,
+        AppOptions appOptions,
+        bool allowQuoteId,
+        CancellationToken ct)
+    {
+        IFormCollection form;
+        try
+        {
+            form = await context.Request.ReadFormAsync(ct);
+        }
+        catch (BadHttpRequestException ex) when (ex.StatusCode == 413)
+        {
+            return (null, Results.Json(new ApiError("File is too large."), statusCode: 413));
+        }
+        catch (InvalidDataException)
+        {
+            return (null, Results.Json(new ApiError("File is too large."), statusCode: 413));
+        }
+
+        var file = form.Files.GetFile("file");
+        var vendor = form["vendor"].FirstOrDefault()?.Trim();
+        var parserSlug = form["parserSlug"].FirstOrDefault()?.Trim();
+        var crmTemplate = form["crmTemplate"].FirstOrDefault()?.Trim();
+        var quoteId = form["quoteId"].FirstOrDefault()?.Trim();
+
+        if (!allowQuoteId && !string.IsNullOrEmpty(quoteId))
+        {
+            return (null, Results.Json(new ApiError("quoteId is not supported for preview."), statusCode: 400));
+        }
+
+        if (file is null && string.IsNullOrEmpty(quoteId))
+        {
+            return (null, Results.Json(new ApiError(allowQuoteId ? "file or quoteId is required." : "file is required."), statusCode: 400));
+        }
+
+        if (file is not null && !string.IsNullOrEmpty(quoteId))
+        {
+            return (null, Results.Json(new ApiError("Provide either file or quoteId, not both."), statusCode: 400));
+        }
+
+        if (string.IsNullOrEmpty(vendor))
+        {
+            return (null, Results.Json(new ApiError("vendor is required."), statusCode: 400));
+        }
+
+        if (string.IsNullOrEmpty(parserSlug))
+        {
+            return (null, Results.Json(new ApiError("parserSlug is required."), statusCode: 400));
+        }
+
+        if (!string.IsNullOrEmpty(quoteId) && vendor != Vendors.Dell)
+        {
+            return (null, Results.Json(new ApiError("quoteId is only supported for Dell."), statusCode: 400));
+        }
+
+        // Dell has no manual file-type selection: CTO vs APOS is disambiguated by dell_auto's
+        // Detect() scoring, never by the caller. Rejected here (not just hidden in the SPA) so
+        // a direct API call can't bypass the UI-level restriction.
+        if (vendor == Vendors.Dell && parserSlug != ParserSlugs.DellAuto)
+        {
+            return (null, Results.Json(new ApiError("Dell only supports automatic file-type detection."), statusCode: 400));
+        }
+
+        if (file is not null && file.Length > appOptions.MaxUploadBytes)
+        {
+            return (null, Results.Json(new ApiError("File is too large."), statusCode: 413));
+        }
+
+        return (new CommonParseForm(form, file, vendor, parserSlug, crmTemplate, quoteId), null);
+    }
+
+    private static async Task<IResult> PreviewAsync(
+        HttpContext context,
+        AppDbContext db,
+        ParseService parseService,
+        AppOptions appOptions,
+        ILogger<Program> logger,
+        CancellationToken ct)
+    {
+        var (common, error) = await ReadCommonFormAsync(context, appOptions, allowQuoteId: false, ct);
+        if (error is not null)
+        {
+            return error;
+        }
+
+        var (form, file, vendor, parserSlug, crmTemplate, _) = common!;
+
+        var user = await EndpointHelpers.CurrentUserAsync(context, db, ct);
+        if (user is null)
+        {
+            return Results.Json(new ApiError("notAuthenticated"), statusCode: 401);
+        }
+
+        var displayFilename = Path.GetFileName(file!.FileName ?? "quote");
+        ParseServicePreviewResult previewResult;
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            previewResult = await parseService.PreviewAsync(
+                user, stream, displayFilename, vendor, parserSlug, crmTemplate, appOptions.MaxUploadBytes, ct);
+        }
+        catch (ParseValidationException ex)
+        {
+            return Results.Json(new ApiError(ex.Detail), statusCode: ex.StatusCode);
+        }
+        catch (UploadTooLargeException)
+        {
+            return Results.Json(new ApiError("File is too large."), statusCode: 413);
+        }
+        catch (ParseError ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Preview parse error for {Filename} using {Slug} at stage {Stage}",
+                displayFilename,
+                parserSlug,
+                ex.Stage);
+
+            return Results.Json(
+                new ParseErrorResponse(new ParseErrorDetail(ex.Stage, ex.Hint, ex.Message)),
+                statusCode: 422);
+        }
+
+        var preview = previewResult.Preview;
+        var validation = previewResult.Validation;
+
+        var response = new ParsePreviewResponse(
+            ParserSlug: preview.ParserSlug,
+            ParserDisplayName: preview.ParserDisplayName,
+            Currency: preview.Currency,
+            CrmTemplate: preview.CrmTemplate,
+            UsesFxRate: preview.UsesFxRate,
+            ImPercentEditable: preview.ImPercentEditable,
+            ImPercentRequired: preview.ImPercentRequired,
+            Validation: new ParsePreviewValidationResponse(
+                Matches: validation.Matches,
+                ComputedTotal: validation.ComputedTotal,
+                QuotedTotal: validation.QuotedTotal,
+                Warnings: validation.Warnings),
+            Lines: preview.Lines.Select(line => new ParsePreviewLineResponse(
+                Index: line.Index,
+                LineNumber: line.LineNumber,
+                Vpn: line.Vpn,
+                Description: line.Description,
+                Qty: line.Qty,
+                Msrp: line.Msrp,
+                SourceCost: line.SourceCost,
+                DerivedImPercent: line.DerivedImPercent,
+                IsCancelled: line.IsCancelled)).ToList());
+
+        return Results.Ok(response);
     }
 
     private static async Task<IResult> ParseAsync(
@@ -43,62 +214,51 @@ public static class ParseEndpoints
         ILogger<Program> logger,
         CancellationToken ct)
     {
-        IFormCollection form;
-        try
+        var (common, error) = await ReadCommonFormAsync(context, appOptions, allowQuoteId: true, ct);
+        if (error is not null)
         {
-            form = await context.Request.ReadFormAsync(ct);
-        }
-        catch (BadHttpRequestException ex) when (ex.StatusCode == 413)
-        {
-            return Results.Json(new ApiError("File is too large."), statusCode: 413);
-        }
-        catch (InvalidDataException)
-        {
-            return Results.Json(new ApiError("File is too large."), statusCode: 413);
+            return error;
         }
 
-        var file = form.Files.GetFile("file");
-        var vendor = form["vendor"].FirstOrDefault()?.Trim();
-        var parserSlug = form["parserSlug"].FirstOrDefault()?.Trim();
+        var (form, file, vendor, parserSlug, crmTemplate, quoteId) = common!;
+
         var fxRateStr = form["fxRate"].FirstOrDefault()?.Trim();
         var marginStr = form["margin"].FirstOrDefault()?.Trim();
         var imPercentStr = form["imPercent"].FirstOrDefault()?.Trim();
         var onCostPctStr = form["onCostPct"].FirstOrDefault()?.Trim();
-        var crmTemplate = form["crmTemplate"].FirstOrDefault()?.Trim();
-        var quoteId = form["quoteId"].FirstOrDefault()?.Trim();
+        var linePricingStr = form["linePricing"].FirstOrDefault()?.Trim();
         var splitBySolutionId = form["splitBySolutionId"].FirstOrDefault()?.Trim() is "true" or "1";
 
-        if (file is null && string.IsNullOrEmpty(quoteId))
+        IReadOnlyList<LinePricingEntry>? linePricing = null;
+        if (!string.IsNullOrEmpty(linePricingStr))
         {
-            return Results.Json(new ApiError("file or quoteId is required."), statusCode: 400);
-        }
+            List<LinePricingRequestItem>? parsedEntries;
+            try
+            {
+                parsedEntries = JsonSerializer.Deserialize<List<LinePricingRequestItem>>(
+                    linePricingStr,
+                    LinePricingJsonOptions);
+            }
+            catch (JsonException)
+            {
+                return Results.Json(new ApiError("Invalid linePricing."), statusCode: 400);
+            }
 
-        if (file is not null && !string.IsNullOrEmpty(quoteId))
-        {
-            return Results.Json(new ApiError("Provide either file or quoteId, not both."), statusCode: 400);
-        }
+            if (parsedEntries is null || parsedEntries.Any(entry => entry is null || entry.Vpn is null))
+            {
+                return Results.Json(new ApiError("Invalid linePricing."), statusCode: 400);
+            }
 
-        if (string.IsNullOrEmpty(vendor))
-        {
-            return Results.Json(new ApiError("vendor is required."), statusCode: 400);
-        }
+            if (!string.IsNullOrEmpty(marginStr) || !string.IsNullOrEmpty(imPercentStr))
+            {
+                return Results.Json(
+                    new ApiError("Provide per-line pricing or header margin/imPercent, not both."),
+                    statusCode: 400);
+            }
 
-        if (string.IsNullOrEmpty(parserSlug))
-        {
-            return Results.Json(new ApiError("parserSlug is required."), statusCode: 400);
-        }
-
-        if (!string.IsNullOrEmpty(quoteId) && vendor != Vendors.Dell)
-        {
-            return Results.Json(new ApiError("quoteId is only supported for Dell."), statusCode: 400);
-        }
-
-        // Dell has no manual file-type selection: CTO vs APOS is disambiguated by dell_auto's
-        // Detect() scoring, never by the caller. Rejected here (not just hidden in the SPA) so
-        // a direct API call can't bypass the UI-level restriction.
-        if (vendor == Vendors.Dell && parserSlug != ParserSlugs.DellAuto)
-        {
-            return Results.Json(new ApiError("Dell only supports automatic file-type detection."), statusCode: 400);
+            linePricing = parsedEntries
+                .Select(entry => new LinePricingEntry(entry.Index, entry.Vpn, entry.Margin, entry.ImPercent))
+                .ToList();
         }
 
         // fxRate, margin, and imPercent are all optional at the wire level. They are
@@ -118,6 +278,19 @@ public static class ParseEndpoints
                 return Results.Json(new ApiError("Invalid fxRate."), statusCode: 400);
             }
             fxRate = parsedFxRate;
+        }
+
+        if (linePricing is not null)
+        {
+            if (fxRate is null)
+            {
+                return Results.Json(new ApiError("fxRate is required with per-line pricing."), statusCode: 400);
+            }
+
+            if (fxRate.Value <= 0m || fxRate.Value != decimal.Round(fxRate.Value, 4))
+            {
+                return Results.Json(new ApiError("Invalid fxRate."), statusCode: 400);
+            }
         }
 
         decimal? margin = null;
@@ -162,11 +335,6 @@ public static class ParseEndpoints
         // policy sits in one obvious place and re-exposing it stays a one-line change.
         const bool includeSubComponents = false;
 
-        if (file is not null && file.Length > appOptions.MaxUploadBytes)
-        {
-            return Results.Json(new ApiError("File is too large."), statusCode: 413);
-        }
-
         var user = await EndpointHelpers.CurrentUserAsync(context, db, ct);
         if (user is null)
         {
@@ -207,7 +375,7 @@ public static class ParseEndpoints
                 user, stream, displayFilename, vendor, parserSlug,
                 fxRate, margin, imPercent, onCostPct, crmTemplate, includeSubComponents,
                 splitBySolutionId,
-                appOptions.MaxUploadBytes, ct);
+                appOptions.MaxUploadBytes, ct, linePricing);
         }
         catch (DellApiException ex)
         {

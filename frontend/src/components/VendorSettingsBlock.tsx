@@ -10,6 +10,7 @@ interface VendorSettingsBlockProps {
   selectedTemplate: string;
   supportsOnCost: boolean;
   calculatesCostFromMsrp: boolean;
+  supportsLinePricing: boolean;
   fxRate: string;
   margin: string;
   imPercent: string;
@@ -55,6 +56,7 @@ export function VendorSettingsBlock({
   selectedTemplate,
   supportsOnCost,
   calculatesCostFromMsrp,
+  supportsLinePricing,
   fxRate,
   margin,
   imPercent,
@@ -64,12 +66,16 @@ export function VendorSettingsBlock({
   onImPercent,
   onOnCostPct,
 }: VendorSettingsBlockProps) {
-  const foreignIm = calculatesCostFromMsrp || selectedTemplate === CRM_TEMPLATE_FOREIGN_PERCENT_OFF_WITH_UPLIFT;
-  const foreign = foreignIm || selectedTemplate === CRM_TEMPLATE_FOREIGN_UPLIFT;
-  const uplift = foreign || selectedTemplate === CRM_TEMPLATE_UPLIFT || selectedTemplate === CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT;
-  const im = foreignIm || selectedTemplate === CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT;
+  const foreignIm =
+    !supportsLinePricing &&
+    (calculatesCostFromMsrp || selectedTemplate === CRM_TEMPLATE_FOREIGN_PERCENT_OFF_WITH_UPLIFT);
+  const foreign = !supportsLinePricing && (foreignIm || selectedTemplate === CRM_TEMPLATE_FOREIGN_UPLIFT);
+  const uplift =
+    !supportsLinePricing &&
+    (foreign || selectedTemplate === CRM_TEMPLATE_UPLIFT || selectedTemplate === CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT);
+  const im = !supportsLinePricing && (foreignIm || selectedTemplate === CRM_TEMPLATE_PERCENT_OFF_WITH_UPLIFT);
 
-  if (!foreign && !uplift && !im && !supportsOnCost) {
+  if (!supportsLinePricing && !foreign && !uplift && !im && !supportsOnCost) {
     return null;
   }
 
@@ -80,6 +86,11 @@ export function VendorSettingsBlock({
         <span className="label">{vendorLabel} settings</span>
         <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Vendor-specific</span>
       </div>
+      {supportsLinePricing && (
+        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-xs leading-5 text-slate-600">
+          Exchange rate, IM% and Uplift are set <strong className="font-semibold text-slate-800">per line</strong> after you upload.
+        </div>
+      )}
       {foreign && (
         <label className="flex flex-col gap-2">
           <span className="label">

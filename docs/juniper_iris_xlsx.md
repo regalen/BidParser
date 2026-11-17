@@ -3,6 +3,7 @@
 - Parser: `JuniperIrisXlsxParser`, slug `juniper_iris_xlsx`.
 - Template: `Foreign Uplift` only.
 - MIME: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`.
+- Additional settings: per-line pricing review (`SupportsLinePricing => true`). Exchange rate is header-level; IM% (Discount Off MSRP) and Uplift (margin on sale price) are reviewed per line in the pricing popup.
 - Explicit selection is required on web and desktop. `Detect()` only supports wrong-file-type suggestions.
 
 ## Recognition and extraction
@@ -38,13 +39,18 @@ cell, using tolerance 0.01 USD. A mismatch is saveable through the ordinary resu
 Product `Total` values are source provenance, not a substitute for computing MSRP extensions.
 
 Bid number and revision are null. Quote identity and output naming use the existing source-stem
-fallback. USD is the only supported currency. Exchange Rate, Uplift, and IM% are user inputs;
-IM% must be nonnegative with at most two decimal places and has no upper limit. BidParser
-calculates Foreign Cost per unit as `Msrp × (1 − IM% / 100)`, rounded to two decimal places
-with midpoint rounding away from zero. For MSRP 427, IM% 15 gives 362.95, and IM% 27.53
-gives 309.45. A calculated zero uses the standard zero-price sentinel. The output uses the
-Foreign Uplift sheet and filename suffix, with IM% column X blank. Parsed MSRP and
-source-total validation remain unchanged. See [output mapping](output_mapping.md#juniper-iris-foreign-uplift).
+fallback. USD is the only supported currency. Because `SupportsLinePricing` is `true`, header-level
+Exchange Rate, Uplift, and IM% inputs do not appear on the main form; instead, the pricing review
+popup collects Exchange Rate at header level and per-line IM% (`LineItem.ImPercent`) and Uplift
+(`LineItem.Margin`, where Uplift is margin on the sale price: `0 ≤ Uplift < 100`, at most 2 dp).
+Header IM% and Uplift inputs in the popup act as bulk **Apply** helpers across all lines. Every
+non-cancelled Iris line with `Msrp > 0` requires a per-line IM% (nonnegative, at most two decimal
+places, with no upper limit). BidParser calculates Foreign Cost per unit in column T as
+`Msrp × (1 − IM% / 100)`, rounded to two decimal places with midpoint rounding away from zero
+(`LinePricingMath.CostFromMsrp`). For MSRP 427, IM% 15 gives 362.95, and IM% 27.53 gives 309.45.
+A calculated zero uses the standard zero-price sentinel. Column K writes each line's Uplift
+(`LineItem.Margin`), column V writes the header Exchange Rate, and IM% column X remains blank.
+Parsed MSRP and source-total validation remain unchanged. See [output mapping](output_mapping.md#juniper-iris-foreign-uplift).
 
 The retained fixture `Juniper_Iris_Synthetic.xlsx` contains two products totaling 1100 USD.
 See [fixture sanitisation](sample_fixture_sanitisation.md#juniper-iris) for publication review.

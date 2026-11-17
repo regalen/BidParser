@@ -34,13 +34,20 @@ folder and update dismissal last only for the running process.
    the file-type control remains disabled until a vendor is chosen. Auto is selected where
    available; a vendor with one concrete format selects it automatically.
 2. Enter only the numeric options shown for that selection. FX must be greater than zero; required
-   percentages must be present; On Cost is optional.
+   percentages must be present; On Cost is optional. When the selected format declares
+   `SupportsLinePricing` (all three Juniper formats), main-window FX, Uplift, and IM% fields are
+   replaced by a short note explaining that pricing is set per line after parsing.
 3. Choose or drop one source file. The extension, magic bytes, parser MIME set, and 10 MiB limit are
    checked before parsing.
 4. Select **Parse quote**. Existing synchronous parsers run away from the UI thread. Cancellation
    is checked around selection, detection, parsing, splitting, and writing; cancellation inside one
    synchronous parser call is best-effort and its eventual result is discarded.
-5. Review the persistent result area and choose **Save** or **Save anyway**. The save
+5. For `SupportsLinePricing` formats, complete the in-window **Review & set line pricing** overlay
+   (Step 1: Pricing): enter the header Exchange Rate, optionally bulk-apply IM% and Uplift across
+   all lines, edit individual rows, review live USD totals, and select **Next**. Selecting
+   **Cancel** (or `Escape`) discards the in-memory parse and returns to the drop zone.
+6. Review the persistent result area (Step 2: Result) and choose **Save** or **Save anyway** (or
+   **Edit pricing** to reopen the line-pricing overlay with current edits intact). The save
    dialog uses the canonical `OutputNaming` filename and offers XLSX or ZIP as appropriate.
 
 Bundled/active vendor defaults apply on initial vendor resolution and every vendor change. Manual
@@ -184,6 +191,11 @@ Windows x64 without a separately installed .NET runtime or elevation. Verify:
   keyboard/focus/Narrator behavior, default size, and minimum size.
 - Representative PDF, XLSX, XLSM, and XLS inputs; Auto and wrong-format selection; mismatch and Zebra
   cancellation warnings; HP/Lenovo/SAID split ZIPs; conflict overwrite/copy; and workbook integrity.
+- Juniper CPQ, Indirect, and Iris per-line pricing review overlay: header Exchange Rate, header
+  **Apply** for IM% and Uplift, single-row overrides, CPQ IM% clear-to-revert, live USD totals,
+  description ellipsis and hover tooltip, **Edit pricing** round-trip from the result card,
+  keyboard-only navigation (`Tab`/`Escape`), high-contrast rendering, and saved workbook col K/T/V
+  values.
 - Valid public configuration, offline fallback, unsupported-schema fallback, independent endpoint
   failures, update notification/view/dismissal, blocked GitHub, and rate limiting.
 - A fresh download from the public release, plus absence of quote copies, history, database,
@@ -194,7 +206,14 @@ See [troubleshooting.md](troubleshooting.md#portable-windows-desktop) for known 
 ### Juniper file types
 
 Juniper requires explicit CPQ, Indirect, or Iris selection; no Auto entry is offered. All three
-formats use Foreign Uplift only. Iris requires Exchange Rate, Uplift, and IM% (nonnegative,
-at most two decimal places, no upper limit). BidParser calculates Foreign Cost from MSRP less
-IM%, rounded to cents, and leaves the output IM% column blank. Validation uses MSRP totals.
-Bid metadata remains blank. See the [Iris pricing spec](juniper_iris_xlsx.md).
+formats use Foreign Uplift only and declare `SupportsLinePricing => true`. Main-window FX, Uplift,
+and IM% fields are hidden; after **Parse quote**, the in-window pricing review overlay collects
+header Exchange Rate (`> 0`, up to 4 dp) and per-line IM% (`≥ 0`, up to 2 dp, no upper limit) and
+Uplift (`0 ≤ Uplift < 100`, up to 2 dp). For Iris, every non-cancelled line with `Msrp > 0`
+requires IM% and BidParser calculates Foreign Cost from MSRP less IM%, rounded to cents. For CPQ
+and Indirect, each line displays its derived IM% and writes the unrounded source cost to column T
+unless the line's IM% is overridden (via header **Apply** or a row edit), in which case column T
+writes `round(Msrp × (1 − IM% / 100), 2)`. Clearing an overridden CPQ/Indirect IM% cell reverts the
+row to its source cost. Column K writes each line's Uplift and column X (`IM%`) remains blank.
+See the [Iris](juniper_iris_xlsx.md), [CPQ](juniper_cpq_xlsx.md), and
+[Indirect](juniper_indirect_xlsx.md) specs.

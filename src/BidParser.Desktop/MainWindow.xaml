@@ -162,20 +162,35 @@
 
           <!-- Pricing: every row is capability-driven, and the whole section collapses when the
                selected parser and template support none of them. -->
-          <StackPanel Grid.Row="1"
-                      Margin="{StaticResource Space.Top24}"
-                      Visibility="{Binding Capabilities.HasAnyPricingField, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="{StaticResource Border.Top}" />
-            <TextBlock Margin="{StaticResource Space.Top12}" Style="{StaticResource Text.SectionHeading}" Text="{Binding PricingHeading}" />
+          <StackPanel Grid.Row="1" Margin="{StaticResource Space.Top24}">
+            <StackPanel Visibility="{Binding Capabilities.SupportsLinePricing, Converter={StaticResource BooleanToVisibilityConverter}}">
+              <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="{StaticResource Border.Top}" />
+              <TextBlock Margin="{StaticResource Space.Top12}" Style="{StaticResource Text.SectionHeading}" Text="{Binding PricingHeading}" />
+              <Border Margin="{StaticResource Space.Top8}"
+                      Padding="{StaticResource Space.12}"
+                      Background="{DynamicResource Brush.SurfaceInset}"
+                      BorderBrush="{DynamicResource Brush.BorderStrong}"
+                      BorderThickness="{StaticResource Border.All}"
+                      CornerRadius="{StaticResource Radius.Control}">
+                <TextBlock Style="{StaticResource Text.Caption}"
+                           TextWrapping="Wrap"
+                           Text="Exchange rate, IM% and Uplift are set per line after you parse." />
+              </Border>
+            </StackPanel>
 
-            <ContentControl Content="{Binding FxRate}"
-                            Visibility="{Binding Capabilities.SupportsFx, Converter={StaticResource BooleanToVisibilityConverter}}" />
-            <ContentControl Content="{Binding Uplift}"
-                            Visibility="{Binding Capabilities.SupportsUplift, Converter={StaticResource BooleanToVisibilityConverter}}" />
-            <ContentControl Content="{Binding DiscountOffMsrp}"
-                            Visibility="{Binding Capabilities.SupportsDiscountOffMsrp, Converter={StaticResource BooleanToVisibilityConverter}}" />
-            <ContentControl Content="{Binding OnCost}"
-                            Visibility="{Binding Capabilities.SupportsOnCost, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <StackPanel Visibility="{Binding Capabilities.HasAnyPricingField, Converter={StaticResource BooleanToVisibilityConverter}}">
+              <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="{StaticResource Border.Top}" />
+              <TextBlock Margin="{StaticResource Space.Top12}" Style="{StaticResource Text.SectionHeading}" Text="{Binding PricingHeading}" />
+
+              <ContentControl Content="{Binding FxRate}"
+                              Visibility="{Binding Capabilities.SupportsFx, Converter={StaticResource BooleanToVisibilityConverter}}" />
+              <ContentControl Content="{Binding Uplift}"
+                              Visibility="{Binding Capabilities.SupportsUplift, Converter={StaticResource BooleanToVisibilityConverter}}" />
+              <ContentControl Content="{Binding DiscountOffMsrp}"
+                              Visibility="{Binding Capabilities.SupportsDiscountOffMsrp, Converter={StaticResource BooleanToVisibilityConverter}}" />
+              <ContentControl Content="{Binding OnCost}"
+                              Visibility="{Binding Capabilities.SupportsOnCost, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            </StackPanel>
           </StackPanel>
 
           <CheckBox Grid.Row="2"
@@ -251,7 +266,14 @@
       </Grid>
     </Border>
 
-    <!-- The only overlay: a blocking, destructive overwrite decision. -->
+    <!-- Per-line pricing review overlay (page 1). -->
+    <ContentControl x:Name="PricingReviewHost"
+                    Grid.RowSpan="4"
+                    Style="{StaticResource Overlay.DialogHost}"
+                    Content="{Binding PricingReview}"
+                    Visibility="{Binding HasPricingReview, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+    <!-- Blocking, destructive overwrite decision. -->
     <ContentControl x:Name="DialogHost"
                     Grid.RowSpan="4"
                     Style="{StaticResource Overlay.DialogHost}"

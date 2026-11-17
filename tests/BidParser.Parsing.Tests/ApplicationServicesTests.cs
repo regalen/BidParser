@@ -46,7 +46,9 @@ public sealed class ApplicationServicesTests
         juniper[0].AvailableTemplates.Should().Equal(CrmTemplates.ForeignUplift);
         juniper[0].SupportsOnCost.Should().BeFalse();
         juniper[0].SupportsSolutionIdSplit.Should().BeFalse();
-        juniper.Should().OnlyContain(item => item.CrmTemplate == CrmTemplates.ForeignUplift);
+        juniper.Should().OnlyContain(item => item.CrmTemplate == CrmTemplates.ForeignUplift && item.SupportsLinePricing);
+        catalog.Where(item => item.SupportsLinePricing).Select(item => item.Slug)
+            .Should().Equal(ParserSlugs.JuniperCpqXlsx, ParserSlugs.JuniperIndirectXlsx, ParserSlugs.JuniperIrisXlsx);
         catalog.Where(item => item.CalculatesCostFromMsrp).Select(item => item.Slug)
             .Should().Equal(ParserSlugs.JuniperIrisXlsx);
     }
@@ -55,14 +57,14 @@ public sealed class ApplicationServicesTests
     public void Template_capabilities_come_from_writer_profiles()
     {
         CrmWriter.GetCapabilities(CrmTemplates.ForeignUplift).Should().Be(
-            new CrmTemplateCapabilities(true, true, true, true, false, false, false));
+            new CrmTemplateCapabilities(true, true, true, true, false, false, false, true));
         CrmWriter.GetCapabilities(CrmTemplates.ForeignNoCalculation).Should().Be(
-            new CrmTemplateCapabilities(false, false, false, false, false, false, false));
+            new CrmTemplateCapabilities(false, false, false, false, false, false, false, true));
         CrmWriter.GetCapabilities(CrmTemplates.NoCalculation)!.SupportsOnCost.Should().BeTrue();
         CrmWriter.GetCapabilities(CrmTemplates.PercentOffWithUplift)!.RequiresDiscountOffMsrp.Should().BeTrue();
         CrmWriter.GetCapabilities("not-a-template").Should().BeNull();
         CrmWriter.GetCapabilities(CrmTemplates.ForeignUplift, calculatesCostFromMsrp: true).Should().Be(
-            new CrmTemplateCapabilities(true, true, true, true, true, true, false));
+            new CrmTemplateCapabilities(true, true, true, true, true, true, false, true));
     }
 
     [Fact]
@@ -318,6 +320,185 @@ public sealed class ApplicationServicesTests
         File.WriteAllText(copy, string.Empty);
         WorkbookWriteService.UniqueDestination(destination)
             .Should().Be(workspace.Path("9203_NoCalculation (3).xlsx"));
+    }
+
+    [Fact]
+    public async Task Line_pricing_is_required_or_forbidden_by_parser_trait_and_validated()
+    {
+        var writer = new WorkbookWriteService();
+        using var workspace = new TempWorkspace();
+
+        // Juniper requires LinePricing
+        var irisQuote = ParseSample("Juniper_Iris_Synthetic.xlsx", Vendors.Juniper, ParserSlugs.JuniperIrisXlsx);
+        var missingPricing = () => writer.WriteAsync(new WorkbookWriteRequest(irisQuote, workspace.Path("out.xlsx")));
+        (await missingPricing.Should().ThrowAsync<ParseInputException>())
+            .Which.Kind.Should().Be(ParseInputErrorKind.InvalidLinePricing);
+
+        // Non-line-pricing parser forbids LinePricing
+        var strikeQuote = ParseSample("Strike_Quote_9203.pdf", Vendors.Strike, ParserSlugs.StrikeQuotePdf);
+        var forbiddenPricing = () => writer.WriteAsync(new WorkbookWriteRequest(
+            strikeQuote,
+            workspace.Path("strike.xlsx"),
+            LinePricing: [new LinePricingEntry(0, strikeQuote.Result.LineItems[0].Vpn, 5m, null)]));
+        (await forbiddenPricing.Should().ThrowAsync<ParseInputException>())
+            .Which.Kind.Should().Be(ParseInputErrorKind.InvalidLinePricing);
+
+        // Count mismatch
+        var countMismatch = () => writer.WriteAsync(new WorkbookWriteRequest(
+            irisQuote,
+            workspace.Path("out.xlsx"),
+            LinePricing: [new LinePricingEntry(0, irisQuote.Result.LineItems[0].Vpn, 5m, 15m)]));
+        (await countMismatch.Should().ThrowAsync<ParseInputException>())
+            .Which.Message.Should().Contain("no longer match");
+
+        // Index mismatch
+        var indexMismatch = () => writer.WriteAsync(new WorkbookWriteRequest(
+            irisQuote,
+            workspace.Path("out.xlsx"),
+            LinePricing:
+            [
+                new LinePricingEntry(0, irisQuote.Result.LineItems[0].Vpn, 5m, 15m),
+                new LinePricingEntry(0, irisQuote.Result.LineItems[0].Vpn, 5m, 15m)
+            ]));
+        (await indexMismatch.Should().ThrowAsync<ParseInputException>())
+            .Which.Message.Should().Contain("no longer match");
+
+        // VPN mismatch
+        var vpnMismatch = () => writer.WriteAsync(new WorkbookWriteRequest(
+            irisQuote,
+            workspace.Path("out.xlsx"),
+            LinePricing:
+            [
+                new LinePricingEntry(0, irisQuote.Result.LineItems[0].Vpn, 5m, 15m),
+                new LinePricingEntry(1, "WRONG-VPN", 5m, 15m)
+            ]));
+        (await vpnMismatch.Should().ThrowAsync<ParseInputException>())
+            .Which.Message.Should().Contain("no longer match");
+
+        // Uplift = 100 rejected
+        var uplift100 = () => writer.WriteAsync(new WorkbookWriteRequest(
+            irisQuote,
+            workspace.Path("out.xlsx"),
+            LinePricing:
+            [
+                new LinePricingEntry(0, irisQuote.Result.LineItems[0].Vpn, 100m, 15m),
+                new LinePricingEntry(1, irisQuote.Result.LineItems[1].Vpn, 5m, 15m)
+            ]));
+        (await uplift100.Should().ThrowAsync<ParseInputException>())
+            .Which.Message.Should().Contain($"Line 1 ({irisQuote.Result.LineItems[0].Vpn}): Uplift");
+
+        // IM% with 3 dp rejected
+        var im3dp = () => writer.WriteAsync(new WorkbookWriteRequest(
+            irisQuote,
+            workspace.Path("out.xlsx"),
+            LinePricing:
+            [
+                new LinePricingEntry(0, irisQuote.Result.LineItems[0].Vpn, 5m, 15m),
+                new LinePricingEntry(1, irisQuote.Result.LineItems[1].Vpn, 5m, 12.345m)
+            ]));
+        (await im3dp.Should().ThrowAsync<ParseInputException>())
+            .Which.Message.Should().Contain($"Line 2 ({irisQuote.Result.LineItems[1].Vpn}): IM%");
+
+        // Iris missing IM% rejected
+        var irisMissingIm = () => writer.WriteAsync(new WorkbookWriteRequest(
+            irisQuote,
+            workspace.Path("out.xlsx"),
+            LinePricing:
+            [
+                new LinePricingEntry(0, irisQuote.Result.LineItems[0].Vpn, 5m, 15m),
+                new LinePricingEntry(1, irisQuote.Result.LineItems[1].Vpn, 5m, null)
+            ]));
+        (await irisMissingIm.Should().ThrowAsync<ParseInputException>())
+            .Which.Message.Should().Contain($"Line 2 ({irisQuote.Result.LineItems[1].Vpn}): IM% is required");
+    }
+
+    [Fact]
+    public async Task Line_pricing_applies_through_split_path_and_computes_blended_margin()
+    {
+        var fakeParser = new FakeSplitLinePricingParser();
+        var items = new[]
+        {
+            new Domain.Models.LineItem { Vpn = "SKU-A", Qty = 2, Cost = 0m, Msrp = 427m, SolutionId = "SOL-1" },
+            new Domain.Models.LineItem { Vpn = "SKU-B", Qty = 1, Cost = 0m, Msrp = 427m, SolutionId = "SOL-2" },
+        };
+        var result = new Domain.Models.ParseResult
+        {
+            Metadata = new Domain.Models.QuoteMetadata
+            {
+                QuoteNumber = "Q1", BidNumber = "B1", BidRevision = "1",
+                Supplier = Vendors.Juniper, Currency = "USD", QuotedTotal = 1281m,
+                SourceFilename = "quote.xlsx", ParserSlug = fakeParser.Slug
+            },
+            LineItems = items,
+            Validation = new Domain.Models.ValidationResult { ComputedTotal = 1281m, QuotedTotal = 1281m, Difference = 0m, Matches = true }
+        };
+        var quote = new ParsedQuote("quote.xlsx", "quote.xlsx", fakeParser, result, WasAuto: false);
+
+        using var workspace = new TempWorkspace();
+        var zipPath = workspace.Path("split.zip");
+        var entries = new[]
+        {
+            new LinePricingEntry(0, "SKU-A", Margin: 4.76m, ImPercent: 15m),
+            new LinePricingEntry(1, "SKU-B", Margin: 10m, ImPercent: 27.53m),
+        };
+
+        var written = await new WorkbookWriteService().WriteAsync(
+            new WorkbookWriteRequest(quote, zipPath, SplitBySolutionId: true, FxRate: 0.6520m, LinePricing: entries));
+
+        written.WorkbookCount.Should().Be(2);
+        written.BlendedMarginPercent.Should().Be(6.39m); // R5 blended margin
+
+        using var archive = ZipFile.OpenRead(zipPath);
+        archive.Entries.Should().HaveCount(2);
+
+        using var s1 = archive.GetEntry("B1_1_SOL-1_ForeignUplift.xlsx")!.Open();
+        using var wb1 = new XLWorkbook(s1);
+        var ws1 = wb1.Worksheet(CrmTemplates.ForeignUplift);
+        ws1.Cell(3, 11).GetValue<decimal>().Should().Be(4.76m);
+        ws1.Cell(3, 20).GetValue<decimal>().Should().Be(362.95m);
+
+        using var s2 = archive.GetEntry("B1_1_SOL-2_ForeignUplift.xlsx")!.Open();
+        using var wb2 = new XLWorkbook(s2);
+        var ws2 = wb2.Worksheet(CrmTemplates.ForeignUplift);
+        ws2.Cell(3, 11).GetValue<decimal>().Should().Be(10m);
+        ws2.Cell(3, 20).GetValue<decimal>().Should().Be(309.45m);
+    }
+
+    [Fact]
+    public void LinePricingPreview_builds_expected_lines_derived_im_and_source_cost()
+    {
+        var irisQuote = ParseSample("Juniper_Iris_Synthetic.xlsx", Vendors.Juniper, ParserSlugs.JuniperIrisXlsx);
+        var irisPreview = LinePricingPreview.Build(irisQuote);
+        irisPreview.ParserSlug.Should().Be(ParserSlugs.JuniperIrisXlsx);
+        irisPreview.Currency.Should().Be("USD");
+        irisPreview.UsesFxRate.Should().BeTrue();
+        irisPreview.ImPercentEditable.Should().BeTrue();
+        irisPreview.ImPercentRequired.Should().BeTrue();
+        irisPreview.Lines.Should().HaveCount(2);
+        irisPreview.Lines[0].LineNumber.Should().Be("1");
+        irisPreview.Lines[0].SourceCost.Should().BeNull();
+        irisPreview.Lines[0].DerivedImPercent.Should().BeNull();
+
+        var cpqQuote = ParseSample("Juniper_CPQ_900001.xlsx", Vendors.Juniper, ParserSlugs.JuniperCpqXlsx);
+        var cpqPreview = LinePricingPreview.Build(cpqQuote);
+        cpqPreview.ImPercentEditable.Should().BeTrue();
+        cpqPreview.ImPercentRequired.Should().BeFalse();
+        cpqPreview.Lines[0].SourceCost.Should().Be(cpqQuote.Result.LineItems[0].Cost);
+        cpqPreview.Lines[0].DerivedImPercent.Should().Be(
+            LinePricingMath.DerivedImPercent(cpqQuote.Result.LineItems[0].Cost, cpqQuote.Result.LineItems[0].Msrp));
+    }
+
+    private sealed class FakeSplitLinePricingParser : Domain.Abstractions.IParser
+    {
+        public string Slug => "fake_split_line_pricing";
+        public string DisplayName => "Fake Split Line Pricing";
+        public string Vendor => Vendors.Juniper;
+        public string AcceptedMime => SourceFormatInspector.XlsxMime;
+        public string CrmTemplate => CrmTemplates.ForeignUplift;
+        public bool SupportsSolutionIdSplit => true;
+        public bool CalculatesCostFromMsrp => true;
+        public bool SupportsLinePricing => true;
+        public Domain.Models.ParseResult Parse(string path) => throw new NotSupportedException();
     }
 
     private QuoteParseService Service() => new(registry, new SourceFormatInspector());

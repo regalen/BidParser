@@ -454,12 +454,18 @@
             </Grid>
           </Border>
 
-          <Button Margin="{StaticResource Space.Top12}"
-                  HorizontalAlignment="Left"
-                  Style="{StaticResource Button.Compact}"
-                  Content="Parse another file"
-                  Command="{Binding DataContext.ClearCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                  AutomationProperties.Name="Parse another file" />
+          <StackPanel Margin="{StaticResource Space.Top12}" Orientation="Horizontal">
+            <Button Margin="{StaticResource Space.Right8}"
+                    Style="{StaticResource Button.Compact}"
+                    Content="Edit pricing"
+                    Visibility="{Binding CanEditPricing, Converter={StaticResource BooleanToVisibilityConverter}}"
+                    Command="{Binding DataContext.EditPricingCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                    AutomationProperties.Name="Edit per-line pricing" />
+            <Button Style="{StaticResource Button.Compact}"
+                    Content="Parse another file"
+                    Command="{Binding DataContext.ClearCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                    AutomationProperties.Name="Parse another file" />
+          </StackPanel>
         </StackPanel>
       </ScrollViewer>
     </Grid>
@@ -591,6 +597,252 @@
                   AutomationProperties.Name="Cancel" />
         </StackPanel>
       </StackPanel>
+    </Border>
+  </DataTemplate>
+
+  <DataTemplate DataType="{x:Type vm:LinePricingViewModel}">
+    <Border Style="{StaticResource Surface.Card}"
+            CornerRadius="{StaticResource Radius.Dialog}"
+            Margin="{StaticResource Space.16}"
+            MaxWidth="920"
+            MaxHeight="580"
+            AutomationProperties.Name="Line pricing review">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Dialog header -->
+        <Border Grid.Row="0"
+                Padding="{StaticResource Space.16}"
+                BorderBrush="{DynamicResource Brush.Border}"
+                BorderThickness="{StaticResource Border.Bottom}">
+          <DockPanel LastChildFill="False">
+            <TextBlock DockPanel.Dock="Left"
+                       VerticalAlignment="Center"
+                       Style="{StaticResource Text.SectionHeading}"
+                       FontSize="13"
+                       Foreground="{DynamicResource Brush.TextPrimary}"
+                       Text="LINE PRICING" />
+            <TextBlock DockPanel.Dock="Left"
+                       Margin="{StaticResource Space.Horizontal12}"
+                       VerticalAlignment="Center"
+                       Style="{StaticResource Text.Caption}"
+                       Text="{Binding Subtitle}" />
+            <Border DockPanel.Dock="Right"
+                    Padding="{StaticResource Space.Horizontal8}"
+                    VerticalAlignment="Center"
+                    Background="{DynamicResource Brush.InfoWash}"
+                    BorderBrush="{DynamicResource Brush.InfoBorder}"
+                    BorderThickness="{StaticResource Border.All}"
+                    CornerRadius="{StaticResource Radius.Bar}">
+              <TextBlock Style="{StaticResource Text.Caption}"
+                         FontWeight="{StaticResource Weight.SemiBold}"
+                         Foreground="{DynamicResource Brush.InfoText}"
+                         Text="{Binding CurrencyBadgeText}" />
+            </Border>
+          </DockPanel>
+        </Border>
+
+        <!-- Header inputs + Apply buttons -->
+        <Border Grid.Row="1"
+                Padding="{StaticResource Space.16}"
+                Background="{DynamicResource Brush.SurfaceInset}"
+                BorderBrush="{DynamicResource Brush.Border}"
+                BorderThickness="{StaticResource Border.Bottom}">
+          <WrapPanel Orientation="Horizontal" VerticalAlignment="Top">
+            <StackPanel Width="180"
+                        Margin="{StaticResource Space.Right12}"
+                        Visibility="{Binding UsesFxRate, Converter={StaticResource BooleanToVisibilityConverter}}">
+              <ContentControl Content="{Binding FxRate}" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal"
+                        Margin="{StaticResource Space.Right12}"
+                        Visibility="{Binding ImPercentEditable, Converter={StaticResource BooleanToVisibilityConverter}}">
+              <StackPanel Width="160">
+                <ContentControl Content="{Binding HeaderImPercent}" />
+              </StackPanel>
+              <Button Margin="6,30,0,0"
+                      VerticalAlignment="Top"
+                      Style="{StaticResource Button.Secondary}"
+                      Content="Apply to all"
+                      Command="{Binding ApplyImPercentCommand}"
+                      AutomationProperties.Name="Apply IM% to all lines" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal">
+              <StackPanel Width="160">
+                <ContentControl Content="{Binding HeaderUplift}" />
+              </StackPanel>
+              <Button Margin="6,30,0,0"
+                      VerticalAlignment="Top"
+                      Style="{StaticResource Button.Secondary}"
+                      Content="Apply to all"
+                      Command="{Binding ApplyUpliftCommand}"
+                      AutomationProperties.Name="Apply Uplift to all lines" />
+            </StackPanel>
+          </WrapPanel>
+        </Border>
+
+        <!-- 12-column DataGrid -->
+        <DataGrid Grid.Row="2"
+                  ItemsSource="{Binding Rows}"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  CanUserReorderColumns="False"
+                  CanUserSortColumns="False"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal"
+                  HorizontalGridLinesBrush="{DynamicResource Brush.Border}"
+                  Background="{DynamicResource Brush.Surface}"
+                  RowBackground="{DynamicResource Brush.Surface}"
+                  AlternatingRowBackground="{DynamicResource Brush.Surface}"
+                  BorderThickness="0"
+                  SelectionMode="Single"
+                  SelectionUnit="FullRow"
+                  ScrollViewer.CanContentScroll="True"
+                  ScrollViewer.VerticalScrollBarVisibility="Auto"
+                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                  AutomationProperties.Name="Quote lines pricing grid">
+          <DataGrid.RowStyle>
+            <Style TargetType="DataGridRow">
+              <Setter Property="ToolTip" Value="{Binding RowErrorMessage}" />
+              <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+            </Style>
+          </DataGrid.RowStyle>
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Line#" Binding="{Binding LineNumber}" IsReadOnly="True" Width="Auto" />
+            <DataGridTextColumn Header="VPN" Binding="{Binding Vpn}" IsReadOnly="True" Width="Auto" />
+            <DataGridTemplateColumn Header="Description" Width="180" IsReadOnly="True">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <TextBlock VerticalAlignment="Center"
+                             Margin="{StaticResource Space.Horizontal8}"
+                             Text="{Binding Description}"
+                             TextTrimming="CharacterEllipsis"
+                             ToolTip="{Binding Description}"
+                             AutomationProperties.Name="{Binding Description}" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="Qty" Binding="{Binding Qty}" IsReadOnly="True" Width="Auto" />
+            <DataGridTextColumn Header="MSRP" Binding="{Binding MsrpDisplay}" IsReadOnly="True" Width="Auto" />
+            <DataGridTemplateColumn Header="IM%*" Width="96">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <Grid Margin="{StaticResource Space.2}">
+                    <TextBox Width="82"
+                             Height="{StaticResource Size.CompactControl}"
+                             Padding="6,0"
+                             VerticalContentAlignment="Center"
+                             HorizontalContentAlignment="Right"
+                             Background="{DynamicResource Brush.Surface}"
+                             Foreground="{DynamicResource Brush.TextPrimary}"
+                             BorderBrush="{DynamicResource Brush.BorderStrong}"
+                             BorderThickness="{StaticResource Border.All}"
+                             Text="{Binding ImPercent, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"
+                             Visibility="{Binding IsImEditable, Converter={StaticResource BooleanToVisibilityConverter}}"
+                             ToolTip="{Binding ImErrorMessage}"
+                             AutomationProperties.Name="Line IM%" />
+                  </Grid>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="Cost" Binding="{Binding SourceCostDisplay}" IsReadOnly="True" Width="Auto" />
+            <DataGridTextColumn Header="Unit Cost" Binding="{Binding UnitCostDisplay}" IsReadOnly="True" Width="Auto" />
+            <DataGridTextColumn Header="Ext Cost" Binding="{Binding ExtCostDisplay}" IsReadOnly="True" Width="Auto" />
+            <DataGridTemplateColumn Header="Uplift%*" Width="96">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <Grid Margin="{StaticResource Space.2}">
+                    <TextBox Width="82"
+                             Height="{StaticResource Size.CompactControl}"
+                             Padding="6,0"
+                             VerticalContentAlignment="Center"
+                             HorizontalContentAlignment="Right"
+                             Background="{DynamicResource Brush.Surface}"
+                             Foreground="{DynamicResource Brush.TextPrimary}"
+                             BorderBrush="{DynamicResource Brush.BorderStrong}"
+                             BorderThickness="{StaticResource Border.All}"
+                             Text="{Binding Uplift, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"
+                             Visibility="{Binding IsUpliftEditable, Converter={StaticResource BooleanToVisibilityConverter}}"
+                             ToolTip="{Binding UpliftErrorMessage}"
+                             AutomationProperties.Name="Line Uplift%" />
+                  </Grid>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="Unit Price" Binding="{Binding UnitPriceDisplay}" IsReadOnly="True" Width="Auto" />
+            <DataGridTextColumn Header="Ext Price" Binding="{Binding ExtPriceDisplay}" IsReadOnly="True" Width="Auto" />
+          </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Legend -->
+        <Border Grid.Row="3"
+                Padding="{StaticResource Space.Horizontal16}"
+                Margin="{StaticResource Space.Top8}">
+          <TextBlock Style="{StaticResource Text.Caption}"
+                     Foreground="{DynamicResource Brush.TextMuted}"
+                     Text="* editable · Cost = supplier net cost (blank for Iris; filled for CPQ / Indirect)" />
+        </Border>
+
+        <!-- Totals footer + Cancel / Next -->
+        <Border Grid.Row="4"
+                Margin="{StaticResource Space.Top8}"
+                Padding="{StaticResource Space.16}"
+                Background="{DynamicResource Brush.SurfaceInset}"
+                BorderBrush="{DynamicResource Brush.Border}"
+                BorderThickness="{StaticResource Border.Top}">
+          <DockPanel LastChildFill="False">
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+              <StackPanel Margin="{StaticResource Space.Right12}">
+                <TextBlock Style="{StaticResource Text.SectionHeading}" Text="TOTAL COST" />
+                <TextBlock Margin="{StaticResource Space.Top2}"
+                           FontWeight="{StaticResource Weight.SemiBold}"
+                           Text="{Binding TotalCostDisplay}" />
+              </StackPanel>
+              <StackPanel Margin="{StaticResource Space.Right12}">
+                <TextBlock Style="{StaticResource Text.SectionHeading}" Text="TOTAL PRICE" />
+                <TextBlock Margin="{StaticResource Space.Top2}"
+                           FontWeight="{StaticResource Weight.SemiBold}"
+                           Text="{Binding TotalPriceDisplay}" />
+              </StackPanel>
+              <StackPanel Margin="{StaticResource Space.Right12}">
+                <TextBlock Style="{StaticResource Text.SectionHeading}" Text="TOTAL MARGIN $" />
+                <TextBlock Margin="{StaticResource Space.Top2}"
+                           FontWeight="{StaticResource Weight.SemiBold}"
+                           Foreground="{DynamicResource Brush.SuccessText}"
+                           Text="{Binding TotalMarginAmountDisplay}" />
+              </StackPanel>
+              <StackPanel>
+                <TextBlock Style="{StaticResource Text.SectionHeading}" Text="TOTAL MARGIN %" />
+                <TextBlock Margin="{StaticResource Space.Top2}"
+                           FontWeight="{StaticResource Weight.SemiBold}"
+                           Foreground="{DynamicResource Brush.SuccessText}"
+                           Text="{Binding TotalMarginPercentDisplay}" />
+              </StackPanel>
+            </StackPanel>
+
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+              <Button Margin="{StaticResource Space.Right8}"
+                      Style="{StaticResource Button.Secondary}"
+                      Content="Cancel"
+                      Command="{Binding CancelCommand}"
+                      AutomationProperties.Name="Cancel pricing review" />
+              <Button Style="{StaticResource Button.Primary}"
+                      Content="Next"
+                      Command="{Binding NextCommand}"
+                      AutomationProperties.Name="Confirm pricing and continue" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+      </Grid>
     </Border>
   </DataTemplate>
 </ResourceDictionary>

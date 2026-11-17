@@ -148,3 +148,37 @@ public sealed record MonitoringRunsResponse(
     int Total,
     IReadOnlyList<MonitoringRunItem> Items
 );
+
+public sealed record ParsePreviewValidationResponse(
+    bool Matches,
+    [property: JsonConverter(typeof(MoneyConverter))] decimal ComputedTotal,
+    [property: JsonConverter(typeof(PercentageConverter))] decimal? QuotedTotal,
+    IReadOnlyList<string> Warnings);
+
+public sealed record ParsePreviewLineResponse(
+    int Index,
+    string LineNumber,
+    string Vpn,
+    string? Description,
+    int Qty,
+    [property: JsonConverter(typeof(NullableUnscaledDecimalStringConverter))] decimal? Msrp,
+    [property: JsonConverter(typeof(NullableUnscaledDecimalStringConverter))] decimal? SourceCost,
+    [property: JsonConverter(typeof(PercentageConverter))] decimal? DerivedImPercent,
+    bool IsCancelled);
+
+public sealed record ParsePreviewResponse(
+    string ParserSlug,
+    string ParserDisplayName,
+    string Currency,
+    string CrmTemplate,
+    bool UsesFxRate,
+    bool ImPercentEditable,
+    bool ImPercentRequired,
+    ParsePreviewValidationResponse Validation,
+    IReadOnlyList<ParsePreviewLineResponse> Lines);
+
+public sealed record LinePricingRequestItem(
+    int Index,
+    string Vpn,
+    [property: JsonConverter(typeof(MoneyConverter))] decimal Margin,
+    [property: JsonConverter(typeof(PercentageConverter))] decimal? ImPercent);

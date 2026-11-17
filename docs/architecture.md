@@ -59,7 +59,8 @@ Everything vendor-specific lives behind one interface, `IParser`
 ([`src/BidParser.Domain/Abstractions/IParser.cs`](../src/BidParser.Domain/Abstractions/IParser.cs)).
 A parser declares its identity (`Slug`, `DisplayName`, `Vendor`), what it accepts (`AcceptedMime`
 and the authoritative `AcceptedMimes`), what it writes (`CrmTemplate`, `AvailableTemplates`),
-optional UI/output capabilities such as `SupportsOnCost` and `SupportsSolutionIdSplit`, and
+optional UI/output capabilities such as `SupportsOnCost`, `SupportsSolutionIdSplit`,
+`CalculatesCostFromMsrp`, and `SupportsLinePricing`, and
 returns a `ParseResult { Metadata, LineItems, Validation }`.
 
 Two design rules matter more than the rest:
@@ -74,9 +75,10 @@ work on the fixture and fail on the next real quote.
 **Writers never special-case a vendor or slug.** Where a format needs different presentation, the
 parser declares a trait and generic code obeys it. `TermRendersAsComment` decides whether the term
 lands in the numeric Warranty column or as a `"{n} Months"` comment; `SupportsSolutionIdSplit`
-decides whether the split-output option is offered; `OutputVendorName` decides what goes in the
-workbook's Vendor Name column, which is how both Lenovo vendor groupings still write `LENOVO`. Add
-a trait rather than a conditional.
+decides whether the split-output option is offered; `SupportsLinePricing` decides whether main-page
+FX/Uplift/IM% fields are replaced by the two-step per-line pricing review modal; `OutputVendorName`
+decides what goes in the workbook's Vendor Name column, which is how both Lenovo vendor groupings
+still write `LENOVO`. Add a trait rather than a conditional.
 
 ### Parser selection
 
@@ -113,34 +115,47 @@ format".
 
 ## How a parse flows
 
-1. **Upload.** The SPA posts multipart to `POST /api/parse` with the file, the chosen vendor and
-   parser slug, the CRM template, and whatever numeric inputs the template requires (FX rate,
-   margin, IM%, on-cost %). For Dell there is no file — the SPA sends a quote ID.
-2. **Dell fetch (Dell only).** `ParseEndpoints` validates the quote ID, then `DellQuoteClient`
+1. **Optional pricing preview (`SupportsLinePricing` formats only).** For parsers declaring
+   `SupportsLinePricing` (currently all three Juniper formats), the main form hides FX rate, Uplift,
+   and IM% inputs. Clicking **Upload & Parse** first posts the file, vendor, parser slug, and CRM
+   template to `POST /api/parse/preview`. `ParseService.PreviewAsync` validates the upload, runs the
+   parser, deletes the stored upload on success, writes no `ParseJob` or
+   `ParseMetric`, and returns `ParsePreviewResponse`. The SPA opens the two-page
+   `LinePricingModal` (Step 1: Pricing) where the user sets header FX, optionally bulk-applies IM%
+   and Uplift, and edits per-line IM% and Uplift before clicking **Submit**.
+2. **Upload.** The SPA posts multipart to `POST /api/parse` with the file, the chosen vendor and
+   parser slug, the CRM template, and whatever numeric inputs the template requires (header FX rate,
+   margin, IM%, on-cost % — or header FX rate plus the `linePricing` JSON array for
+   `SupportsLinePricing` parsers). For Dell there is no file — the SPA sends a quote ID.
+3. **Dell fetch (Dell only).** `ParseEndpoints` validates the quote ID, then `DellQuoteClient`
    fetches the JSON from Dell's Quote API using stored credentials, and that response becomes the
    stored source. Failures here return 422 with stage `dellApi` before anything is persisted.
-3. **Store and validate the container.** `ParseService` saves the upload via `FileStorage` and
+4. **Store and validate the container.** `ParseService` saves the upload via `FileStorage` and
    checks magic bytes (`%PDF`, `PK\x03\x04`, or a leading `{`/`[` for JSON) alongside the
    extension, so a renamed file is rejected rather than mis-parsed.
-4. **Resolve the parser.** A concrete slug is used directly; an Auto slug goes through
+5. **Resolve the parser.** A concrete slug is used directly; an Auto slug goes through
    `FormatDetection`.
-5. **Parse.** The parser returns `ParseResult`. Validation normally uses cost; Juniper Iris uses MSRP because no cost is supplied:
+6. **Parse.** The parser returns `ParseResult`. Validation normally uses cost; Juniper Iris uses MSRP because no cost is supplied:
    `computed_total = Σ(cost × qty)` compared to the quoted total with a `0.01` tolerance. Formats
    whose source carries no quoted total construct `ValidationResult` directly rather than validating
    against null. HP, HPE, and Zebra return a passing result; Juniper Indirect checks each source line
    total and can return a saveable mismatch with line-specific warnings.
-6. **Write the workbook.** `ParseService` builds `CrmWriterOptions` — vendor name, margin, FX rate,
-   currency, IM%, on-cost, term placement — and calls `CrmWriter`, which copies the template and
-   fills it per the `CrmTemplateProfile`. When a Solution ID split is requested,
-   `SolutionOutputSplitter` produces one renumbered workbook per Solution ID and the retained output
-   is a single ZIP.
-7. **Persist.** On success a `ParseJob` row and a `ParseMetric` row are written in one transaction.
-   A validation mismatch additionally records a `FailedParseJob` of category `ValidationMismatch`
-   on a best-effort basis.
-8. **Respond.** The workbook is returned along with headers the SPA reads — `X-Parser-Slug`,
+7. **Write the workbook.** `WorkbookWriteService` validates and projects `LinePricing` onto
+   `LineItem.Margin` and `LineItem.ImPercent` when `SupportsLinePricing` is true, builds
+   `CrmWriterOptions` — vendor name, margin, FX rate, currency, IM%, on-cost, term placement — and
+   calls `CrmWriter`, which copies the template and fills it per the `CrmTemplateProfile`. When a
+   Solution ID split is requested, `SolutionOutputSplitter` produces one renumbered workbook per
+   Solution ID and the retained output is a single ZIP.
+8. **Persist.** On success a `ParseJob` row and a `ParseMetric` row are written in one transaction
+   (with `Margin` storing the quote-level blended margin % for line-priced jobs). A validation
+   mismatch additionally records a `FailedParseJob` of category `ValidationMismatch` on a
+   best-effort basis.
+9. **Respond.** The workbook is returned along with headers the SPA reads — `X-Parser-Slug`,
    `X-Validation`, `X-Currency`, `X-Computed-Total`, `X-Quoted-Total`, optional `X-Validation-Warnings`, and situational ones like
-   `X-Split-Count` and `X-Cancelled-Lines`. The SPA always shows a result modal with an explicit
-   Download button; there is no auto-download and no review/edit screen.
+   `X-Split-Count` and `X-Cancelled-Lines`. The SPA always shows a result modal (or Step 2: Result
+   of `LinePricingModal` for line-priced formats) with an explicit Download button; there is no
+   auto-download, and only `SupportsLinePricing` formats present a pricing review step (for
+   IM%/Uplift/FX only — never VPN, Description, Qty, or MSRP).
 
 ### How a desktop parse flows
 
@@ -151,8 +166,11 @@ format".
    the file.
 3. **Resolve and parse.** Concrete selections stay explicit; Auto uses the same registry detection
    threshold. The parser runs off the UI thread and returns the same `ParseResult` used by web.
-4. **Review.** The parsed quote remains in memory while the persistent result region shows success,
-   mismatch/parser warnings, or sanitized failure detail. No history or metric is written.
+4. **Review.** When the resolved parser declares `SupportsLinePricing`, the desktop opens the
+   in-window `LinePricingViewModel` overlay so the user can review Exchange Rate and per-line IM% /
+   Uplift before advancing to the result card (and reopen it via **Edit pricing**). The parsed quote
+   remains in memory while the persistent result region shows success, mismatch/parser warnings, or
+   sanitized failure detail. No history or metric is written.
 5. **Save explicitly.** `WorkbookWriteService` validates options and uses the shared writer,
    naming, and Solution ID/SAID splitter. It stages in the chosen directory and atomically moves a
    completed XLSX or ZIP into place after conflict handling.

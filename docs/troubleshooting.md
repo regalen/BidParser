@@ -226,6 +226,19 @@ Bid metadata extraction is best-effort by design and degrades to null rather tha
 so an unreadable header costs a label, not a workbook. `ParseService` logs a warning naming the file
 and parser slug when this happens; a run of them means a vendor changed a header.
 
+**"The quote lines no longer match the reviewed pricing" or a line-pricing 400 on `/api/parse`.**
+For formats declaring `SupportsLinePricing` (all three Juniper XLSX formats), `POST /api/parse`
+requires a `linePricing` JSON array whose entries match the parsed quote's line count, 0-based
+`index` order (`0..N-1`), and exact `vpn` at every row, while forbidding header `margin` and
+`imPercent` fields. If the file on disk was modified between `POST /api/parse/preview` and
+**Submit**, or a direct API caller submitted stale or out-of-order entries, the backend
+returns HTTP 400 (`"The quote lines no longer match the reviewed pricing. Upload the file again."`)
+and records no `ParseJob`, `ParseMetric`, or `FailedParseJob`. Other 400 responses on line-priced
+requests indicate missing `linePricing` (`"Line pricing is required for this format."`), passing
+`linePricing` to a format that does not support it (`"This format does not use per-line pricing."`),
+an out-of-range Uplift (`0 ≤ margin < 100`, up to 2 dp), a negative or over-precision IM% (`≥ 0`, up
+to 2 dp), or a missing IM% on a required line (Juniper Iris).
+
 ## Portable Windows desktop
 
 **Windows SmartScreen warns or a managed device blocks `BidParser.exe`.**

@@ -114,6 +114,22 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0
         });
     });
+
+    options.AddPolicy("parsePreview", httpContext =>
+    {
+        var userId = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? httpContext.Connection.RemoteIpAddress?.ToString()
+            ?? "anonymous";
+
+        return RateLimitPartition.GetTokenBucketLimiter(userId, _ => new TokenBucketRateLimiterOptions
+        {
+            TokenLimit = 10,
+            TokensPerPeriod = 5,
+            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+            AutoReplenishment = true,
+            QueueLimit = 0
+        });
+    });
 });
 builder.Services.AddHostedService<MigratorHostedService>();
 builder.Services.AddHostedService<BootstrapAdminHostedService>();

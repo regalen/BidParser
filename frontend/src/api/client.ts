@@ -5,6 +5,7 @@ import type {
   MetricsSummaryResponse,
   MonitoringRunsResponse,
   ParserInfo,
+  ParsePreview,
   ParseUiConfig,
   RuntimeConfigurationAdmin,
   RuntimeConfigDocument,
@@ -193,6 +194,13 @@ export const api = {
 
   deleteUser(id: number): Promise<void> {
     return request<void>(`/users/${id}`, { method: 'DELETE' });
+  },
+
+  parsePreview(formData: FormData): Promise<ParsePreview> {
+    return request<ParsePreview>('/parse/preview', {
+      method: 'POST',
+      body: formData,
+    });
   },
 
   async parse(formData: FormData): Promise<ParseResponse> {
