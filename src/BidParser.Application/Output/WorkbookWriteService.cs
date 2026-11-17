@@ -304,11 +304,12 @@ public sealed class WorkbookWriteService
 
             if (entry.ImPercent is { } im)
             {
-                if (im < 0m || im != decimal.Round(im, 2))
+                // Above 100 the discount exceeds MSRP and the written cost would be negative.
+                if (im < 0m || im > 100m || im != decimal.Round(im, 2))
                 {
                     throw new ParseInputException(
                         ParseInputErrorKind.InvalidLinePricing,
-                        $"Line {lineNo} ({item.Vpn}): IM% must be nonnegative with at most two decimal places.");
+                        $"Line {lineNo} ({item.Vpn}): IM% must be between 0 and 100 with at most two decimal places.");
                 }
             }
 

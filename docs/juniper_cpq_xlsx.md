@@ -4,7 +4,7 @@
 - **Slug:** `juniper_cpq_xlsx`
 - **Accepted MIME:** `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
 - **CRM templates:** `Foreign Uplift` only
-- **Additional settings:** per-line pricing review (`SupportsLinePricing => true`). Exchange rate is header-level; per-line IM% (Discount Off MSRP) and Uplift (`0 ≤ Uplift < 100`, at most 2 dp) are reviewed in the pricing popup.
+- **Additional settings:** per-line pricing review (`SupportsLinePricing => true`). Exchange rate is header-level; per-line IM% (Discount Off MSRP, `0 ≤ IM% ≤ 100`) and Uplift (`0 ≤ Uplift < 100`), each at most 2 dp, are reviewed in the pricing popup.
 - **Selection:** Explicit file-type selection is required; Juniper has no Auto entry.
 
 ## Recognition and extraction

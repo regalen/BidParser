@@ -44,8 +44,12 @@ Exchange Rate, Uplift, and IM% inputs do not appear on the main form; instead, t
 popup collects Exchange Rate at header level and per-line IM% (`LineItem.ImPercent`) and Uplift
 (`LineItem.Margin`, where Uplift is margin on the sale price: `0 ≤ Uplift < 100`, at most 2 dp).
 Header IM% and Uplift inputs in the popup act as bulk **Apply** helpers across all lines. Every
-non-cancelled Iris line with `Msrp > 0` requires a per-line IM% (nonnegative, at most two decimal
-places, with no upper limit). BidParser calculates Foreign Cost per unit in column T as
+non-cancelled Iris line with `Msrp > 0` requires a per-line IM% (`0 ≤ IM% ≤ 100`, at most two
+decimal places; 100 makes the line free and writes the zero-price sentinel, and anything above 100
+is rejected because it would produce a negative cost). The web popup refuses keystrokes and pastes
+that could never be valid (a minus sign, a value over the limit, a third decimal place, letters)
+and shows the limit briefly; its totals read "—" until every line is complete and valid, so a
+partial sum is never shown. BidParser calculates Foreign Cost per unit in column T as
 `Msrp × (1 − IM% / 100)`, rounded to two decimal places with midpoint rounding away from zero
 (`LinePricingMath.CostFromMsrp`). For MSRP 427, IM% 15 gives 362.95, and IM% 27.53 gives 309.45.
 A calculated zero uses the standard zero-price sentinel. Column K writes each line's Uplift

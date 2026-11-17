@@ -208,8 +208,9 @@ See [troubleshooting.md](troubleshooting.md#portable-windows-desktop) for known 
 Juniper requires explicit CPQ, Indirect, or Iris selection; no Auto entry is offered. All three
 formats use Foreign Uplift only and declare `SupportsLinePricing => true`. Main-window FX, Uplift,
 and IM% fields are hidden; after **Parse quote**, the in-window pricing review overlay collects
-header Exchange Rate (`> 0`, up to 4 dp) and per-line IM% (`≥ 0`, up to 2 dp, no upper limit) and
-Uplift (`0 ≤ Uplift < 100`, up to 2 dp). For Iris, every non-cancelled line with `Msrp > 0`
+header Exchange Rate (`> 0`, up to 4 dp) and per-line IM% (`0 ≤ IM% ≤ 100`, up to 2 dp) and
+Uplift (`0 ≤ Uplift < 100`, up to 2 dp). Out-of-range values are flagged and block **Next**,
+and the totals read "—" until every line is valid. For Iris, every non-cancelled line with `Msrp > 0`
 requires IM% and BidParser calculates Foreign Cost from MSRP less IM%, rounded to cents. For CPQ
 and Indirect, each line displays its derived IM% and writes the unrounded source cost to column T
 unless the line's IM% is overridden (via header **Apply** or a row edit), in which case column T
