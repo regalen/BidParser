@@ -192,6 +192,47 @@ public sealed class LinePricingViewModelTests
     }
 
     [Fact]
+    public void Im_percent_is_limited_to_0_through_100_and_totals_hide_while_any_line_is_invalid()
+    {
+        var vm = new LinePricingViewModel(
+            CreateIrisPreview(),
+            "Juniper_Iris.xlsx",
+            new VendorDefaults(FxRate: 0.652m, Margin: 4.76m, ImPercent: 15m));
+        vm.ApplyImPercentCommand.Execute(null);
+        vm.ApplyUpliftCommand.Execute(null);
+        vm.AreTotalsAvailable.Should().BeTrue();
+        vm.TotalCostDisplay.Should().NotBe("—");
+
+        // Exactly 100 is allowed: the line becomes free.
+        vm.Rows[0].ImPercent = 100m.ToString(CultureInfo.CurrentCulture);
+        vm.Rows[0].ImErrorMessage.Should().BeNull();
+        vm.IsValid.Should().BeTrue();
+
+        // Above 100 is rejected, blocks Next, and hides every total rather than showing a partial sum.
+        vm.Rows[0].ImPercent = 100.01m.ToString(CultureInfo.CurrentCulture);
+        vm.Rows[0].ImErrorMessage.Should().Be("Line 1: IM% cannot be more than 100.");
+        vm.IsValid.Should().BeFalse();
+        vm.NextCommand.CanExecute(null).Should().BeFalse();
+        vm.AreTotalsAvailable.Should().BeFalse();
+        vm.TotalCostDisplay.Should().Be("—");
+        vm.TotalPriceDisplay.Should().Be("—");
+        vm.TotalMarginAmountDisplay.Should().Be("—");
+        vm.TotalMarginPercentDisplay.Should().Be("—");
+
+        // The header IM% field enforces the same ceiling, so Apply to all cannot push it past 100.
+        vm.HeaderImPercent.Text = 100.5m.ToString(CultureInfo.CurrentCulture);
+        vm.HeaderImPercent.HasError.Should().BeTrue();
+        vm.ApplyImPercentCommand.CanExecute(null).Should().BeFalse();
+        vm.HeaderImPercent.Text = 100m.ToString(CultureInfo.CurrentCulture);
+        vm.HeaderImPercent.HasError.Should().BeFalse();
+
+        // Fixing the line restores the totals.
+        vm.Rows[0].ImPercent = 15m.ToString(CultureInfo.CurrentCulture);
+        vm.AreTotalsAvailable.Should().BeTrue();
+        vm.TotalCostDisplay.Should().NotBe("—");
+    }
+
+    [Fact]
     public void Totals_and_ToEntries_match_reference_case_R5()
     {
         var preview = CreateR5Preview();

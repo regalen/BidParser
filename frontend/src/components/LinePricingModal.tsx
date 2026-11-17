@@ -1,5 +1,5 @@
 import { AlertTriangle, CheckCircle2, Download, Loader2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { ParseResponse } from '../api/client';
 import type { LinePricingPayloadEntry, ParsePreview, RuntimeVendorDefaults } from '../types';
@@ -8,8 +8,11 @@ import {
   formatDollars2dp,
   formatMoney2dp,
   formatPercent2dp,
+  PRICING_INPUT_LIMITS,
+  type PricingInputKind,
+  acceptsPartialInput,
   isFxRate4dp,
-  isPercent2dp,
+  isImPercent,
   isUplift,
   parseScaled,
   summariseTotals,
@@ -51,6 +54,26 @@ export function LinePricingModal({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<ParseResponse | null>(null);
+  const [inputHint, setInputHint] = useState<string | null>(null);
+  const inputHintTimer = useRef<number | undefined>(undefined);
+
+  useEffect(() => () => window.clearTimeout(inputHintTimer.current), []);
+
+  /**
+   * Applies a typed or pasted value only when it could still become valid, so out-of-range and
+   * malformed values (negative, over the limit, too many decimals, letters) never reach the field.
+   * A refused change keeps the previous value and briefly explains the limit.
+   */
+  const guardInput = (kind: PricingInputKind, lineLabel: string | null, raw: string, apply: (value: string) => void) => {
+    const value = raw.trim();
+    if (acceptsPartialInput(kind, value)) {
+      apply(value);
+      return;
+    }
+    window.clearTimeout(inputHintTimer.current);
+    setInputHint(lineLabel ? `${lineLabel}: ${PRICING_INPUT_LIMITS[kind]}` : PRICING_INPUT_LIMITS[kind]);
+    inputHintTimer.current = window.setTimeout(() => setInputHint(null), 3500);
+  };
 
   const [fxRate, setFxRate] = useState(() => vendorDefaults?.fxRate ?? '');
   const [headerImPercent, setHeaderImPercent] = useState(() => vendorDefaults?.imPercent ?? '');
@@ -129,7 +152,7 @@ export function LinePricingModal({
   }, [computedRows]);
 
   const validFxRate = !preview.usesFxRate || isFxRate4dp(fxRate);
-  const validHeaderIm = isPercent2dp(headerImPercent);
+  const validHeaderIm = isImPercent(headerImPercent);
   const validHeaderUplift = isUplift(headerUplift);
   const allRowsValid = computedRows.every((r) => r.computed.validIm && r.computed.validUplift);
   const canSubmitPricing = validFxRate && allRowsValid && !submitting;
@@ -289,7 +312,7 @@ export function LinePricingModal({
                   inputMode="decimal"
                   value={fxRate}
                   placeholder="0.6520"
-                  onChange={(e) => setFxRate(e.target.value)}
+                  onChange={(e) => guardInput('fxRate', null, e.target.value, setFxRate)}
                   className={`h-[34px] w-28 rounded-lg border px-2.5 text-[13px] bg-white focus:outline-none focus:ring-2 ${
                     fxRate.trim().length > 0 && !validFxRate
                       ? 'border-red-400 focus:ring-red-200'
@@ -312,7 +335,7 @@ export function LinePricingModal({
                       inputMode="decimal"
                       value={headerImPercent}
                       placeholder="15.00"
-                      onChange={(e) => setHeaderImPercent(e.target.value)}
+                      onChange={(e) => guardInput('imPercent', null, e.target.value, setHeaderImPercent)}
                       className={`h-[34px] w-24 rounded-lg border pl-2.5 pr-6 text-[13px] bg-white focus:outline-none focus:ring-2 ${
                         headerImPercent.trim().length > 0 && !validHeaderIm
                           ? 'border-red-400 focus:ring-red-200'
@@ -348,7 +371,7 @@ export function LinePricingModal({
                     inputMode="decimal"
                     value={headerUplift}
                     placeholder="4.76"
-                    onChange={(e) => setHeaderUplift(e.target.value)}
+                    onChange={(e) => guardInput('uplift', null, e.target.value, setHeaderUplift)}
                     className={`h-[34px] w-24 rounded-lg border pl-2.5 pr-6 text-[13px] bg-white focus:outline-none focus:ring-2 ${
                       headerUplift.trim().length > 0 && !validHeaderUplift
                         ? 'border-red-400 focus:ring-red-200'
@@ -470,7 +493,11 @@ export function LinePricingModal({
                               inputMode="decimal"
                               value={row.imPercent}
                               placeholder={!preview.imPercentRequired ? (line.derivedImPercent ?? '') : ''}
-                              onChange={(e) => handleRowImChange(idx, e.target.value)}
+                              onChange={(e) =>
+                                guardInput('imPercent', `Line ${line.lineNumber}`, e.target.value, (value) =>
+                                  handleRowImChange(idx, value),
+                                )
+                              }
                               className={`h-[26px] w-[72px] rounded-md border pl-1.5 pr-4 text-right text-xs focus:outline-none focus:ring-2 ${
                                 !computed.validIm
                                   ? 'border-red-400 bg-red-50 ring-1 ring-red-400 focus:ring-red-200'
@@ -527,7 +554,11 @@ export function LinePricingModal({
                               title={computed.upliftError ?? undefined}
                               inputMode="decimal"
                               value={row.uplift}
-                              onChange={(e) => handleRowUpliftChange(idx, e.target.value)}
+                              onChange={(e) =>
+                                guardInput('uplift', `Line ${line.lineNumber}`, e.target.value, (value) =>
+                                  handleRowUpliftChange(idx, value),
+                                )
+                              }
                               className={`h-[26px] w-[72px] rounded-md border pl-1.5 pr-4 text-right text-xs focus:outline-none focus:ring-2 ${
                                 !computed.validUplift
                                   ? 'border-red-400 bg-red-50 ring-1 ring-red-400 focus:ring-red-200'
@@ -561,6 +592,17 @@ export function LinePricingModal({
             </table>
           </div>
 
+          <div role="status" aria-live="polite" className="mx-5">
+            {inputHint && (
+              <div
+                data-testid="input-limit-hint"
+                className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800"
+              >
+                {inputHint}
+              </div>
+            )}
+          </div>
+
           {submitError && (
             <div role="alert" className="mx-5 mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
               {submitError}
@@ -572,21 +614,28 @@ export function LinePricingModal({
             <div>
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total cost</div>
               <div data-testid="total-cost" className="mt-0.5 text-xs font-semibold tabular-nums text-slate-900">
-                {formatDollars2dp(totals.totalCost)}
+                {allRowsValid ? formatDollars2dp(totals.totalCost) : '—'}
               </div>
             </div>
             <div>
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total price</div>
               <div data-testid="total-price" className="mt-0.5 text-xs font-semibold tabular-nums text-slate-900">
-                {formatDollars2dp(totals.totalPrice)}
+                {allRowsValid ? formatDollars2dp(totals.totalPrice) : '—'}
               </div>
             </div>
             <div>
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total margin</div>
               <div data-testid="total-margin" className="mt-0.5 text-xs font-semibold tabular-nums text-emerald-800">
-                {formatDollars2dp(totals.totalMargin)} ({formatPercent2dp(totals.totalMarginPercent)})
+                {allRowsValid
+                  ? `${formatDollars2dp(totals.totalMargin)} (${formatPercent2dp(totals.totalMarginPercent)})`
+                  : '—'}
               </div>
             </div>
+            {!allRowsValid && (
+              <span data-testid="totals-incomplete" className="self-end text-[11px] text-slate-500">
+                Complete all lines to see totals
+              </span>
+            )}
 
             <div className="ml-auto flex items-center gap-2">
               <button

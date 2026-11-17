@@ -234,10 +234,10 @@ requires a `linePricing` JSON array whose entries match the parsed quote's line 
 **Submit**, or a direct API caller submitted stale or out-of-order entries, the backend
 returns HTTP 400 (`"The quote lines no longer match the reviewed pricing. Upload the file again."`)
 and records no `ParseJob`, `ParseMetric`, or `FailedParseJob`. Other 400 responses on line-priced
-requests indicate missing `linePricing` (`"Line pricing is required for this format."`), passing
-`linePricing` to a format that does not support it (`"This format does not use per-line pricing."`),
-an out-of-range Uplift (`0 ≤ margin < 100`, up to 2 dp), a negative or over-precision IM% (`≥ 0`, up
-to 2 dp), or a missing IM% on a required line (Juniper Iris).
+requests indicate missing `linePricing` (`"Per-line pricing is required for {file type}."`), passing
+`linePricing` to a format that does not support it (`"This file type does not support per-line pricing."`),
+an out-of-range Uplift (`0 ≤ margin < 100`, up to 2 dp), an out-of-range or over-precision IM%
+(`0 ≤ IM% ≤ 100`, up to 2 dp), or a missing IM% on a required line (Juniper Iris).
 
 ## Portable Windows desktop
 

@@ -272,6 +272,11 @@ public sealed class LinePricingRowViewModel : ObservableObject, IDataErrorInfo
                 {
                     imErrorMessage = $"Line {line.LineNumber}: IM% cannot be negative.";
                 }
+                else if (imVal > 100m)
+                {
+                    // Above 100 the discount exceeds MSRP and the cost would be negative.
+                    imErrorMessage = $"Line {line.LineNumber}: IM% cannot be more than 100.";
+                }
                 else if (imVal != Math.Round(imVal, 2))
                 {
                     imErrorMessage = $"Line {line.LineNumber}: IM% must have at most 2 decimal places.";
@@ -404,7 +409,8 @@ public sealed class LinePricingViewModel : ObservableObject
         HeaderImPercent = new NumericFieldViewModel("IM%", "%", "Discount off MSRP", decimals: 2)
         {
             IsRequired = false,
-            RejectExcessPrecision = true
+            RejectExcessPrecision = true,
+            MaxInclusiveValue = 100m
         };
         HeaderUplift = new NumericFieldViewModel("Uplift", "%", "margin on sale price", decimals: 2)
         {
@@ -474,10 +480,22 @@ public sealed class LinePricingViewModel : ObservableObject
     public decimal TotalMarginAmount => totals.MarginAmount;
     public decimal? TotalMarginPercent => totals.MarginPercent;
 
-    public string TotalCostDisplay => $"{Currency} {TotalCost.ToString("N2", CultureInfo.CurrentCulture)}";
-    public string TotalPriceDisplay => $"{Currency} {TotalPrice.ToString("N2", CultureInfo.CurrentCulture)}";
-    public string TotalMarginAmountDisplay => $"{Currency} {TotalMarginAmount.ToString("N2", CultureInfo.CurrentCulture)}";
-    public string TotalMarginPercentDisplay => TotalMarginPercent is { } pct
+    /// <summary>
+    /// Totals are shown only when every line is complete and valid; a partial sum would leave out
+    /// some lines' prices while keeping their costs and misstate the margin.
+    /// </summary>
+    public bool AreTotalsAvailable => Rows.All(row => row.IsCancelled || row.IsValid);
+
+    public string TotalCostDisplay => AreTotalsAvailable
+        ? $"{Currency} {TotalCost.ToString("N2", CultureInfo.CurrentCulture)}"
+        : "—";
+    public string TotalPriceDisplay => AreTotalsAvailable
+        ? $"{Currency} {TotalPrice.ToString("N2", CultureInfo.CurrentCulture)}"
+        : "—";
+    public string TotalMarginAmountDisplay => AreTotalsAvailable
+        ? $"{Currency} {TotalMarginAmount.ToString("N2", CultureInfo.CurrentCulture)}"
+        : "—";
+    public string TotalMarginPercentDisplay => AreTotalsAvailable && TotalMarginPercent is { } pct
         ? $"{pct.ToString("F2", CultureInfo.CurrentCulture)}%"
         : "—";
 
@@ -548,6 +566,7 @@ public sealed class LinePricingViewModel : ObservableObject
         OnPropertyChanged(nameof(TotalPrice));
         OnPropertyChanged(nameof(TotalMarginAmount));
         OnPropertyChanged(nameof(TotalMarginPercent));
+        OnPropertyChanged(nameof(AreTotalsAvailable));
         OnPropertyChanged(nameof(TotalCostDisplay));
         OnPropertyChanged(nameof(TotalPriceDisplay));
         OnPropertyChanged(nameof(TotalMarginAmountDisplay));

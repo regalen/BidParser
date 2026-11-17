@@ -80,13 +80,46 @@ export function formatPercent2dp(v: bigint | null): string {
 }
 
 /**
- * IM%: >= 0, at most 2 dp, no upper limit (parity with existing Iris rule).
+ * IM%: 0 <= IM% <= 100, at most 2 dp. 100 makes the line free (written as the zero-price sentinel).
  */
-export function isPercent2dp(value: string): boolean {
+export function isImPercent(value: string): boolean {
   const trimmed = value.trim();
   if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) return false;
   const scaled = parseScaled(trimmed);
-  return scaled !== null && scaled >= 0n;
+  return scaled !== null && scaled >= 0n && scaled <= HUNDRED_SCALED;
+}
+
+export type PricingInputKind = 'imPercent' | 'uplift' | 'fxRate';
+
+/** Shown when a keystroke or paste is refused because the result could never be valid. */
+export const PRICING_INPUT_LIMITS: Record<PricingInputKind, string> = {
+  imPercent: 'IM% must be between 0 and 100, with up to 2 decimal places.',
+  uplift: 'Uplift must be at least 0 and below 100, with up to 2 decimal places.',
+  fxRate: 'FX must be a positive number with up to 4 decimal places.',
+};
+
+// Partial-entry shapes: digits with at most one decimal point and the field's decimal places.
+// No sign is possible, so negative values cannot be typed. Uplift allows two integer digits,
+// which caps it below 100; IM% allows three and is range-checked below.
+const PARTIAL_INPUT: Record<PricingInputKind, RegExp> = {
+  imPercent: /^\d{0,3}(\.\d{0,2})?$/,
+  uplift: /^\d{0,2}(\.\d{0,2})?$/,
+  fxRate: /^\d{0,6}(\.\d{0,4})?$/,
+};
+
+/**
+ * Whether `value` may stay in the field while the user is typing: empty and part-typed values
+ * such as "12." are allowed, values that can never become valid are not.
+ */
+export function acceptsPartialInput(kind: PricingInputKind, value: string): boolean {
+  if (value === '') return true;
+  if (!PARTIAL_INPUT[kind].test(value)) return false;
+  if (kind === 'imPercent') {
+    const digits = value.endsWith('.') ? value.slice(0, -1) : value;
+    const scaled = parseScaled(digits === '' ? '0' : digits);
+    return scaled !== null && scaled <= HUNDRED_SCALED;
+  }
+  return true;
 }
 
 /**
@@ -217,14 +250,14 @@ export function computeLine(params: {
   let imError: string | null = null;
   if (rowImEditable) {
     if (params.imPercentRequired) {
-      validIm = isPercent2dp(params.imPercentStr);
+      validIm = isImPercent(params.imPercentStr);
       if (!validIm) {
-        imError = 'IM% is required and must be 0 or greater with at most 2 decimal places.';
+        imError = 'IM% is required and must be between 0 and 100 with at most 2 decimal places.';
       }
     } else if (params.imOverridden) {
-      validIm = isPercent2dp(params.imPercentStr);
+      validIm = isImPercent(params.imPercentStr);
       if (!validIm) {
-        imError = 'IM% must be 0 or greater with at most 2 decimal places.';
+        imError = 'IM% must be between 0 and 100 with at most 2 decimal places.';
       }
     }
   }

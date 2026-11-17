@@ -624,8 +624,9 @@ write time.
 
 Local MSRP (H), local Cost (I), and IM% (X) are blank. Remaining optional columns are
 blank; standard headers and end-loop sentinel apply. Genuine zero MSRP or calculated cost uses
-`NonZeroPrice`. Per-line IM% is required for every non-cancelled line with `Msrp > 0` (nonnegative,
-at most two decimal places, with no upper limit).
+`NonZeroPrice`. Per-line IM% is required for every non-cancelled line with `Msrp > 0`
+(`0 ≤ IM% ≤ 100`, at most two decimal places). IM% 100 writes the zero-price sentinel; values above
+100 are rejected, so column T is never negative.
 For MSRP 427, IM% 15 produces Foreign Cost 362.95; IM% 27.53 produces 309.45.
 The calculation is per unit, independent of quantity, FX, and Uplift. Parsed values and MSRP-based
 source-total validation stay unchanged, and editing pricing in the review popup recalculates cost.

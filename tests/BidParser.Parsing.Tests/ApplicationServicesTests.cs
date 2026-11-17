@@ -412,6 +412,57 @@ public sealed class ApplicationServicesTests
             .Which.Message.Should().Contain($"Line 2 ({irisQuote.Result.LineItems[1].Vpn}): IM% is required");
     }
 
+    [Theory]
+    [InlineData("100.01")]
+    [InlineData("120")]
+    [InlineData("-0.01")]
+    public async Task Line_pricing_rejects_im_percent_outside_0_to_100(string imPercent)
+    {
+        var writer = new WorkbookWriteService();
+        using var workspace = new TempWorkspace();
+        var irisQuote = ParseSample("Juniper_Iris_Synthetic.xlsx", Vendors.Juniper, ParserSlugs.JuniperIrisXlsx);
+
+        var write = () => writer.WriteAsync(new WorkbookWriteRequest(
+            irisQuote,
+            workspace.Path("out.xlsx"),
+            FxRate: 0.6520m,
+            LinePricing:
+            [
+                new LinePricingEntry(0, irisQuote.Result.LineItems[0].Vpn, 5m, decimal.Parse(imPercent, System.Globalization.CultureInfo.InvariantCulture)),
+                new LinePricingEntry(1, irisQuote.Result.LineItems[1].Vpn, 5m, 15m)
+            ]));
+
+        var error = (await write.Should().ThrowAsync<ParseInputException>()).Which;
+        error.Kind.Should().Be(ParseInputErrorKind.InvalidLinePricing);
+        error.Message.Should().Be(
+            $"Line 1 ({irisQuote.Result.LineItems[0].Vpn}): IM% must be between 0 and 100 with at most two decimal places.");
+        File.Exists(workspace.Path("out.xlsx")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Line_pricing_accepts_im_percent_of_exactly_100_as_a_free_line()
+    {
+        var writer = new WorkbookWriteService();
+        using var workspace = new TempWorkspace();
+        var irisQuote = ParseSample("Juniper_Iris_Synthetic.xlsx", Vendors.Juniper, ParserSlugs.JuniperIrisXlsx);
+        var outputPath = workspace.Path("out.xlsx");
+
+        await writer.WriteAsync(new WorkbookWriteRequest(
+            irisQuote,
+            outputPath,
+            FxRate: 0.6520m,
+            LinePricing:
+            [
+                new LinePricingEntry(0, irisQuote.Result.LineItems[0].Vpn, 4.76m, 100m),
+                new LinePricingEntry(1, irisQuote.Result.LineItems[1].Vpn, 4.76m, 15m)
+            ]));
+
+        using var workbook = new XLWorkbook(outputPath);
+        var sheet = workbook.Worksheet(1);
+        sheet.Cell(3, 20).GetValue<decimal>().Should().Be(0.0001m, "a 100% discount makes the line free, written as the zero-price sentinel");
+        sheet.Cell(4, 20).GetValue<decimal>().Should().Be(238m);
+    }
+
     [Fact]
     public async Task Line_pricing_applies_through_split_path_and_computes_blended_margin()
     {

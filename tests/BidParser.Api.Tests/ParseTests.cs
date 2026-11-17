@@ -722,7 +722,9 @@ public sealed class ParseTests
     [InlineData("1.234", false)]
     [InlineData("15", true)]
     [InlineData("27.53", true)]
-    [InlineData("130.25", true)]
+    [InlineData("100", true)]
+    [InlineData("100.01", false)]
+    [InlineData("130.25", false)]
     public async Task Iris_roundtrip_requires_precise_im_and_returns_msrp_validation(string? im, bool success)
     {
         using var fixture = await ApiTestFixture.CreateAsync();
@@ -754,7 +756,8 @@ public sealed class ParseTests
         await using var stream = await response.Content.ReadAsStreamAsync();
         using var workbook = new XLWorkbook(stream);
         var sheet = workbook.Worksheet(CrmTemplates.ForeignUplift);
-        var expectedCost = im switch { "15" => 348.50m, "27.53" => 297.13m, _ => -124.03m };
+        // IM% 100 makes the line free, written as the zero-price sentinel; above 100 is rejected.
+        var expectedCost = im switch { "15" => 348.50m, "27.53" => 297.13m, "100" => 0.0001m, _ => throw new InvalidOperationException(im) };
         sheet.Cell(3, 20).GetValue<decimal>().Should().Be(expectedCost);
         sheet.Cell(3, 21).GetDouble().Should().Be(410);
         foreach (var column in new[] { 8, 9, 24 }) sheet.Cell(3, column).IsEmpty().Should().BeTrue();

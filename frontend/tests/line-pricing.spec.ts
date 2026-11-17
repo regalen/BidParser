@@ -218,3 +218,89 @@ test('per-line pricing modal applies header defaults, honours row edits, compute
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('Iris_Quote_Synthetic_ForeignUplift.xlsx');
 });
+
+test('pricing inputs refuse out-of-range values and totals hide until every line is complete', async ({ page }) => {
+  await mockCommonApi(page, async (route, path) => {
+    if (path === '/api/parsers') {
+      await fulfillJson(route, parsers);
+      return true;
+    }
+    if (path === '/api/parse-ui-config') {
+      await fulfillJson(route, { vendorDefaults: {}, guidanceByParserSlug: {} });
+      return true;
+    }
+    if (path === '/api/parse/preview') {
+      await fulfillJson(route, r5Preview);
+      return true;
+    }
+    return false;
+  });
+
+  await page.goto('/dashboard');
+  await page.locator('input[type="file"]').setInputFiles('public/samples/Juniper_Iris_Synthetic.xlsx');
+  await page.getByRole('button', { name: 'Upload & parse' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+
+  // With no defaults every line starts incomplete: totals are hidden, not partial.
+  await expect(dialog.getByTestId('total-cost')).toHaveText('—');
+  await expect(dialog.getByTestId('total-price')).toHaveText('—');
+  await expect(dialog.getByTestId('total-margin')).toHaveText('—');
+  await expect(dialog.getByTestId('totals-incomplete')).toHaveText('Complete all lines to see totals');
+
+  await dialog.getByLabel('FX (AUD:USD)').fill('0.6520');
+  await dialog.getByLabel('IM% · Discount off MSRP').fill('15');
+  await dialog.getByRole('button', { name: 'Apply IM% to all' }).click();
+  await dialog.getByLabel('Uplift %', { exact: true }).fill('4.76');
+  await dialog.getByRole('button', { name: 'Apply Uplift to all' }).click();
+  await expect(dialog.getByTestId('total-cost')).toHaveText('$1,088.85');
+  await expect(dialog.getByTestId('total-margin')).toHaveText('$54.42 (4.76%)');
+  await expect(dialog.getByTestId('totals-incomplete')).toHaveCount(0);
+
+  const lineIm = dialog.getByLabel('Line 1 IM%');
+  const lineUplift = dialog.getByLabel('Line 1 Uplift%');
+  const hint = dialog.getByTestId('input-limit-hint');
+
+  // Typing: the keystroke that would exceed 100 is refused and the limit is explained.
+  await lineIm.fill('');
+  await lineIm.pressSequentially('120');
+  await expect(lineIm).toHaveValue('12');
+  await expect(hint).toHaveText('Line 1: IM% must be between 0 and 100, with up to 2 decimal places.');
+
+  // A minus sign cannot be typed at all.
+  await lineIm.fill('');
+  await lineIm.pressSequentially('-5');
+  await expect(lineIm).toHaveValue('5');
+
+  // Exactly 100 is allowed and makes the line free.
+  await lineIm.fill('100');
+  await expect(lineIm).toHaveValue('100');
+  await expect(dialog.locator('tbody tr').first().locator('td').nth(7)).toHaveText('0.00');
+
+  // Pasted values that can never be valid are refused whole; the field keeps its value.
+  for (const pasted of ['100.01', '150', '-5', '15.123', 'abc', '15%']) {
+    await lineIm.fill(pasted);
+    await expect(lineIm).toHaveValue('100');
+  }
+
+  // Uplift stops below 100; the header fields and FX follow the same rules.
+  await lineUplift.fill('100');
+  await expect(lineUplift).toHaveValue('4.76');
+  await lineUplift.fill('99.99');
+  await expect(lineUplift).toHaveValue('99.99');
+  await dialog.getByLabel('IM% · Discount off MSRP').fill('101');
+  await expect(dialog.getByLabel('IM% · Discount off MSRP')).toHaveValue('15');
+  await dialog.getByLabel('FX (AUD:USD)').fill('-1');
+  await expect(dialog.getByLabel('FX (AUD:USD)')).toHaveValue('0.6520');
+
+  // A blank line hides every total and blocks Submit until it is completed again.
+  const line2Uplift = dialog.getByLabel('Line 2 Uplift%');
+  await line2Uplift.fill('');
+  await expect(dialog.getByTestId('total-cost')).toHaveText('—');
+  await expect(dialog.getByTestId('total-price')).toHaveText('—');
+  await expect(dialog.getByTestId('total-margin')).toHaveText('—');
+  await expect(dialog.getByRole('button', { name: 'Submit' })).toBeDisabled();
+  await line2Uplift.fill('4.76');
+  await expect(dialog.getByTestId('total-cost')).not.toHaveText('—');
+  await expect(dialog.getByRole('button', { name: 'Submit' })).toBeEnabled();
+});

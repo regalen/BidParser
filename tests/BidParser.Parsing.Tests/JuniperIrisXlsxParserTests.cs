@@ -127,8 +127,10 @@ public sealed class JuniperIrisXlsxParserTests
     [InlineData("-1", false)]
     [InlineData("1.234", false)]
     [InlineData("0", true)]
-    [InlineData("130.25", true)]
-    public async Task Shared_writer_enforces_im_precision_and_allows_values_over_100(string? input, bool valid)
+    [InlineData("100", true)]
+    [InlineData("100.01", false)]
+    [InlineData("130.25", false)]
+    public async Task Shared_writer_enforces_im_precision_and_range_0_to_100(string? input, bool valid)
     {
         var service = new QuoteParseService(new ParserRegistry(), new SourceFormatInspector());
         var quote = await service.ParseAsync(new QuoteParseRequest(Fixture, Vendors.Juniper, parser.Slug));
@@ -158,7 +160,6 @@ public sealed class JuniperIrisXlsxParserTests
     [InlineData("427", "0", "427")]
     [InlineData("427", "100", "0.0001")]
     [InlineData("0", "15", "0.0001")]
-    [InlineData("427", "130.25", "-129.17")]
     public async Task Output_discounts_each_unit_rounds_to_cents_and_uses_zero_sentinel(
         string msrp, string discount, string expected)
     {

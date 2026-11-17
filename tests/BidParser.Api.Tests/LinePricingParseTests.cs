@@ -223,6 +223,21 @@ public class LinePricingParseTests
             vpnResp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         }
 
+        // 3b. IM% above 100 -> 400 with the range message (a negative cost must never reach CRM)
+        var overLimitLpJson = JsonSerializer.Serialize(new[]
+        {
+            new { index = 0, vpn = "S-SRX340-A1-1", margin = "4.76", imPercent = "100.01" },
+            new { index = 1, vpn = "S-SRX300-A1-1", margin = "10.00", imPercent = "27.53" },
+        });
+        using (var overLimitResp = await PostParseFormAsync(
+            client, irisBytes, "Iris.xlsx", Vendors.Juniper, ParserSlugs.JuniperIrisXlsx,
+            fxRate: "0.6520", linePricing: overLimitLpJson))
+        {
+            overLimitResp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await overLimitResp.Content.ReadAsStringAsync()).Should().Contain(
+                "Line 1 (S-SRX340-A1-1): IM% must be between 0 and 100 with at most two decimal places.");
+        }
+
         // 4. Non-Juniper parser + linePricing -> 400
         var hpBytes = await File.ReadAllBytesAsync(Path.Combine(root, "samples", "inputs", "Deals_Sample_01_HPI.xlsx"));
         using (var nonJuniperResp = await PostParseFormAsync(
