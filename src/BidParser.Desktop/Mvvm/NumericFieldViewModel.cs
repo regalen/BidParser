@@ -20,6 +20,7 @@ public sealed class NumericFieldViewModel(
 
     private string fieldLabel = label;
     private bool rejectExcessPrecision;
+    private decimal? maxExclusiveValue;
     public string Label
     {
         get => fieldLabel;
@@ -31,6 +32,13 @@ public sealed class NumericFieldViewModel(
     {
         get => rejectExcessPrecision;
         set { if (SetProperty(ref rejectExcessPrecision, value)) Validate(); }
+    }
+
+    /// <summary>When set, values greater than or equal to this bound are rejected (e.g. Uplift &lt; 100).</summary>
+    public decimal? MaxExclusiveValue
+    {
+        get => maxExclusiveValue;
+        set { if (SetProperty(ref maxExclusiveValue, value)) Validate(); }
     }
 
     /// <summary>Suffix rendered inside the input (e.g. "%"); never part of the parsed value.</summary>
@@ -139,6 +147,11 @@ public sealed class NumericFieldViewModel(
         {
             Value = null;
             ErrorMessage = $"{Label} must be greater than 0.";
+        }
+        else if (MaxExclusiveValue is { } maxExclusive && parsed >= maxExclusive)
+        {
+            Value = null;
+            ErrorMessage = $"{Label} must be less than {maxExclusive.ToString(CultureInfo.CurrentCulture)}.";
         }
         else if (RejectExcessPrecision && parsed != Math.Round(parsed, decimals))
         {

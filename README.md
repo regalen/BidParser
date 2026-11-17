@@ -109,7 +109,8 @@ Notes on the table:
   specific format.
 - **Multi-template formats** render a template dropdown. No Calculation / Uplift differ in
   whether Margin is written. Juniper requires an explicit file type; all three formats use
-  Foreign Uplift. Iris requires IM% to calculate Foreign Cost from MSRP.
+  Foreign Uplift and declare `SupportsLinePricing`, so Exchange Rate and per-line IM% / Uplift
+  are reviewed in a popup after uploading the file rather than on the main form.
 - **Lenovo ISG Solution ID split.** Both Lenovo ISG formats can optionally return one renumbered
   workbook per Solution ID, delivered as a single ZIP. The ZIP is what history and monitoring
   retain.
@@ -145,8 +146,11 @@ per-format presentation traits are declared as properties on the parser.
 - **Foreign Uplift / Foreign No Calculation** — Foreign Uplift serves Juniper and Nutanix;
   Foreign No Calculation remains a historical layout. USD is written in S, cost in T, and MSRP in U.
   Foreign Uplift additionally writes Margin in K and FX in V; Foreign No Calculation leaves those two cells blank.
-- **Juniper Iris pricing** — BidParser calculates Foreign Cost as MSRP less the user’s IM%
-  discount, rounded to cents. It writes that cost in T and leaves IM% in X blank.
+- **Juniper per-line pricing** — All three Juniper formats (`juniper_cpq_xlsx`, `juniper_indirect_xlsx`,
+  `juniper_iris_xlsx`) collect header Exchange Rate and per-line IM% (discount off MSRP) and Uplift
+  (margin on sale price) in the pricing review popup. BidParser writes each line's Uplift in K,
+  writes Foreign Cost in T (`Msrp × (1 − IM% / 100)` rounded to cents for Iris and for overridden
+  CPQ/Indirect lines, or the untouched source unit cost for CPQ/Indirect), and leaves IM% in X blank.
 - **No Calculation / Uplift** — local-currency (AUD) layout. Cost lands in column I, MSRP in column
   H where the source provides one. `Uplift` additionally writes the Margin column (K); `No
   Calculation` leaves it blank. Same physical layout, selected per parse.
@@ -197,10 +201,10 @@ start just the database from the compose file with `docker compose up -d mssql`.
 dotnet test tests/BidParser.Parsing.Tests/BidParser.Parsing.Tests.csproj
 ```
 
-The parser/application/output suite is the fast one (790 tests) and needs no container runtime.
-The full suite, `dotnet test BidParser.sln`, additionally runs the 203 API integration tests
-against a SQL Server testcontainer and 121 cross-platform desktop configuration/update tests
-(1114 tests total).
+The parser/application/output suite is the fast one (804 tests) and needs no container runtime.
+The full suite, `dotnet test BidParser.sln`, additionally runs the 210 API integration tests
+against a SQL Server testcontainer and 126 cross-platform desktop configuration/update tests
+(1140 tests total).
 
 **Build the desktop host**
 

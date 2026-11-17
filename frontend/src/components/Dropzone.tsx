@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { MAX_UPLOAD_MB } from '../constants';
 import { ProgressPanel } from './ProgressPanel';
 
-export type UploadState = 'idle' | 'parsing' | 'parsed';
+export type UploadState = 'idle' | 'parsing' | 'reviewing' | 'parsed';
 
 export function Dropzone({
   file,

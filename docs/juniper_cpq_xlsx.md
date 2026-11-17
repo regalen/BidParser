@@ -4,7 +4,7 @@
 - **Slug:** `juniper_cpq_xlsx`
 - **Accepted MIME:** `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
 - **CRM templates:** `Foreign Uplift` only
-- **Additional settings:** none
+- **Additional settings:** per-line pricing review (`SupportsLinePricing => true`). Exchange rate is header-level; per-line IM% (Discount Off MSRP) and Uplift (`0 ≤ Uplift < 100`, at most 2 dp) are reviewed in the pricing popup.
 - **Selection:** Explicit file-type selection is required; Juniper has no Auto entry.
 
 ## Recognition and extraction
@@ -52,8 +52,15 @@ recognition raise an `extract` error.
 - **Validation:** `Σ(Cost × Qty)` is compared against the mapped `Extended Net Price` cell on the
   row anchored by `Totals:` using `ParseValidation.Validate` (`0.01` tolerance).
 
-`Foreign Uplift` writes to the `Foreign Uplift` worksheet with
-`JUNIPER` in Column B and `"USD"` in Column S. See `docs/output_mapping.md` for full column layout.
+`Foreign Uplift` writes to the `Foreign Uplift` worksheet with `JUNIPER` in Column B, `"USD"` in
+Column S, the header Exchange Rate in Column V, and each line's Uplift (`LineItem.Margin`) in
+Column K. In the pricing review popup, each line's IM% is pre-populated with its derived discount
+off MSRP (`round((1 − Cost / Msrp) × 100, 2)` when `Msrp > 0`). If a line's IM% is left untouched
+(`LineItem.ImPercent` is `null`), Column T (`Foreign Cost`) writes the unrounded source `Cost`
+(`Extended Net Price / Quantity`); if IM% is overridden (via header **Apply** or a row edit),
+Column T writes `round(Msrp × (1 − ImPercent / 100), 2)` (`MidpointRounding.AwayFromZero`).
+Clearing an overridden IM% cell reverts the row to its untouched source cost. Column X (`IM%`)
+remains blank. See `docs/output_mapping.md` for full column layout.
 
 ## Retained synthetic fixtures
 

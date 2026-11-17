@@ -9,6 +9,7 @@ import { DellQuoteInput } from '../components/DellQuoteInput';
 import { FileTypeErrorModal } from '../components/FileTypeErrorModal';
 import { Dropzone, type UploadState } from '../components/Dropzone';
 import { Footer } from '../components/Footer';
+import { LinePricingModal } from '../components/LinePricingModal';
 import { ParseResultModal } from '../components/ParseResultModal';
 import { ParseSettingsCard } from '../components/ParseSettingsCard';
 import { RecentUploadsTable } from '../components/RecentUploadsTable';
@@ -26,7 +27,7 @@ import {
   VENDOR_DELL,
   isAutoParserSlug,
 } from '../constants';
-import type { ApiErrorDetail, HistoryRow, ParserInfo, ParseUiConfig } from '../types';
+import type { ApiErrorDetail, HistoryRow, LinePricingPayloadEntry, ParsePreview, ParserInfo, ParseUiConfig } from '../types';
 
 function defaultParserFor(vendorParsers: ParserInfo[]): ParserInfo | null {
   return vendorParsers.find((p) => isAutoParserSlug(p.slug))
@@ -69,6 +70,7 @@ export function DashboardPage() {
   const [currencyError, setCurrencyError] = useState<string | null>(null);
   const [dellApiError, setDellApiError] = useState<string | null>(null);
   const [fileTypeError, setFileTypeError] = useState<string | null>(null);
+  const [previewPending, setPreviewPending] = useState<ParsePreview | null>(null);
   const [resultPending, setResultPending] = useState<{
     blob: Blob;
     filename: string;
@@ -203,6 +205,9 @@ export function DashboardPage() {
   const canSubmit = useMemo(() => {
     const hasSource = isDellVendor ? DELL_QUOTE_ID_PATTERN.test(quoteId) : Boolean(file);
     if (!vendor || !parserSlug || !hasSource || uploadState !== 'idle') return false;
+    if (selectedParser?.supportsLinePricing) {
+      return true;
+    }
     const activeTemplate = selectedTemplate || selectedParser?.crmTemplate || '';
     if (selectedParser?.calculatesCostFromMsrp || activeTemplate === CRM_TEMPLATE_FOREIGN_PERCENT_OFF_WITH_UPLIFT) {
       return Boolean(fxRate && margin && /^\d+(?:\.\d{1,2})?$/.test(imPercent.trim()));
@@ -242,6 +247,22 @@ export function DashboardPage() {
     setFile(next);
   }, []);
 
+  function routeParseError(caught: unknown) {
+    const fileTypeMessage = fileTypeErrorMessage(caught);
+    if (isCurrencyError(caught)) {
+      const detail = (caught as ApiError).detail as ApiErrorDetail;
+      setCurrencyError(detail.hint || detail.message || 'The quote currency is unsupported. Check the source file currency.');
+    } else if (isDellApiError(caught)) {
+      setDellApiError(errorMessage(caught));
+    } else if (fileTypeMessage) {
+      setFileTypeError(fileTypeMessage);
+    } else {
+      const message = errorMessage(caught);
+      setDropError(message);
+      pushToast({ tone: 'error', title: 'Could not parse file', detail: message });
+    }
+  }
+
   async function submit() {
     if (isDellVendor) {
       setQuoteValidationRequested(true);
@@ -251,6 +272,26 @@ export function DashboardPage() {
     }
     setUploadState('parsing');
     setDropError(null);
+
+    if (selectedParser?.supportsLinePricing && file) {
+      const previewForm = new FormData();
+      previewForm.set('file', file);
+      previewForm.set('vendor', vendor);
+      previewForm.set('parserSlug', parserSlug);
+      if (selectedTemplate) {
+        previewForm.set('crmTemplate', selectedTemplate);
+      }
+      try {
+        const preview = await api.parsePreview(previewForm);
+        setPreviewPending(preview);
+        setUploadState('reviewing');
+      } catch (caught) {
+        setUploadState('idle');
+        routeParseError(caught);
+      }
+      return;
+    }
+
     const form = new FormData();
     if (isDellVendor) {
       form.set('quoteId', quoteId);
@@ -300,20 +341,50 @@ export function DashboardPage() {
       });
     } catch (caught) {
       setUploadState('idle');
-      const fileTypeMessage = fileTypeErrorMessage(caught);
-      if (isCurrencyError(caught)) {
-        const detail = (caught as ApiError).detail as ApiErrorDetail;
-        setCurrencyError(detail.hint || detail.message || 'The quote currency is unsupported. Check the source file currency.');
-      } else if (isDellApiError(caught)) {
-        setDellApiError(errorMessage(caught));
-      } else if (fileTypeMessage) {
-        setFileTypeError(fileTypeMessage);
-      } else {
-        const message = errorMessage(caught);
-        setDropError(message);
-        pushToast({ tone: 'error', title: 'Could not parse file', detail: message });
-      }
+      routeParseError(caught);
     }
+  }
+
+  async function submitLinePricing(payload: { fxRate: string; linePricing: LinePricingPayloadEntry[] }) {
+    if (!file) {
+      throw new Error('No file selected.');
+    }
+    const form = new FormData();
+    form.set('file', file);
+    form.set('vendor', vendor);
+    form.set('parserSlug', parserSlug);
+    if (selectedTemplate) {
+      form.set('crmTemplate', selectedTemplate);
+    }
+    if (selectedParser?.supportsOnCost && onCostPct) {
+      form.set('onCostPct', onCostPct);
+    }
+    if (splitBySolutionId) {
+      form.set('splitBySolutionId', 'true');
+    }
+    form.set('fxRate', payload.fxRate);
+    form.set('linePricing', JSON.stringify(payload.linePricing));
+
+    try {
+      const result = await api.parse(form);
+      setUploadState('parsed');
+      await refresh();
+      await loadHistory();
+      return result;
+    } catch (caught) {
+      if (caught instanceof ApiError && caught.status === 400) {
+        throw new Error(errorMessage(caught));
+      }
+      setPreviewPending(null);
+      setUploadState('idle');
+      routeParseError(caught);
+      throw caught;
+    }
+  }
+
+  function cancelLinePricing() {
+    setPreviewPending(null);
+    setUploadState('idle');
   }
 
   function downloadResult() {
@@ -323,6 +394,7 @@ export function DashboardPage() {
 
   function closeResult() {
     setResultPending(null);
+    setPreviewPending(null);
     setFile(null);
     setQuoteId('');
     setQuoteValidationRequested(false);
@@ -426,6 +498,19 @@ export function DashboardPage() {
       )}
       {fileTypeError && (
         <FileTypeErrorModal message={fileTypeError} onClose={() => setFileTypeError(null)} />
+      )}
+      {previewPending && file && (
+        <LinePricingModal
+          preview={previewPending}
+          sourceFilename={file.name}
+          vendorDefaults={parseUiConfig.vendorDefaults[vendor]}
+          guidanceHtml={parseUiConfig.guidanceByParserSlug[previewPending.parserSlug] ?? null}
+          detectedFormat={isAutoParserSlug(parserSlug) ? previewPending.parserDisplayName : null}
+          onCancel={cancelLinePricing}
+          onSubmit={submitLinePricing}
+          onDownload={(result) => downloadBlob(result.blob, result.filename)}
+          onClose={closeResult}
+        />
       )}
       {resultPending && (
         <ParseResultModal

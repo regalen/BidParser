@@ -58,6 +58,13 @@ public interface IParser
     bool CalculatesCostFromMsrp => false;
 
     /// <summary>
+    /// True when users enter IM% and Uplift per line in a pricing review step before output.
+    /// Hosts then collect per-line pricing instead of header Uplift/IM%. The exchange rate stays header-level.
+    /// A presentation/input trait. Generic code obeys it and never checks vendor or slug.
+    /// </summary>
+    bool SupportsLinePricing => false;
+
+    /// <summary>
     /// Name of the dimension SupportsSolutionIdSplit groups by, used for UI labels and
     /// messages. A presentation trait of the format, so the parser declares it and generic code
     /// obeys. Defaults to "Solution ID".

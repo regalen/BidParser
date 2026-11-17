@@ -239,7 +239,11 @@ public sealed class AutoDetectParseTests
                 .Should().Equal(CrmTemplates.ForeignUplift);
             entry.GetProperty("calculatesCostFromMsrp").GetBoolean().Should().Be(
                 entry.GetProperty("slug").GetString() == ParserSlugs.JuniperIrisXlsx);
+            entry.GetProperty("supportsLinePricing").GetBoolean().Should().BeTrue();
         }
+
+        parsers.Where(p => p.GetProperty("vendor").GetString() != Vendors.Juniper)
+            .Should().OnlyContain(p => !p.GetProperty("supportsLinePricing").GetBoolean());
     }
 
     [Fact]

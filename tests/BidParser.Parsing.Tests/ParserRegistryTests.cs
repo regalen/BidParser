@@ -102,4 +102,17 @@ public sealed class ParserRegistryTests
             parser.AcceptedMimes.Should().NotContain(m => string.IsNullOrWhiteSpace(m));
         }
     }
+
+    [Fact]
+    public void Exactly_the_three_juniper_parsers_declare_supports_line_pricing()
+    {
+        new ParserRegistry().Parsers
+            .Where(parser => parser.SupportsLinePricing)
+            .Select(parser => parser.Slug)
+            .Should()
+            .Equal(
+                ParserSlugs.JuniperCpqXlsx,
+                ParserSlugs.JuniperIndirectXlsx,
+                ParserSlugs.JuniperIrisXlsx);
+    }
 }

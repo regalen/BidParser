@@ -5,6 +5,8 @@ using BidParser.Output;
 
 namespace BidParser.Application.Output;
 
+public sealed record LinePricingEntry(int Index, string Vpn, decimal Margin, decimal? ImPercent);
+
 public sealed record WorkbookWriteRequest(
     ParsedQuote Quote,
     string DestinationPath,
@@ -13,13 +15,15 @@ public sealed record WorkbookWriteRequest(
     decimal Margin = 0m,
     decimal? ImPercent = null,
     decimal? OnCostPercent = null,
-    bool SplitBySolutionId = false);
+    bool SplitBySolutionId = false,
+    IReadOnlyList<LinePricingEntry>? LinePricing = null);
 
 public sealed record WorkbookWriteResult(
     string OutputPath,
     string OutputFilename,
     string CrmTemplate,
-    int WorkbookCount);
+    int WorkbookCount,
+    decimal? BlendedMarginPercent = null);
 
 /// <summary>
 /// What a write would produce, resolved before a destination exists. Local hosts need the
@@ -121,18 +125,62 @@ public sealed class WorkbookWriteService
     {
         var parser = request.Quote.Parser;
         var template = ResolveTemplate(request.Quote, request.CrmTemplate, request.SplitBySolutionId);
+        var capabilities = CrmWriter.GetCapabilities(template, parser.CalculatesCostFromMsrp)!;
 
-        if (CrmWriter.GetCapabilities(template, parser.CalculatesCostFromMsrp)!.RequiresDiscountOffMsrp && request.ImPercent is null)
+        if (parser.SupportsLinePricing && request.LinePricing is null)
         {
-            throw new ParseInputException(ParseInputErrorKind.MissingRequiredOption, $"IM% is required for {parser.DisplayName}.");
+            throw new ParseInputException(
+                ParseInputErrorKind.InvalidLinePricing,
+                $"Per-line pricing is required for {parser.DisplayName}.");
         }
 
-        if ((parser.CalculatesCostFromMsrp || template == CrmTemplates.ForeignPercentOffWithUplift)
-            && request.ImPercent is { } discount
-            && (discount < 0m || discount != decimal.Round(discount, 2)))
+        if (!parser.SupportsLinePricing && request.LinePricing is not null)
         {
-            throw new ParseInputException(ParseInputErrorKind.MissingRequiredOption,
-                "IM% must be nonnegative with at most two decimal places.");
+            throw new ParseInputException(
+                ParseInputErrorKind.InvalidLinePricing,
+                "This file type does not support per-line pricing.");
+        }
+
+        IReadOnlyList<Domain.Models.LineItem> itemsToWrite = request.Quote.Result.LineItems;
+        decimal? blendedMarginPercent = null;
+
+        if (request.LinePricing is not null)
+        {
+            if (!capabilities.UsesUplift)
+            {
+                throw new ParseInputException(
+                    ParseInputErrorKind.InvalidLinePricing,
+                    "The selected CRM template does not support per-line pricing.");
+            }
+
+            itemsToWrite = ValidateAndProjectLinePricing(
+                request.Quote.Result.LineItems,
+                request.LinePricing,
+                parser.CalculatesCostFromMsrp);
+
+            blendedMarginPercent = LinePricingMath.Summarise(
+                itemsToWrite,
+                parser.CalculatesCostFromMsrp,
+                request.Margin,
+                request.ImPercent).MarginPercent;
+        }
+        else
+        {
+            if (capabilities.RequiresDiscountOffMsrp && request.ImPercent is null)
+            {
+                throw new ParseInputException(
+                    ParseInputErrorKind.MissingRequiredOption,
+                    $"IM% is required for {parser.DisplayName}.");
+            }
+
+            if ((parser.CalculatesCostFromMsrp || template == CrmTemplates.ForeignPercentOffWithUplift)
+                && request.ImPercent is { } discount
+                && (discount < 0m || discount != decimal.Round(discount, 2)))
+            {
+                throw new ParseInputException(
+                    ParseInputErrorKind.MissingRequiredOption,
+                    "IM% must be nonnegative with at most two decimal places.");
+            }
         }
 
         ct.ThrowIfCancellationRequested();
@@ -150,12 +198,12 @@ public sealed class WorkbookWriteService
 
         if (!request.SplitBySolutionId)
         {
-            CrmWriter.Write(request.Quote.Result.LineItems, request.DestinationPath, template, options);
+            CrmWriter.Write(itemsToWrite, request.DestinationPath, template, options);
             ct.ThrowIfCancellationRequested();
-            return new WorkbookWriteResult(request.DestinationPath, filename, template, WorkbookCount: 1);
+            return new WorkbookWriteResult(request.DestinationPath, filename, template, WorkbookCount: 1, blendedMarginPercent);
         }
 
-        var groups = SolutionOutputSplitter.Split(request.Quote.Result.LineItems);
+        var groups = SolutionOutputSplitter.Split(itemsToWrite);
         var stagingDirectory = Directory.CreateTempSubdirectory("bidparser-split-");
         try
         {
@@ -188,10 +236,93 @@ public sealed class WorkbookWriteService
             try { stagingDirectory.Delete(recursive: true); } catch { }
         }
 
-        return new WorkbookWriteResult(request.DestinationPath, filename, template, groups.Count);
+        return new WorkbookWriteResult(request.DestinationPath, filename, template, groups.Count, blendedMarginPercent);
     }
 
-    private static string ResolveTemplate(ParsedQuote quote, string? crmTemplate, bool splitBySolutionId)
+    private static IReadOnlyList<Domain.Models.LineItem> ValidateAndProjectLinePricing(
+        IReadOnlyList<Domain.Models.LineItem> items,
+        IReadOnlyList<LinePricingEntry> entries,
+        bool calculatesCostFromMsrp)
+    {
+        const string mismatchMessage = "The quote lines no longer match the reviewed pricing. Upload the file again.";
+
+        if (entries.Count != items.Count)
+        {
+            throw new ParseInputException(ParseInputErrorKind.InvalidLinePricing, mismatchMessage);
+        }
+
+        var byIndex = new LinePricingEntry?[items.Count];
+        foreach (var entry in entries)
+        {
+            if (entry is null || entry.Index < 0 || entry.Index >= items.Count || byIndex[entry.Index] is not null)
+            {
+                throw new ParseInputException(ParseInputErrorKind.InvalidLinePricing, mismatchMessage);
+            }
+
+            if (!string.Equals(entry.Vpn, items[entry.Index].Vpn, StringComparison.Ordinal))
+            {
+                throw new ParseInputException(ParseInputErrorKind.InvalidLinePricing, mismatchMessage);
+            }
+
+            byIndex[entry.Index] = entry;
+        }
+
+        var projected = new List<Domain.Models.LineItem>(items.Count);
+        for (var i = 0; i < items.Count; i++)
+        {
+            var item = items[i];
+            var entry = byIndex[i]!;
+            var lineNo = i + 1;
+
+            if (item.IsCancelled)
+            {
+                projected.Add(item);
+                continue;
+            }
+
+            if (entry.Margin < 0m || entry.Margin >= 100m || entry.Margin != decimal.Round(entry.Margin, 2))
+            {
+                throw new ParseInputException(
+                    ParseInputErrorKind.InvalidLinePricing,
+                    $"Line {lineNo} ({item.Vpn}): Uplift must be at least 0 and less than 100 with at most two decimal places.");
+            }
+
+            var hasPositiveMsrp = item.Msrp is > 0m;
+            if (calculatesCostFromMsrp && hasPositiveMsrp && entry.ImPercent is null)
+            {
+                throw new ParseInputException(
+                    ParseInputErrorKind.InvalidLinePricing,
+                    $"Line {lineNo} ({item.Vpn}): IM% is required.");
+            }
+
+            if (!hasPositiveMsrp && !calculatesCostFromMsrp && entry.ImPercent is not null)
+            {
+                throw new ParseInputException(
+                    ParseInputErrorKind.InvalidLinePricing,
+                    $"Line {lineNo} ({item.Vpn}): IM% cannot be set when MSRP is zero or absent.");
+            }
+
+            if (entry.ImPercent is { } im)
+            {
+                if (im < 0m || im != decimal.Round(im, 2))
+                {
+                    throw new ParseInputException(
+                        ParseInputErrorKind.InvalidLinePricing,
+                        $"Line {lineNo} ({item.Vpn}): IM% must be nonnegative with at most two decimal places.");
+                }
+            }
+
+            var effectiveIm = calculatesCostFromMsrp
+                ? (entry.ImPercent ?? 0m)
+                : (hasPositiveMsrp ? entry.ImPercent : null);
+
+            projected.Add(item with { Margin = entry.Margin, ImPercent = effectiveIm });
+        }
+
+        return projected;
+    }
+
+    internal static string ResolveTemplate(ParsedQuote quote, string? crmTemplate, bool splitBySolutionId)
     {
         var parser = quote.Parser;
         var template = string.IsNullOrWhiteSpace(crmTemplate) ? parser.CrmTemplate : crmTemplate;

@@ -109,6 +109,7 @@ public abstract class ParsedResultViewModel : ResultViewModel
     public IReadOnlyList<string> Notes { get; init; } = [];
     /// <summary>Validated parser guidance, already converted to a safe presentation model.</summary>
     public GuidanceDocument? Guidance { get; init; }
+    public bool CanEditPricing { get; init; }
 
     public string? SavedPath
     {
@@ -173,7 +174,8 @@ public sealed record EffectiveCapabilities(
     bool SupportsSplit,
     bool RequiresFx = false,
     bool RequiresUplift = false,
-    bool RequiresDiscountOffMsrp = false)
+    bool RequiresDiscountOffMsrp = false,
+    bool SupportsLinePricing = false)
 {
     public static readonly EffectiveCapabilities None = new(false, false, false, false, false);
 
@@ -184,7 +186,25 @@ public sealed record EffectiveCapabilities(
         var templateCapabilities = CrmWriter.GetCapabilities(template, parser.CalculatesCostFromMsrp);
         if (templateCapabilities is null)
         {
-            return None with { SupportsSplit = parser.SupportsSolutionIdSplit };
+            return None with
+            {
+                SupportsSplit = parser.SupportsSolutionIdSplit,
+                SupportsLinePricing = parser.SupportsLinePricing
+            };
+        }
+
+        if (parser.SupportsLinePricing)
+        {
+            return new EffectiveCapabilities(
+                SupportsFx: false,
+                SupportsUplift: false,
+                SupportsDiscountOffMsrp: false,
+                SupportsOnCost: parser.SupportsOnCost && templateCapabilities.SupportsOnCost,
+                SupportsSplit: parser.SupportsSolutionIdSplit,
+                RequiresFx: false,
+                RequiresUplift: false,
+                RequiresDiscountOffMsrp: false,
+                SupportsLinePricing: true);
         }
 
         return new EffectiveCapabilities(
@@ -195,6 +215,7 @@ public sealed record EffectiveCapabilities(
             parser.SupportsSolutionIdSplit,
             templateCapabilities.RequiresFxRate,
             templateCapabilities.RequiresUplift,
-            templateCapabilities.RequiresDiscountOffMsrp);
+            templateCapabilities.RequiresDiscountOffMsrp,
+            SupportsLinePricing: false);
     }
 }

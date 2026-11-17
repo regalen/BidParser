@@ -21,7 +21,8 @@ public sealed record CrmTemplateCapabilities(
     bool RequiresUplift,
     bool UsesDiscountOffMsrp,
     bool RequiresDiscountOffMsrp,
-    bool SupportsOnCost);
+    bool SupportsOnCost,
+    bool UsesCostColumn = false);
 
 /// <summary>
 /// The single output writer. Every CRM upload template is the same 27-column ANZ-GENERIC
@@ -50,7 +51,8 @@ public static class CrmWriter
                 RequiresUplift: profile.Margin,
                 UsesDiscountOffMsrp: profile.ImPercent || calculatesCostFromMsrp,
                 RequiresDiscountOffMsrp: profile.ImPercent || calculatesCostFromMsrp,
-                SupportsOnCost: profile.OnCost);
+                SupportsOnCost: profile.OnCost,
+                UsesCostColumn: profile.Cost != PriceWrite.Never);
     }
 
     public static string Write(
@@ -61,11 +63,6 @@ public static class CrmWriter
     {
         var profile = CrmTemplateProfile.For(crmTemplate)
             ?? throw new ArgumentException($"Unsupported CRM template: '{crmTemplate}'", nameof(crmTemplate));
-
-        if (options.CalculatesCostFromMsrp && options.ImPercent is null)
-        {
-            throw new ArgumentException("IM% is required to calculate cost from MSRP.", nameof(options));
-        }
 
         using var workbook = new XLWorkbook();
         var sheet = workbook.AddWorksheet(profile.SheetName);
@@ -157,18 +154,14 @@ public static class CrmWriter
                 // "always" coincide; only Never is distinct.
                 if (profile.Cost != PriceWrite.Never)
                 {
-                    var cost = options.CalculatesCostFromMsrp
-                        ? decimal.Round(
-                            (item.Msrp ?? throw new ArgumentException("MSRP is required to calculate cost.", nameof(items)))
-                            * (1m - options.ImPercent!.Value / 100m), 2, MidpointRounding.AwayFromZero)
-                        : item.Cost;
+                    var cost = LinePricingMath.EffectiveUnitCost(item, options.CalculatesCostFromMsrp, options.ImPercent);
                     sheet.Cell(rowNumber, profile.CostColumn).Value = TemplateLayout.NonZeroPrice(cost);
                 }
 
                 // Col K — Margin
                 if (profile.Margin)
                 {
-                    sheet.Cell(rowNumber, 11).Value = options.Margin;
+                    sheet.Cell(rowNumber, 11).Value = item.Margin ?? options.Margin;
                 }
 
                 // Col N or R — Term
@@ -221,9 +214,10 @@ public static class CrmWriter
                 }
 
                 // Col X — IM%
-                if (profile.ImPercent && options.ImPercent is not null)
+                var effectiveImPercent = item.ImPercent ?? options.ImPercent;
+                if (profile.ImPercent && effectiveImPercent is not null)
                 {
-                    sheet.Cell(rowNumber, 24).Value = options.ImPercent.Value;
+                    sheet.Cell(rowNumber, 24).Value = effectiveImPercent.Value;
                 }
 
                 // Col Z — On Cost %

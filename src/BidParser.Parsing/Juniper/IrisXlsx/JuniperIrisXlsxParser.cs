@@ -19,6 +19,7 @@ public sealed class JuniperIrisXlsxParser : IParser
     public string AcceptedMime => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     public string CrmTemplate => CrmTemplates.ForeignUplift;
     public bool CalculatesCostFromMsrp => true;
+    public bool SupportsLinePricing => true;
 
     public double Detect(string path)
     {

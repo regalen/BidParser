@@ -26,8 +26,112 @@ public sealed class ParseService(
     ILogger<ParseService> logger)
 {
     /// <summary>
+    /// Parses <paramref name="fileStream"/> for the per-line pricing review of a
+    /// <c>SupportsLinePricing</c> parser and returns the lines without writing a workbook. Nothing is
+    /// persisted on success (no <see cref="ParseJob"/>, <see cref="ParseMetric"/>, or user default) and the
+    /// stored upload is deleted. Failure handling matches <see cref="ParseAsync"/>: a wrong file type
+    /// records nothing and throws <c>ParseError("fileType")</c>; genuine parse failures are recorded.
+    /// </summary>
+    public async Task<ParseServicePreviewResult> PreviewAsync(
+        User user,
+        Stream fileStream,
+        string uploadFilename,
+        string vendor,
+        string parserSlug,
+        string? crmTemplate,
+        long maxUploadBytes,
+        CancellationToken ct = default)
+    {
+        QuoteParseSelection selection;
+        try
+        {
+            selection = quoteParseService.ResolveSelection(uploadFilename, vendor, parserSlug);
+        }
+        catch (ParseInputException inputError)
+        {
+            throw ToValidationException(inputError);
+        }
+
+        if (selection.Parser is not null && !selection.Parser.SupportsLinePricing)
+        {
+            throw new ParseValidationException(400, "This file type does not support per-line pricing.");
+        }
+
+        var importType = selection.IsAuto ? ImportType.Auto : ImportType.Manual;
+        IParser? parser = selection.Parser;
+
+        var displayFilename = Path.GetFileName(uploadFilename);
+        var sourcePath = storage.NewOriginalPath(displayFilename);
+
+        await storage.SaveUploadAsync(fileStream, sourcePath, maxUploadBytes, ct);
+
+        try
+        {
+            var parsedQuote = await quoteParseService.ParseAsync(
+                new QuoteParseRequest(
+                    sourcePath,
+                    vendor,
+                    parserSlug,
+                    new ParseOptions { IncludeSubComponentDetail = false },
+                    displayFilename),
+                selection,
+                ct);
+            parser = parsedQuote.Parser;
+
+            if (!parser.SupportsLinePricing)
+            {
+                storage.TryDelete(sourcePath);
+                throw new ParseValidationException(400, "This file type does not support per-line pricing.");
+            }
+
+            var preview = LinePricingPreview.Build(parsedQuote, crmTemplate);
+            storage.TryDelete(sourcePath);
+            return new ParseServicePreviewResult(preview, parsedQuote.Result.Validation);
+        }
+        catch (ParseInputException inputError) when (
+            inputError.Kind is ParseInputErrorKind.AutoDetectionFailed or ParseInputErrorKind.WrongFileType)
+        {
+            storage.TryDelete(sourcePath);
+
+            logger.LogInformation(
+                "Wrong file type for {Filename}: selected {Slug}, suggested {Suggested}",
+                displayFilename, parser?.Slug ?? parserSlug, inputError.SuggestedParserName ?? "(none)");
+
+            throw new ParseError("fileType", inputError.Message, inputError.Message);
+        }
+        catch (ParseInputException inputError) when (inputError.Kind != ParseInputErrorKind.MagicByteMismatch)
+        {
+            storage.TryDelete(sourcePath);
+            throw ToValidationException(inputError);
+        }
+        catch (ParseValidationException)
+        {
+            storage.TryDelete(sourcePath);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            var recordedException = ex is ParseInputException { Kind: ParseInputErrorKind.MagicByteMismatch } inputError
+                ? new ParseError("upload", inputError.Message, inputError.Message)
+                : ex;
+
+            await failureRecorder.RecordAsync(
+                user, vendor, parser?.Slug ?? parserSlug, displayFilename, sourcePath,
+                1m, 0m, recordedException, importType, ct);
+
+            if (!ReferenceEquals(recordedException, ex))
+            {
+                throw recordedException;
+            }
+
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Parses <paramref name="fileStream"/> with the parser identified by <paramref name="parserSlug"/>
-    /// and writes the standardised output for <paramref name="crmTemplate"/> (defaults to the parser's).
+    /// and writes the standardised output for <paramref name="crmTemplate"/> (defaults to the parser's),
+    /// applying <paramref name="linePricing"/> when the parser declares <c>SupportsLinePricing</c>.
     /// Returns the output path + validation on success; throws <c>ParseError("fileType")</c> when the
     /// selected parser does not recognise the file (wrong file-type selection).
     /// </summary>
@@ -45,7 +149,8 @@ public sealed class ParseService(
         bool includeSubComponentDetail,
         bool splitBySolutionId,
         long maxUploadBytes,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        IReadOnlyList<LinePricingEntry>? linePricing = null)
     {
         QuoteParseSelection selection;
         try
@@ -96,13 +201,17 @@ public sealed class ParseService(
                     effectiveMargin,
                     imPercent,
                     onCostPercent,
-                    splitBySolutionId),
+                    splitBySolutionId,
+                    linePricing),
                 ct);
             var template = writeResult.CrmTemplate;
             var outputWorkbookCount = writeResult.WorkbookCount;
 
             var fxRateRounded = Math.Round(effectiveFxRate, 4, MidpointRounding.AwayFromZero);
-            var marginRounded = Math.Round(effectiveMargin, 2, MidpointRounding.AwayFromZero);
+            var marginRounded = Math.Round(
+                writeResult.BlendedMarginPercent ?? margin ?? 0m,
+                2,
+                MidpointRounding.AwayFromZero);
 
             // Bid metadata is best-effort, so a broken anchor degrades silently by design. Log it:
             // this line, and `bid_number IS NULL` on rows created after deployment, are the only
@@ -260,6 +369,10 @@ public sealed class ParseService(
             error.Kind == ParseInputErrorKind.UnsupportedExtension ? 415 : 400,
             error.Message);
 }
+
+public sealed record ParseServicePreviewResult(
+    LinePricingPreview Preview,
+    ValidationResult Validation);
 
 /// <summary>The outcome of a successful parse handed back to the API: the persisted job, the download filename + path, validation, currency, and parse warnings.</summary>
 public sealed record ParseServiceResult(

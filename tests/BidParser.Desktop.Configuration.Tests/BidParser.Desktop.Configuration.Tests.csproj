@@ -23,6 +23,7 @@
     <Compile Include="..\..\src\BidParser.Desktop\Mvvm\RelayCommand.cs" LinkBase="Linked\Mvvm" />
     <Compile Include="..\..\src\BidParser.Desktop\Mvvm\AsyncRelayCommand.cs" LinkBase="Linked\Mvvm" />
     <Compile Include="..\..\src\BidParser.Desktop\ViewModels\DesktopViewModels.cs" LinkBase="Linked\ViewModels" />
+    <Compile Include="..\..\src\BidParser.Desktop\ViewModels\LinePricingViewModel.cs" LinkBase="Linked\ViewModels" />
     <Compile Include="..\..\src\BidParser.Desktop\ViewModels\MainWindowViewModel.cs" LinkBase="Linked\ViewModels" />
     <Compile Include="..\..\src\BidParser.Desktop\Services\DesktopServices.cs" LinkBase="Linked\Services" />
     <Compile Include="..\..\src\BidParser.Desktop\Services\DesktopVersion.cs" LinkBase="Linked\Services" />

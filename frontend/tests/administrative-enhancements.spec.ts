@@ -88,6 +88,7 @@ const parsers = [
   {
     slug: 'juniper_iris_xlsx',
     calculatesCostFromMsrp: true,
+    supportsLinePricing: true,
     displayName: 'Iris (XLSX)',
     vendor: 'Juniper',
     acceptedMime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -100,6 +101,7 @@ const parsers = [
   },
   {
     slug: 'juniper_cpq_xlsx',
+    supportsLinePricing: true,
     displayName: 'CPQ (XLSX)',
     vendor: 'Juniper',
     acceptedMime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -112,6 +114,7 @@ const parsers = [
   },
   {
     slug: 'juniper_indirect_xlsx',
+    supportsLinePricing: true,
     displayName: 'Indirect (XLSX)',
     vendor: 'Juniper',
     acceptedMime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -124,7 +127,8 @@ const parsers = [
   },
 ];
 
-test('Juniper requires manual selection and preserves pricing while switching Iris, CPQ, and Indirect', async ({ page }) => {
+test('Juniper requires manual selection and hides main-page pricing while switching Iris, CPQ, and Indirect', async ({ page }) => {
+  let previewAttempt = 0;
   let parseAttempt = 0;
   await mockCommonApi(page, async (route, path) => {
     if (path === '/api/parsers') {
@@ -133,6 +137,81 @@ test('Juniper requires manual selection and preserves pricing while switching Ir
     }
     if (path === '/api/parse-ui-config') {
       await fulfillJson(route, { vendorDefaults: {}, guidanceByParserSlug: {} });
+      return true;
+    }
+    if (path === '/api/parse/preview') {
+      previewAttempt += 1;
+      if (previewAttempt === 1) {
+        await fulfillJson(route, {
+          parserSlug: 'juniper_cpq_xlsx',
+          parserDisplayName: 'CPQ (XLSX)',
+          currency: 'USD',
+          crmTemplate: 'Foreign Uplift',
+          usesFxRate: true,
+          imPercentEditable: true,
+          imPercentRequired: false,
+          validation: { matches: true, computedTotal: '31072.82', quotedTotal: '31072.82', warnings: [] },
+          lines: [
+            {
+              index: 0,
+              lineNumber: '1',
+              vpn: 'EX4400-48MP',
+              description: 'Switch',
+              qty: 1,
+              msrp: '427',
+              sourceCost: '362.9512',
+              derivedImPercent: '15.00',
+              isCancelled: false,
+            },
+          ],
+        });
+        return true;
+      }
+      if (previewAttempt === 2) {
+        await fulfillJson(route, {
+          parserSlug: 'juniper_indirect_xlsx',
+          parserDisplayName: 'Indirect (XLSX)',
+          currency: 'USD',
+          crmTemplate: 'Foreign Uplift',
+          usesFxRate: true,
+          imPercentEditable: true,
+          imPercentRequired: false,
+          validation: {
+            matches: false,
+            computedTotal: '4186.10',
+            quotedTotal: null,
+            warnings: [
+              'Line 2 (SUB-1S-3Y) computed total 180.00 differs from EXTENDED NET TOTAL 150.00.',
+              'Line 3 (<sample> – SKU) computed total 70.00 differs from EXTENDED NET TOTAL 80.00.',
+            ],
+          },
+          lines: [
+            {
+              index: 0,
+              lineNumber: '1',
+              vpn: 'SUB-1S-3Y',
+              description: 'Subscription',
+              qty: 1,
+              msrp: '200',
+              sourceCost: '150',
+              derivedImPercent: '25.00',
+              isCancelled: false,
+            },
+          ],
+        });
+        return true;
+      }
+      await route.fulfill({
+        status: 422,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          detail: {
+            stage: 'fileType',
+            message:
+              'The file is not recognised as Indirect (XLSX) and appears to be a CPQ (XLSX). Select the correct file type and try again.',
+          },
+        }),
+      });
       return true;
     }
     if (path === '/api/parse') {
@@ -173,18 +252,6 @@ test('Juniper requires manual selection and preserves pricing while switching Ir
         });
         return true;
       }
-      await route.fulfill({
-        status: 422,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          detail: {
-            stage: 'fileType',
-            message:
-              'The file is not recognised as Indirect (XLSX) and appears to be a CPQ (XLSX). Select the correct file type and try again.',
-          },
-        }),
-      });
-      return true;
     }
     return false;
   });
@@ -197,44 +264,33 @@ test('Juniper requires manual selection and preserves pricing while switching Ir
   await page.getByLabel('File type').selectOption('juniper_cpq_xlsx');
   await expect(page.getByLabel('CRM Import Template')).toHaveCount(0);
 
-  const fxInput = page.getByLabel(/Exchange rate/i);
-  const upliftInput = page.getByLabel(/^Uplift/i);
-  await expect(fxInput).toBeVisible();
-  await expect(upliftInput).toBeVisible();
+  await expect(page.locator('aside').getByLabel(/Exchange rate/i)).toHaveCount(0);
+  await expect(page.locator('aside').getByLabel(/^Uplift/i)).toHaveCount(0);
+  await expect(page.locator('aside').getByLabel(/IM%/i)).toHaveCount(0);
+  await expect(page.locator('aside')).toContainText('Exchange rate, IM% and Uplift are set per line after you upload.');
 
   const fileInput = page.locator('input[type="file"]');
   await fileInput.setInputFiles('public/samples/Juniper_CPQ_900001.xlsx');
   await expect(page.getByText('Juniper_CPQ_900001.xlsx', { exact: true })).toBeVisible();
 
   const submitButton = page.getByRole('button', { name: 'Upload & parse' });
-  await expect(submitButton).toBeDisabled();
-
-  await fxInput.fill('0.6500');
-  await expect(submitButton).toBeDisabled();
-
-  await upliftInput.fill('5.00');
   await expect(submitButton).toBeEnabled();
 
   await page.getByLabel('File type').selectOption('juniper_iris_xlsx');
-  const imInput = page.getByLabel(/IM% \(Discount Off MSRP\)/i);
-  await expect(imInput).toBeVisible();
-  await expect(submitButton).toBeDisabled();
-  await imInput.fill('1.234');
-  await expect(submitButton).toBeDisabled();
-  await imInput.fill('-1');
-  await expect(submitButton).toBeDisabled();
-  await imInput.fill('130.25');
+  await expect(page.locator('aside').getByLabel(/IM%/i)).toHaveCount(0);
   await expect(submitButton).toBeEnabled();
-  await imInput.fill('0');
-  await expect(submitButton).toBeEnabled();
-  await page.getByLabel('File type').selectOption('juniper_cpq_xlsx');
-  await expect(imInput).toHaveCount(0);
-  await expect(fxInput).toHaveValue('0.6500');
-  await expect(upliftInput).toHaveValue('5.00');
 
-  // Parse the manually selected CPQ format and download.
+  await page.getByLabel('File type').selectOption('juniper_cpq_xlsx');
+  await expect(submitButton).toBeEnabled();
+
+  // Parse the manually selected CPQ format through the pricing popup and download.
   await submitButton.click();
   const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('Line pricing');
+  await dialog.getByLabel('Exchange rate').fill('0.6500');
+  await dialog.getByLabel('Line 1 Uplift%').fill('5.00');
+  await dialog.getByRole('button', { name: 'Submit' }).click();
+
   await expect(dialog).toContainText('Parse successful');
   await expect(dialog).not.toContainText('Detected file type:');
   const download1Promise = page.waitForEvent('download');
@@ -247,6 +303,11 @@ test('Juniper requires manual selection and preserves pricing while switching Ir
   await page.getByLabel('File type').selectOption('juniper_indirect_xlsx');
   await fileInput.setInputFiles('public/samples/Juniper_Indirect_900001.xlsx');
   await submitButton.click();
+  await expect(dialog).toContainText('Line pricing');
+  await dialog.getByLabel('Exchange rate').fill('0.6500');
+  await dialog.getByLabel('Line 1 Uplift%').fill('5.00');
+  await dialog.getByRole('button', { name: 'Submit' }).click();
+
   await expect(dialog).toContainText('Parsed with warnings');
   await expect(dialog).toContainText('Computed USD 4186.10');
   await expect(dialog).not.toContainText('Quoted USD');
@@ -259,7 +320,7 @@ test('Juniper requires manual selection and preserves pricing while switching Ir
   expect(download2.suggestedFilename()).toBe('900001_2_ForeignUplift.xlsx');
   await dialog.getByRole('button', { name: 'Close' }).click();
 
-  // 3. Wrong-format suggestion modal
+  // 3. Wrong-format suggestion modal on preview
   await fileInput.setInputFiles('public/samples/Juniper_CPQ_900001.xlsx');
   await submitButton.click();
   const alertDialog = page.getByRole('alertdialog');
@@ -269,15 +330,41 @@ test('Juniper requires manual selection and preserves pricing while switching Ir
   await alertDialog.getByRole('button', { name: 'OK' }).click();
 });
 
-test('Iris submits all three pricing inputs and presents the explicit download', async ({ page }) => {
+test('Iris submits per-line pricing via modal and presents the explicit download', async ({ page }) => {
   await mockCommonApi(page, async (route, path) => {
     if (path === '/api/parsers') { await fulfillJson(route, parsers); return true; }
     if (path === '/api/parse-ui-config') {
       await fulfillJson(route, { vendorDefaults: {}, guidanceByParserSlug: {} }); return true;
     }
+    if (path === '/api/parse/preview') {
+      await fulfillJson(route, {
+        parserSlug: 'juniper_iris_xlsx',
+        parserDisplayName: 'Iris (XLSX)',
+        currency: 'USD',
+        crmTemplate: 'Foreign Uplift',
+        usesFxRate: true,
+        imPercentEditable: true,
+        imPercentRequired: true,
+        validation: { matches: true, computedTotal: '1100.00', quotedTotal: '1100.00', warnings: [] },
+        lines: [
+          {
+            index: 0,
+            lineNumber: '1',
+            vpn: 'EX4400-48MP',
+            description: 'Switch',
+            qty: 1,
+            msrp: '427',
+            sourceCost: null,
+            derivedImPercent: null,
+            isCancelled: false,
+          },
+        ],
+      });
+      return true;
+    }
     if (path !== '/api/parse') return false;
     const body = route.request().postDataBuffer()!.toString();
-    for (const value of ['juniper_iris_xlsx', 'Foreign Uplift', 'imPercent', '27.53', 'fxRate', '1.5000', 'margin', '5.00']) {
+    for (const value of ['juniper_iris_xlsx', 'Foreign Uplift', 'fxRate', '1.5000', 'linePricing', '"imPercent":"27.53"', '"margin":"5.00"']) {
       expect(body).toContain(value);
     }
     await route.fulfill({
@@ -294,11 +381,13 @@ test('Iris submits all three pricing inputs and presents the explicit download',
   await page.locator('aside select').first().selectOption('Juniper');
   await page.getByLabel('File type').selectOption('juniper_iris_xlsx');
   await page.locator('input[type="file"]').setInputFiles('public/samples/Juniper_Iris_Synthetic.xlsx');
-  await page.getByLabel(/Exchange rate/i).fill('1.5000');
-  await page.getByLabel(/^Uplift/i).fill('5.00');
-  await page.getByLabel(/IM% \(Discount Off MSRP\)/i).fill('27.53');
   await page.getByRole('button', { name: 'Upload & parse' }).click();
   const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('Line pricing');
+  await dialog.getByLabel('Exchange rate').fill('1.5000');
+  await dialog.getByLabel('Line 1 IM%').fill('27.53');
+  await dialog.getByLabel('Line 1 Uplift%').fill('5.00');
+  await dialog.getByRole('button', { name: 'Submit' }).click();
   await expect(dialog).toContainText('Parse successful');
   const download = page.waitForEvent('download');
   await dialog.getByRole('button', { name: 'Download' }).click();
@@ -316,7 +405,7 @@ test('currency errors display the server guidance for USD and AUD', async ({ pag
       await fulfillJson(route, { vendorDefaults: {}, guidanceByParserSlug: {} });
       return true;
     }
-    if (path !== '/api/parse') return false;
+    if (path !== '/api/parse' && path !== '/api/parse/preview') return false;
     await route.fulfill({
       status: 422, contentType: 'application/json',
       body: JSON.stringify({ detail: { stage: 'currency', hint, message: 'Unsupported currency.' } }),
@@ -333,8 +422,6 @@ test('currency errors display the server guidance for USD and AUD', async ({ pag
     await page.locator('aside select').first().selectOption(vendor);
     if (vendor === 'Juniper') {
       await page.getByLabel('File type').selectOption('juniper_indirect_xlsx');
-      await page.getByLabel(/Exchange rate/i).fill('1.5');
-      await page.getByLabel(/^Uplift/i).fill('5');
     } else {
       await page.getByLabel('CRM Import Template').selectOption(template);
     }

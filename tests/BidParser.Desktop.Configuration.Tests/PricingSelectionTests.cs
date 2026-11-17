@@ -13,7 +13,7 @@ namespace BidParser.Desktop.Configuration.Tests;
 public sealed class PricingSelectionTests
 {
     [Fact]
-    public void Switching_between_foreign_uplift_parsers_refreshes_im_requirements_and_keeps_edits()
+    public void Juniper_parsers_hide_and_do_not_require_header_pricing_fields_while_non_juniper_parsers_keep_them()
     {
         var registry = new ParserRegistry();
         var shell = new UnusedShell();
@@ -23,27 +23,46 @@ public sealed class PricingSelectionTests
             new EmptyVendorDefaultsSource(), new NoGuidanceProvider());
         model.SelectedVendor = model.Vendors.Single(vendor => vendor.Name == Vendors.Juniper);
         model.SelectedParser = model.ParserOptions.Single(parser => parser.Descriptor.Slug == ParserSlugs.JuniperCpqXlsx);
+        model.Capabilities.SupportsLinePricing.Should().BeTrue();
+        model.Capabilities.SupportsFx.Should().BeFalse();
+        model.Capabilities.RequiresFx.Should().BeFalse();
+        model.Capabilities.SupportsUplift.Should().BeFalse();
+        model.Capabilities.RequiresUplift.Should().BeFalse();
         model.Capabilities.SupportsDiscountOffMsrp.Should().BeFalse();
-        model.Uplift.Text = "5";
+        model.Capabilities.RequiresDiscountOffMsrp.Should().BeFalse();
+        model.FxRate.IsRequired.Should().BeFalse();
+        model.Uplift.IsRequired.Should().BeFalse();
+        model.DiscountOffMsrp.IsRequired.Should().BeFalse();
 
         model.SelectedParser = model.ParserOptions.Single(parser => parser.Descriptor.Slug == ParserSlugs.JuniperIrisXlsx);
         model.SelectedTemplate!.Name.Should().Be(CrmTemplates.ForeignUplift);
-        model.Capabilities.RequiresDiscountOffMsrp.Should().BeTrue();
-        model.DiscountOffMsrp.IsRequired.Should().BeTrue();
-        model.DiscountOffMsrp.RejectExcessPrecision.Should().BeTrue();
-        model.DiscountOffMsrp.Label.Should().Be("IM% (Discount Off MSRP)");
-        model.DiscountOffMsrp.HasError.Should().BeTrue();
-        model.DiscountOffMsrp.Text = 27.53m.ToString(CultureInfo.CurrentCulture);
+        model.Capabilities.SupportsLinePricing.Should().BeTrue();
+        model.Capabilities.SupportsFx.Should().BeFalse();
+        model.Capabilities.RequiresFx.Should().BeFalse();
+        model.Capabilities.SupportsUplift.Should().BeFalse();
+        model.Capabilities.RequiresUplift.Should().BeFalse();
+        model.Capabilities.SupportsDiscountOffMsrp.Should().BeFalse();
+        model.Capabilities.RequiresDiscountOffMsrp.Should().BeFalse();
+        model.FxRate.IsRequired.Should().BeFalse();
+        model.Uplift.IsRequired.Should().BeFalse();
+        model.DiscountOffMsrp.IsRequired.Should().BeFalse();
+        model.DiscountOffMsrp.HasError.Should().BeFalse();
 
         model.SelectedParser = model.ParserOptions.Single(parser => parser.Descriptor.Slug == ParserSlugs.JuniperIndirectXlsx);
+        model.Capabilities.SupportsLinePricing.Should().BeTrue();
+        model.Capabilities.SupportsFx.Should().BeFalse();
+        model.Capabilities.SupportsUplift.Should().BeFalse();
         model.Capabilities.SupportsDiscountOffMsrp.Should().BeFalse();
-        model.DiscountOffMsrp.IsRequired.Should().BeFalse();
-        model.DiscountOffMsrp.RejectExcessPrecision.Should().BeFalse();
 
-        model.SelectedParser = model.ParserOptions.Single(parser => parser.Descriptor.Slug == ParserSlugs.JuniperIrisXlsx);
-        model.Capabilities.RequiresDiscountOffMsrp.Should().BeTrue();
-        model.DiscountOffMsrp.Value.Should().Be(27.53m);
-        model.Uplift.Value.Should().Be(5m);
+        // Switching to a non-Juniper Foreign Uplift parser restores header FX and Uplift requirements.
+        model.SelectedVendor = model.Vendors.Single(vendor => vendor.Name == Vendors.Nutanix);
+        model.SelectedParser = model.ParserOptions.Single(parser => parser.Descriptor.Slug == ParserSlugs.NutanixSoftwareOnlyPdf);
+        model.Capabilities.SupportsLinePricing.Should().BeFalse();
+        model.Capabilities.SupportsFx.Should().BeTrue();
+        model.Capabilities.RequiresFx.Should().BeTrue();
+        model.Capabilities.SupportsUplift.Should().BeTrue();
+        model.Capabilities.RequiresUplift.Should().BeTrue();
+        model.Capabilities.SupportsDiscountOffMsrp.Should().BeFalse();
     }
 
     private sealed class UnusedShell : IFileDialogService, IClipboardService, IShellLauncher

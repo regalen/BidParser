@@ -52,7 +52,8 @@ public sealed class ParserCatalog(IParserRegistry registry)
                 parser.SupportsOnCost,
                 parser.SolutionSplitLabel,
                 IsAuto: false,
-                parser.CalculatesCostFromMsrp));
+                parser.CalculatesCostFromMsrp,
+                parser.SupportsLinePricing));
         }
 
         return descriptors;

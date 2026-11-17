@@ -90,6 +90,7 @@ export function ParseSettingsCard({
             selectedTemplate={selectedTemplate}
             supportsOnCost={selectedParser.supportsOnCost}
             calculatesCostFromMsrp={selectedParser.calculatesCostFromMsrp}
+            supportsLinePricing={selectedParser.supportsLinePricing}
             fxRate={fxRate}
             margin={margin}
             imPercent={imPercent}

@@ -33,6 +33,8 @@ public sealed class MainWindowViewModel : ObservableObject
     private InvalidDropZoneViewModel? invalidFile;
     private ResultViewModel result = new NoResultViewModel();
     private OverwriteDialogViewModel? dialog;
+    private LinePricingViewModel? pricingReview;
+    private LinePricingViewModel? completedPricingReview;
     private ParsedQuote? parsedQuote;
     private string? completedStatus;
     private string? lastSaveDirectory;
@@ -77,12 +79,13 @@ public sealed class MainWindowViewModel : ObservableObject
             input.PropertyChanged += (_, _) => Refresh();
         }
 
-        BrowseCommand = new RelayCommand(Browse, () => !IsBusy);
-        ClearCommand = new RelayCommand(ClearFile, () => !IsBusy);
+        BrowseCommand = new RelayCommand(Browse, () => !IsBusy && !HasPricingReview);
+        ClearCommand = new RelayCommand(ClearFile, () => !IsBusy && !HasPricingReview);
         DropCommand = new RelayCommand<string[]>(OnFilesDropped);
         DragStateCommand = new RelayCommand<object>(state => IsDragOver = state is true);
         PrimaryCommand = new AsyncRelayCommand(RunPrimaryAsync, () => CanRunPrimary);
-        SecondaryCommand = new RelayCommand(RunSecondary, () => !isSaving && !HasDialog);
+        SecondaryCommand = new RelayCommand(RunSecondary, () => !isSaving && !HasDialog && !HasPricingReview);
+        EditPricingCommand = new RelayCommand(ReopenPricingReview, () => CanEditPricing);
         OpenFolderCommand = new RelayCommand(OpenSavedFolder, () => SavedPath is not null);
         CopyDetailsCommand = new RelayCommand(CopyDetails, () => Result is FailureResultViewModel);
         EscapeCommand = new RelayCommand(Escape);
@@ -107,6 +110,7 @@ public sealed class MainWindowViewModel : ObservableObject
     public RelayCommand<object> DragStateCommand { get; }
     public AsyncRelayCommand PrimaryCommand { get; }
     public RelayCommand SecondaryCommand { get; }
+    public RelayCommand EditPricingCommand { get; }
     public RelayCommand OpenFolderCommand { get; }
     public RelayCommand CopyDetailsCommand { get; }
     public RelayCommand EscapeCommand { get; }
@@ -268,6 +272,24 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public bool HasDialog => dialog is not null;
 
+    /// <summary>The per-line pricing review overlay (page 1), or null when closed.</summary>
+    public LinePricingViewModel? PricingReview
+    {
+        get => pricingReview;
+        private set
+        {
+            if (SetProperty(ref pricingReview, value))
+            {
+                OnPropertyChanged(nameof(HasPricingReview));
+                Refresh();
+            }
+        }
+    }
+
+    public bool HasPricingReview => pricingReview is not null;
+
+    public bool CanEditPricing => completedPricingReview is not null && !HasPricingReview && !IsBusy;
+
     public bool IsDragOver
     {
         get => isDragOver;
@@ -294,8 +316,8 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public bool IsBusy => isParsing || isSaving;
 
-    /// <summary>Settings are frozen for the duration of a parse.</summary>
-    public bool IsSettingsEnabled => !IsBusy;
+    /// <summary>Settings are frozen for the duration of a parse or pricing review.</summary>
+    public bool IsSettingsEnabled => !IsBusy && !HasPricingReview;
 
     public bool HasMultipleTemplates => TemplateOptions.Count > 1;
 
@@ -317,10 +339,13 @@ public sealed class MainWindowViewModel : ObservableObject
         && SelectedTemplate is not null
         && selectedFile is not null
         && !VisiblePricingFields.Any(input => input.HasError)
-        && !IsBusy;
+        && !IsBusy
+        && !HasPricingReview;
 
     public bool CanSave =>
         parsedQuote is not null
+        && !HasPricingReview
+        && (!Capabilities.SupportsLinePricing || (completedPricingReview?.IsValid == true))
         && !VisiblePricingFields.Any(input => input.HasError)
         && !IsBusy;
 
@@ -391,7 +416,7 @@ public sealed class MainWindowViewModel : ObservableObject
     private IReadOnlyList<string> AcceptedExtensions =>
         SelectedParser?.Descriptor.AcceptedExtensions ?? [];
 
-    private bool CanRunPrimary => !HasDialog && (parsedQuote is not null ? CanSave : CanParse);
+    private bool CanRunPrimary => !HasDialog && !HasPricingReview && (parsedQuote is not null ? CanSave : CanParse);
 
     private void ApplyVendorDefaults()
     {
@@ -419,7 +444,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
     private void OnFilesDropped(string[]? paths)
     {
-        if (paths is null || paths.Length == 0 || IsBusy)
+        if (paths is null || paths.Length == 0 || IsBusy || HasPricingReview)
         {
             return;
         }
@@ -511,7 +536,50 @@ public sealed class MainWindowViewModel : ObservableObject
     {
         parsedQuote = null;
         completedStatus = null;
+        completedPricingReview = null;
+        PricingReview = null;
         Result = new NoResultViewModel();
+    }
+
+    private void CompletePricingReview()
+    {
+        if (PricingReview is not { IsValid: true } review || parsedQuote is not { } parsed || selectedFile is not { } file)
+        {
+            return;
+        }
+
+        completedPricingReview = review;
+        PricingReview = null;
+        completedStatus = $"Parsed · {parsed.Result.LineItems.Count} line items";
+        if (Result is not ParsedResultViewModel)
+        {
+            Result = BuildResult(parsed, file);
+        }
+        Refresh();
+    }
+
+    private void CancelPricingReview()
+    {
+        if (completedPricingReview is not null && Result is ParsedResultViewModel)
+        {
+            PricingReview = null;
+            Refresh();
+            return;
+        }
+
+        DiscardParse();
+        Refresh();
+    }
+
+    private void ReopenPricingReview()
+    {
+        if (completedPricingReview is not { } review)
+        {
+            return;
+        }
+
+        PricingReview = review;
+        Refresh();
     }
 
     private void RunSecondary()
@@ -546,6 +614,12 @@ public sealed class MainWindowViewModel : ObservableObject
         if (Dialog is { } open)
         {
             open.CancelCommand.Execute(null);
+            return;
+        }
+
+        if (PricingReview is { } review)
+        {
+            review.CancelCommand.Execute(null);
             return;
         }
 
@@ -609,8 +683,22 @@ public sealed class MainWindowViewModel : ObservableObject
             ct.ThrowIfCancellationRequested();
 
             parsedQuote = parsed;
-            completedStatus = $"Parsed · {parsed.Result.LineItems.Count} line items";
-            Result = BuildResult(parsed, file);
+            if (parsed.Parser.SupportsLinePricing)
+            {
+                var preview = LinePricingPreview.Build(parsed, SelectedTemplate?.Name);
+                var defaults = vendorDefaults.ForVendor(vendor.Name);
+                PricingReview = new LinePricingViewModel(
+                    preview,
+                    file.DisplayName,
+                    defaults,
+                    onNext: CompletePricingReview,
+                    onCancel: CancelPricingReview);
+            }
+            else
+            {
+                completedStatus = $"Parsed · {parsed.Result.LineItems.Count} line items";
+                Result = BuildResult(parsed, file);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -634,6 +722,7 @@ public sealed class MainWindowViewModel : ObservableObject
         var currency = parsed.Result.Metadata.Currency;
         var lineCount = parsed.Result.LineItems.Count;
         var cancelled = parsed.Result.LineItems.Count(item => item.IsCancelled);
+        var canEditPricing = parsed.Parser.SupportsLinePricing;
 
         var facts = new List<ResultFactViewModel>();
         if (parsed.Result.Metadata.BidNumber is { Length: > 0 } bidNumber)
@@ -689,7 +778,8 @@ public sealed class MainWindowViewModel : ObservableObject
                         + "differ from the vendor's extended net price — check the warnings before importing to CRM.",
                 Facts = facts,
                 Notes = notes,
-                Guidance = message
+                Guidance = message,
+                CanEditPricing = canEditPricing
             };
         }
 
@@ -702,7 +792,8 @@ public sealed class MainWindowViewModel : ObservableObject
                     + "then save the CRM workbook.",
                 Facts = facts,
                 Notes = notes,
-                Guidance = message
+                Guidance = message,
+                CanEditPricing = canEditPricing
             };
         }
 
@@ -711,7 +802,8 @@ public sealed class MainWindowViewModel : ObservableObject
             Headline = $"Parsed successfully · {lineCount} line items",
             Detail = $"{lineCount} line items were read from {file.DisplayName}. Save the CRM workbook to continue.",
             Facts = facts,
-            Guidance = message
+            Guidance = message,
+            CanEditPricing = canEditPricing
         };
     }
 
@@ -840,15 +932,32 @@ public sealed class MainWindowViewModel : ObservableObject
         }
     }
 
-    private WorkbookWriteRequest BuildWriteRequest(ParsedQuote quote, string destination) => new(
-        quote,
-        destination,
-        SelectedTemplate?.Name,
-        FxRate: Capabilities.SupportsFx ? FxRate.Value ?? 1m : 1m,
-        Margin: Capabilities.SupportsUplift ? Uplift.Value ?? 0m : 0m,
-        ImPercent: Capabilities.SupportsDiscountOffMsrp ? DiscountOffMsrp.Value : null,
-        OnCostPercent: Capabilities.SupportsOnCost ? OnCost.Value : null,
-        SplitBySolutionId: SplitBySolutionId && Capabilities.SupportsSplit);
+    private WorkbookWriteRequest BuildWriteRequest(ParsedQuote quote, string destination)
+    {
+        if (completedPricingReview is { } review)
+        {
+            return new WorkbookWriteRequest(
+                quote,
+                destination,
+                SelectedTemplate?.Name,
+                FxRate: review.UsesFxRate ? review.FxRate.Value ?? 1m : 1m,
+                Margin: 0m,
+                ImPercent: null,
+                OnCostPercent: Capabilities.SupportsOnCost ? OnCost.Value : null,
+                SplitBySolutionId: SplitBySolutionId && Capabilities.SupportsSplit,
+                LinePricing: review.ToEntries());
+        }
+
+        return new WorkbookWriteRequest(
+            quote,
+            destination,
+            SelectedTemplate?.Name,
+            FxRate: Capabilities.SupportsFx ? FxRate.Value ?? 1m : 1m,
+            Margin: Capabilities.SupportsUplift ? Uplift.Value ?? 0m : 0m,
+            ImPercent: Capabilities.SupportsDiscountOffMsrp ? DiscountOffMsrp.Value : null,
+            OnCostPercent: Capabilities.SupportsOnCost ? OnCost.Value : null,
+            SplitBySolutionId: SplitBySolutionId && Capabilities.SupportsSplit);
+    }
 
     private void PromptOverwrite(string destination)
     {
@@ -879,6 +988,7 @@ public sealed class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(DropZone));
         OnPropertyChanged(nameof(CanParse));
         OnPropertyChanged(nameof(CanSave));
+        OnPropertyChanged(nameof(CanEditPricing));
         OnPropertyChanged(nameof(IsBusy));
         OnPropertyChanged(nameof(IsSettingsEnabled));
         OnPropertyChanged(nameof(PrimaryActionText));
@@ -887,6 +997,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
         PrimaryCommand.NotifyCanExecuteChanged();
         SecondaryCommand.NotifyCanExecuteChanged();
+        EditPricingCommand.NotifyCanExecuteChanged();
         BrowseCommand.NotifyCanExecuteChanged();
         ClearCommand.NotifyCanExecuteChanged();
         OpenFolderCommand.NotifyCanExecuteChanged();

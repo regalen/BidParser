@@ -63,7 +63,7 @@ comes from `CrmTemplateProfile`, and the values below marked as supplied by `opt
 | H | MSRP | _empty_ | **Always blank.** The parser's `msrp` value lands in column U only. |
 | I | Cost | _empty_ | Manual / future enrichment. |
 | J | Discount | _empty_ | Manual / future enrichment. |
-| K | Margin | `margin` (`Foreign Uplift` only) | User-supplied at parse time (rendered as **Uplift** in the UI) on `Foreign Uplift`; blank on `Foreign No Calculation`. |
+| K | Margin | `item.Margin ?? options.Margin` (`Foreign Uplift` only) | User-supplied at parse time (rendered as **Uplift** in the UI) on `Foreign Uplift` — per-line `LineItem.Margin` for `SupportsLinePricing` formats, falling back to `options.Margin` for header-only formats; blank on `Foreign No Calculation`. |
 | L | Product Part Number (Warranty/Renewal) | _empty_ | Manual / future enrichment. |
 | M | Serial Number | `serial_number` | Written verbatim when populated; embedded license values remain comma-joined with no prefix or splitting. |
 | N | Warranty / Duration (months) | `term` | **Only written when `term >= 1`, and only when `TermRendersAsComment` is false.** When `TermRendersAsComment` is true, `term` lands in column R instead and N stays empty. If `term` is null or `0`, leave the cell empty. |
@@ -72,10 +72,10 @@ comes from `CrmTemplateProfile`, and the values below marked as supplied by `opt
 | Q | End Date | `end_date` | Same as Start Date. |
 | R | Comments | `comments` **or** `term` (`TermRendersAsComment` formats) | Writes `comments` when populated. For parsers declaring `TermRendersAsComment => true` (such as `nutanix_software_only_pdf` and `nutanix_software_only_xlsx`), `term` is written as `"{term} Months"` when `term >= 1` (e.g. `60 Months`). Empty otherwise. `CrmWriter` reads that flag and never inspects the vendor or slug. |
 | S | Foreign Currency | `QuoteMetadata.Currency` | Comes from the parsed quote, not a constant (`"USD"`). Written on both `Foreign Uplift` and `Foreign No Calculation`. |
-| T | Foreign Cost | `cost` | A value of `0` is written as the sentinel `0.0001` (the downstream uplift app rejects literal `0` and rounds the sentinel back to `0`). See locked rule #2. |
+| T | Foreign Cost | `LinePricingMath.EffectiveUnitCost(item, options.CalculatesCostFromMsrp, options.ImPercent)` | Uses `round(Msrp × (1 − IM% / 100), 2)` when `CalculatesCostFromMsrp` is true (`item.ImPercent ?? options.ImPercent`) or when `item.ImPercent` is set on a line with `Msrp > 0`; otherwise `item.Cost`. A value of `0` is written as the sentinel `0.0001` (the downstream uplift app rejects literal `0` and rounds the sentinel back to `0`). See locked rule #2. |
 | U | Foreign MSRP | `msrp` | This is where the parser's MSRP value lives. A value of `0` is written as the sentinel `0.0001` (same reason as column T). |
 | V | Foreign Exchange Rate | `fx_rate` (`Foreign Uplift` only) | User-supplied at parse time on `Foreign Uplift`; blank on `Foreign No Calculation`. |
-| W–AA | (other) | _empty_ | Manual / future enrichment. |
+| W–AA | (other) | _empty_ | Manual / future enrichment (`IM%` col X is always blank on `Foreign Uplift`; `CrmTemplateProfile` sets `WritesImPercent = false`). |
 
 **Locked output rules** (rules 1 and 3 are specific to `Foreign Uplift` / `Foreign No Calculation`; 2 and 4–6 apply to every template)
 1. On `Foreign Uplift` and `Foreign No Calculation`, local `MSRP` (column H) is **never** populated — the parser's `msrp` value lives in `Foreign MSRP` (column U) only. Other templates do populate column H; see the per-vendor sections.
@@ -572,14 +572,14 @@ All other columns: blank. End-loop sentinel row after last line item: col B = `"
 | D | Vendor Part Number | `vpn` | `SKU` |
 | E | Description | `description` | `Description` |
 | F | Qty. | `qty` | `Quantity` |
-| K | Margin | `options.Margin` | User supplied |
+| K | Margin | `item.Margin ?? options.Margin` | Per-line Uplift reviewed in the pricing popup |
 | R | Comments | `"{term} Months"` | From `Service Duration` via `TermRendersAsComment => true`; blank when duration is empty |
 | S | Foreign Currency | `"USD"` | Fixed literal |
-| T | Foreign Cost | `cost` | `Extended Net Price / Quantity` (`0` → `0.0001` sentinel) |
+| T | Foreign Cost | `LinePricingMath.EffectiveUnitCost` | Untouched (`item.ImPercent is null`): unrounded `Extended Net Price / Quantity`; overridden (`item.ImPercent` set): `round(Msrp × (1 − ImPercent / 100), 2)` (`0` → `0.0001` sentinel) |
 | U | Foreign MSRP | `msrp` | `List Price Per` (`0` → `0.0001` sentinel) |
-| V | Foreign Exchange Rate | `options.FxRate` | User supplied |
+| V | Foreign Exchange Rate | `options.FxRate` | Header-level Exchange Rate from the pricing popup |
 
-All other columns (including local `MSRP` col H, local `Cost` col I, and `Warranty / Duration` col N): blank. End-loop sentinel row after last line item: col B = `"*"`. See `docs/juniper_cpq_xlsx.md`.
+All other columns (including local `MSRP` col H, local `Cost` col I, `Warranty / Duration` col N, and `IM%` col X): blank. End-loop sentinel row after last line item: col B = `"*"`. See `docs/juniper_cpq_xlsx.md`.
 
 ---
 
@@ -596,35 +596,38 @@ All other columns (including local `MSRP` col H, local `Cost` col I, and `Warran
 | D | Vendor Part Number | `vpn` | `SKU` |
 | E | Description | `description` | `SKU DESCRIPTION` |
 | F | Qty. | `qty` | `QUANTITY` |
-| K | Margin | `options.Margin` | User supplied |
+| K | Margin | `item.Margin ?? options.Margin` | Per-line Uplift reviewed in the pricing popup |
 | R | Comments | `"{term} Months"` | From `SERVICE DURATION` via `TermRendersAsComment => true`; blank when duration is empty |
 | S | Foreign Currency | `"USD"` | Validated per row from `CURRENCY` |
-| T | Foreign Cost | `cost` | `UNIT NET PRICE` (`0` → `0.0001` sentinel) |
+| T | Foreign Cost | `LinePricingMath.EffectiveUnitCost` | Untouched (`item.ImPercent is null`): source `UNIT NET PRICE`; overridden (`item.ImPercent` set): `round(Msrp × (1 − ImPercent / 100), 2)` (`0` → `0.0001` sentinel) |
 | U | Foreign MSRP | `msrp` | `LIST PRICE $` (`0` → `0.0001` sentinel) |
-| V | Foreign Exchange Rate | `options.FxRate` | User supplied |
+| V | Foreign Exchange Rate | `options.FxRate` | Header-level Exchange Rate from the pricing popup |
 
-All other columns (including local `MSRP` col H, local `Cost` col I, and `Warranty / Duration` col N): blank. End-loop sentinel row after last line item: col B = `"*"`. See `docs/juniper_indirect_xlsx.md`.
+All other columns (including local `MSRP` col H, local `Cost` col I, `Warranty / Duration` col N, and `IM%` col X): blank. End-loop sentinel row after last line item: col B = `"*"`. See `docs/juniper_indirect_xlsx.md`.
 
 ## Juniper Iris (Foreign Uplift)
 
 `juniper_iris_xlsx` uses the Foreign Uplift profile and worksheet. The parser declares
-`CalculatesCostFromMsrp`, so the shared writer requires IM% and calculates the cost at write time.
+`CalculatesCostFromMsrp` and `SupportsLinePricing`, so the pricing popup collects per-line IM% and
+Uplift (plus header-level Exchange Rate) and the shared writer calculates Foreign Cost per line at
+write time.
 
 | Column | Value |
 |---|---|
 | A / B | Numeric sequence / `JUNIPER` |
 | D / E / F | Source `Part Number` / `Description` / `Quantity` |
-| K | User Uplift |
+| K | Per-line Uplift (`item.Margin ?? options.Margin`) |
 | S | `USD` |
-| T | `Msrp × (1 − IM% / 100)`, rounded to cents, midpoint away from zero |
+| T | `Msrp × (1 − IM% / 100)` (`item.ImPercent ?? options.ImPercent`), rounded to cents, midpoint away from zero |
 | U | Source `Unit Price` as Foreign MSRP |
-| V | User Exchange Rate |
+| V | Header-level User Exchange Rate (`options.FxRate`) |
 
 Local MSRP (H), local Cost (I), and IM% (X) are blank. Remaining optional columns are
 blank; standard headers and end-loop sentinel apply. Genuine zero MSRP or calculated cost uses
-`NonZeroPrice`. IM% is required, nonnegative, at most two decimal places, with no upper limit.
+`NonZeroPrice`. Per-line IM% is required for every non-cancelled line with `Msrp > 0` (nonnegative,
+at most two decimal places, with no upper limit).
 For MSRP 427, IM% 15 produces Foreign Cost 362.95; IM% 27.53 produces 309.45.
 The calculation is per unit, independent of quantity, FX, and Uplift. Parsed values and MSRP-based
-source-total validation stay unchanged, and saving again with another IM% recalculates cost.
+source-total validation stay unchanged, and editing pricing in the review popup recalculates cost.
 The output filename falls back to the source stem, for example `Iris_ForeignUplift.xlsx`,
 because bid number and revision are null.
