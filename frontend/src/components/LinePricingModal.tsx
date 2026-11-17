@@ -67,6 +67,10 @@ export function LinePricingModal({
   const guardInput = (kind: PricingInputKind, lineLabel: string | null, raw: string, apply: (value: string) => void) => {
     const value = raw.trim();
     if (acceptsPartialInput(kind, value)) {
+      // An accepted edit means the user has moved on, so a notice about an earlier refused
+      // keystroke must not linger and read as a current error.
+      window.clearTimeout(inputHintTimer.current);
+      setInputHint(null);
       apply(value);
       return;
     }

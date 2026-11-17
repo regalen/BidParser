@@ -267,10 +267,20 @@ test('pricing inputs refuse out-of-range values and totals hide until every line
   await expect(lineIm).toHaveValue('12');
   await expect(hint).toHaveText('Line 1: IM% must be between 0 and 100, with up to 2 decimal places.');
 
-  // A minus sign cannot be typed at all.
+  // The notice clears as soon as an edit is accepted, so it never lingers as a stale error.
   await lineIm.fill('');
+  await expect(hint).toHaveCount(0);
+
+  // A minus sign cannot be typed at all; the digit after it is accepted and clears the notice.
   await lineIm.pressSequentially('-5');
   await expect(lineIm).toHaveValue('5');
+  await expect(hint).toHaveCount(0);
+
+  // A refused edit in one field is cleared by an accepted edit in another.
+  await dialog.getByLabel('FX (AUD:USD)').fill('-1');
+  await expect(hint).toHaveText('FX must be a positive number with up to 4 decimal places.');
+  await dialog.getByLabel('Line 2 Uplift%').fill('4.76');
+  await expect(hint).toHaveCount(0);
 
   // Exactly 100 is allowed and makes the line free.
   await lineIm.fill('100');
