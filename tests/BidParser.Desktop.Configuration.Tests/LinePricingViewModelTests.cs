@@ -233,6 +233,19 @@ public sealed class LinePricingViewModelTests
     }
 
     [Fact]
+    public void Dialog_size_defaults_to_filling_the_window_and_keeps_a_dragged_size()
+    {
+        var vm = new LinePricingViewModel(CreateR5Preview(), "Juniper_CPQ.xlsx");
+        vm.DialogWidth.Should().Be(double.NaN);
+        vm.DialogHeight.Should().Be(double.NaN);
+
+        vm.DialogWidth = 1100;
+        vm.DialogHeight = 700;
+        vm.DialogWidth.Should().Be(1100);
+        vm.DialogHeight.Should().Be(700);
+    }
+
+    [Fact]
     public void Totals_and_ToEntries_match_reference_case_R5()
     {
         var preview = CreateR5Preview();
@@ -267,6 +280,13 @@ public sealed class LinePricingViewModelTests
         vm.TotalPrice.Should().Be(2673.27m);
         vm.TotalMarginAmount.Should().Be(123.27m);
         vm.TotalMarginPercent.Should().Be(4.61m);
+
+        // The header badge names the currency once; the totals are bare numbers.
+        vm.CurrencyBadgeText.Should().Be("All values USD");
+        vm.TotalCostDisplay.Should().Be(2550.00m.ToString("N2", CultureInfo.CurrentCulture));
+        vm.TotalPriceDisplay.Should().Be(2673.27m.ToString("N2", CultureInfo.CurrentCulture));
+        vm.TotalMarginAmountDisplay.Should().Be(123.27m.ToString("N2", CultureInfo.CurrentCulture));
+        vm.TotalMarginPercentDisplay.Should().Be($"{4.61m.ToString("F2", CultureInfo.CurrentCulture)}%");
 
         var entries = vm.ToEntries();
         entries.Should().HaveCount(3);

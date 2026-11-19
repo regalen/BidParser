@@ -269,7 +269,7 @@
     <!-- Per-line pricing review overlay (page 1). -->
     <ContentControl x:Name="PricingReviewHost"
                     Grid.RowSpan="4"
-                    Style="{StaticResource Overlay.DialogHost}"
+                    Style="{StaticResource Overlay.ResizableDialogHost}"
                     Content="{Binding PricingReview}"
                     Visibility="{Binding HasPricingReview, Converter={StaticResource BooleanToVisibilityConverter}}" />
 

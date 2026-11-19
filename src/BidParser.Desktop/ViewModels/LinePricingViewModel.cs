@@ -388,6 +388,8 @@ public sealed class LinePricingViewModel : ObservableObject
     private readonly Action onNext;
     private readonly Action onCancel;
     private LinePricingTotals totals = new(0m, 0m, 0m, null);
+    private double dialogWidth = double.NaN;
+    private double dialogHeight = double.NaN;
 
     public LinePricingViewModel(
         LinePricingPreview preview,
@@ -464,6 +466,24 @@ public sealed class LinePricingViewModel : ObservableObject
     public bool ImPercentRequired => Preview.ImPercentRequired;
     public string ImColumnHeader => Preview.ImPercentEditable ? "IM%*" : "IM%";
 
+    /// <summary>
+    /// The review's user-dragged size in DIPs. <see cref="double.NaN"/> (the default) lets the
+    /// review fill the window. Held on the view model so <c>Edit pricing</c> reopens it at the same
+    /// size; it lives only as long as this review and is never persisted.
+    /// </summary>
+    public double DialogWidth
+    {
+        get => dialogWidth;
+        set => SetProperty(ref dialogWidth, value);
+    }
+
+    /// <inheritdoc cref="DialogWidth" />
+    public double DialogHeight
+    {
+        get => dialogHeight;
+        set => SetProperty(ref dialogHeight, value);
+    }
+
     public NumericFieldViewModel FxRate { get; }
     public NumericFieldViewModel HeaderImPercent { get; }
     public NumericFieldViewModel HeaderUplift { get; }
@@ -486,14 +506,15 @@ public sealed class LinePricingViewModel : ObservableObject
     /// </summary>
     public bool AreTotalsAvailable => Rows.All(row => row.IsCancelled || row.IsValid);
 
+    // Totals carry no currency prefix: the header badge already states the currency once.
     public string TotalCostDisplay => AreTotalsAvailable
-        ? $"{Currency} {TotalCost.ToString("N2", CultureInfo.CurrentCulture)}"
+        ? TotalCost.ToString("N2", CultureInfo.CurrentCulture)
         : "—";
     public string TotalPriceDisplay => AreTotalsAvailable
-        ? $"{Currency} {TotalPrice.ToString("N2", CultureInfo.CurrentCulture)}"
+        ? TotalPrice.ToString("N2", CultureInfo.CurrentCulture)
         : "—";
     public string TotalMarginAmountDisplay => AreTotalsAvailable
-        ? $"{Currency} {TotalMarginAmount.ToString("N2", CultureInfo.CurrentCulture)}"
+        ? TotalMarginAmount.ToString("N2", CultureInfo.CurrentCulture)
         : "—";
     public string TotalMarginPercentDisplay => AreTotalsAvailable && TotalMarginPercent is { } pct
         ? $"{pct.ToString("F2", CultureInfo.CurrentCulture)}%"

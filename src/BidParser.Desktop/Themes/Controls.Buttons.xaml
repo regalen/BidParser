@@ -30,7 +30,11 @@
               <ContentPresenter HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
                                 TextElement.Foreground="{TemplateBinding Foreground}"
-                                RecognizesAccessKey="True" />
+                                RecognizesAccessKey="True">
+                <ContentPresenter.Resources>
+                  <Style TargetType="TextBlock" BasedOn="{StaticResource Text.ControlForeground}" />
+                </ContentPresenter.Resources>
+              </ContentPresenter>
             </Border>
           </Grid>
           <ControlTemplate.Triggers>
@@ -47,19 +51,22 @@
     </Setter>
   </Style>
 
+  <!-- Filled buttons use their own fills rather than Brush.Accent: the accent also draws focus
+       rings and highlights, which must stay bright in dark mode, while a filled button needs a fill
+       dark enough for white text in both themes. -->
   <Style x:Key="Button.Primary" TargetType="Button" BasedOn="{StaticResource Button.Base}">
     <Setter Property="MinWidth" Value="{StaticResource Size.PrimaryMinWidth}" />
-    <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
-    <Setter Property="Foreground" Value="{DynamicResource Brush.AccentForeground}" />
+    <Setter Property="Background" Value="{DynamicResource Brush.PrimaryButton}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.PrimaryButton}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.FilledButtonForeground}" />
     <Style.Triggers>
       <Trigger Property="IsMouseOver" Value="True">
-        <Setter Property="Background" Value="{DynamicResource Brush.AccentHover}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource Brush.AccentHover}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.PrimaryButtonHover}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.PrimaryButtonHover}" />
       </Trigger>
       <Trigger Property="IsPressed" Value="True">
-        <Setter Property="Background" Value="{DynamicResource Brush.AccentPressed}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource Brush.AccentPressed}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.PrimaryButtonPressed}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.PrimaryButtonPressed}" />
       </Trigger>
     </Style.Triggers>
   </Style>
@@ -87,9 +94,20 @@
     <Setter Property="BorderBrush" Value="Transparent" />
   </Style>
 
+  <!-- Restates hover/pressed so the inherited Primary triggers never turn it blue. -->
   <Style x:Key="Button.Destructive" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
-    <Setter Property="Background" Value="{DynamicResource Brush.Error}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Error}" />
+    <Setter Property="Background" Value="{DynamicResource Brush.DestructiveButton}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.DestructiveButton}" />
+    <Style.Triggers>
+      <Trigger Property="IsMouseOver" Value="True">
+        <Setter Property="Background" Value="{DynamicResource Brush.DestructiveButtonHover}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.DestructiveButtonHover}" />
+      </Trigger>
+      <Trigger Property="IsPressed" Value="True">
+        <Setter Property="Background" Value="{DynamicResource Brush.DestructiveButtonPressed}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.DestructiveButtonPressed}" />
+      </Trigger>
+    </Style.Triggers>
   </Style>
 
   <!-- Disclosure toggle for the collapsed technical-details block. -->

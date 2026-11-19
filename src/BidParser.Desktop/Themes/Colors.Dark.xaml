@@ -17,6 +17,14 @@
   <Color x:Key="Color.AccentHover">#70AFF3</Color>
   <Color x:Key="Color.AccentPressed">#2F80D8</Color>
   <Color x:Key="Color.AccentForeground">#10131A</Color>
+  <!-- Filled command buttons carry white text, so their fills stay dark enough for 4.5:1. -->
+  <Color x:Key="Color.PrimaryButton">#2563C9</Color>
+  <Color x:Key="Color.PrimaryButtonHover">#2F6FD6</Color>
+  <Color x:Key="Color.PrimaryButtonPressed">#1E54AD</Color>
+  <Color x:Key="Color.DestructiveButton">#C4392F</Color>
+  <Color x:Key="Color.DestructiveButtonHover">#D2463B</Color>
+  <Color x:Key="Color.DestructiveButtonPressed">#A93027</Color>
+  <Color x:Key="Color.FilledButtonForeground">#FFFFFF</Color>
   <Color x:Key="Color.Success">#4CC38A</Color>
   <Color x:Key="Color.Warning">#E1A85B</Color>
   <Color x:Key="Color.Error">#F27167</Color>
@@ -51,6 +59,13 @@
   <SolidColorBrush x:Key="Brush.AccentHover" Color="{StaticResource Color.AccentHover}" />
   <SolidColorBrush x:Key="Brush.AccentPressed" Color="{StaticResource Color.AccentPressed}" />
   <SolidColorBrush x:Key="Brush.AccentForeground" Color="{StaticResource Color.AccentForeground}" />
+  <SolidColorBrush x:Key="Brush.PrimaryButton" Color="{StaticResource Color.PrimaryButton}" />
+  <SolidColorBrush x:Key="Brush.PrimaryButtonHover" Color="{StaticResource Color.PrimaryButtonHover}" />
+  <SolidColorBrush x:Key="Brush.PrimaryButtonPressed" Color="{StaticResource Color.PrimaryButtonPressed}" />
+  <SolidColorBrush x:Key="Brush.DestructiveButton" Color="{StaticResource Color.DestructiveButton}" />
+  <SolidColorBrush x:Key="Brush.DestructiveButtonHover" Color="{StaticResource Color.DestructiveButtonHover}" />
+  <SolidColorBrush x:Key="Brush.DestructiveButtonPressed" Color="{StaticResource Color.DestructiveButtonPressed}" />
+  <SolidColorBrush x:Key="Brush.FilledButtonForeground" Color="{StaticResource Color.FilledButtonForeground}" />
   <SolidColorBrush x:Key="Brush.Success" Color="{StaticResource Color.Success}" />
   <SolidColorBrush x:Key="Brush.Warning" Color="{StaticResource Color.Warning}" />
   <SolidColorBrush x:Key="Brush.Error" Color="{StaticResource Color.Error}" />
