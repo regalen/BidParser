@@ -44,8 +44,12 @@ folder and update dismissal last only for the running process.
    synchronous parser call is best-effort and its eventual result is discarded.
 5. For `SupportsLinePricing` formats, complete the in-window **Review & set line pricing** overlay
    (Step 1: Pricing): enter the header Exchange Rate, optionally bulk-apply IM% and Uplift across
-   all lines, edit individual rows, review live USD totals, and select **Next**. Selecting
-   **Cancel** (or `Escape`) discards the in-memory parse and returns to the drop zone.
+   all lines, edit individual rows, review live totals (the header badge names the currency, so
+   the totals carry no prefix), and select **Next**. Selecting **Cancel** (or `Escape`) discards
+   the in-memory parse and returns to the drop zone. The overlay fills the window less a 24-DIP
+   margin, so maximizing or resizing BidParser enlarges it; its bottom-right grip resizes it within
+   the window (minimum 760×400 DIP), and double-clicking the grip returns it to filling the window.
+   The dragged size survives **Edit pricing** but is never persisted.
 6. Review the persistent result area (Step 2: Result) and choose **Save** or **Save anyway** (or
    **Edit pricing** to reopen the line-pricing overlay with current edits intact). The save
    dialog uses the canonical `OutputNaming` filename and offers XLSX or ZIP as appropriate.
@@ -72,6 +76,14 @@ The 960×620-DIP window has an 840×560 minimum, standard Windows chrome, a fixe
 column, star-width result workspace, and bottom command bar. Light and dark resources follow the
 Windows app-mode preference and update during the session; Windows high-contrast mode switches to
 the `SystemColors` resource set. No theme setting is persisted.
+
+Filled command buttons (**Parse quote**, **Save**, **Next**, **Replace**) use dedicated
+`Brush.PrimaryButton*` / `Brush.DestructiveButton*` fills with white text in both light and dark
+themes, rather than `Brush.Accent`, which stays bright for focus rings and highlights. Tooltips
+match the active theme (surface background, strong border, primary text). The application-wide
+implicit `TextBlock` style sets an explicit foreground that would otherwise override a control's own
+text colour inside templates, so templates that colour their text scope `Text.ControlForeground`
+over their `ContentPresenter`; do the same for any new template that sets its own foreground.
 
 Inter Regular and SemiBold are packaged WPF resources with Segoe UI fallback. The application
 manifest declares Per-Monitor-V2 awareness. Controls carry accessible names, logical tab order,
@@ -192,7 +204,9 @@ Windows x64 without a separately installed .NET runtime or elevation. Verify:
 - Representative PDF, XLSX, XLSM, and XLS inputs; Auto and wrong-format selection; mismatch and Zebra
   cancellation warnings; HP/Lenovo/SAID split ZIPs; conflict overwrite/copy; and workbook integrity.
 - Juniper CPQ, Indirect, and Iris per-line pricing review overlay: header Exchange Rate, header
-  **Apply** for IM% and Uplift, single-row overrides, CPQ IM% clear-to-revert, live USD totals,
+  **Apply** for IM% and Uplift, single-row overrides, CPQ IM% clear-to-revert, live totals,
+  centred column headers and readable tooltips in light and dark themes, white text on filled
+  buttons, a 4 dp Exchange Rate fully visible, grip resize/maximize/double-click reset,
   description ellipsis and hover tooltip, **Edit pricing** round-trip from the result card,
   keyboard-only navigation (`Tab`/`Escape`), high-contrast rendering, and saved workbook col K/T/V
   values.

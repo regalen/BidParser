@@ -111,13 +111,97 @@
     </Setter>
   </Style>
 
+  <!-- Tooltips follow the theme like native Windows 11 tooltips: a surface-coloured card with a
+       border. The template scopes Text.ControlForeground and wrapping over string content, which
+       the application-level TextBlock style would otherwise recolour and leave on one line. -->
   <Style TargetType="ToolTip">
-    <Setter Property="MaxWidth" Value="280" />
-    <Setter Property="Padding" Value="{StaticResource Space.8}" />
-    <Setter Property="Background" Value="{DynamicResource Brush.TextPrimary}" />
-    <Setter Property="Foreground" Value="{DynamicResource Brush.Surface}" />
+    <Setter Property="MaxWidth" Value="320" />
+    <Setter Property="Padding" Value="10,6" />
+    <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
+    <Setter Property="BorderThickness" Value="{StaticResource Border.All}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
     <Setter Property="FontFamily" Value="{StaticResource Font.Primary}" />
     <Setter Property="FontSize" Value="12" />
+    <Setter Property="HasDropShadow" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ToolTip">
+          <Border Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{StaticResource Radius.Control}"
+                  Padding="{TemplateBinding Padding}"
+                  SnapsToDevicePixels="True">
+            <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}">
+              <ContentPresenter.Resources>
+                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.ControlForeground}">
+                  <Setter Property="FontSize" Value="12" />
+                  <Setter Property="TextWrapping" Value="Wrap" />
+                </Style>
+              </ContentPresenter.Resources>
+            </ContentPresenter>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Data grid column header: themed, centred and padded. The resize grippers keep the
+       PART_ names DataGrid looks for, so columns stay user-resizable. -->
+  <Style x:Key="Grid.ColumnHeaderGripper" TargetType="Thumb">
+    <Setter Property="Width" Value="8" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Cursor" Value="SizeWE" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Thumb">
+          <Border Background="{TemplateBinding Background}" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="Grid.ColumnHeader" TargetType="DataGridColumnHeader">
+    <Setter Property="Background" Value="{DynamicResource Brush.SurfaceInset}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+    <Setter Property="FontFamily" Value="{StaticResource Font.Primary}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="{StaticResource Weight.SemiBold}" />
+    <Setter Property="Padding" Value="10,7" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="SnapsToDevicePixels" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="DataGridColumnHeader">
+          <Grid>
+            <Border Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="0,0,1,1"
+                    Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                TextElement.Foreground="{TemplateBinding Foreground}">
+                <ContentPresenter.Resources>
+                  <Style TargetType="TextBlock" BasedOn="{StaticResource Text.ControlForeground}">
+                    <Setter Property="FontSize" Value="13" />
+                    <Setter Property="FontWeight" Value="{StaticResource Weight.SemiBold}" />
+                  </Style>
+                </ContentPresenter.Resources>
+              </ContentPresenter>
+            </Border>
+            <Thumb x:Name="PART_LeftHeaderGripper"
+                   HorizontalAlignment="Left"
+                   Style="{StaticResource Grid.ColumnHeaderGripper}" />
+            <Thumb x:Name="PART_RightHeaderGripper"
+                   HorizontalAlignment="Right"
+                   Style="{StaticResource Grid.ColumnHeaderGripper}" />
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
   </Style>
 
   <Style x:Key="Surface.Dialog" TargetType="Border" BasedOn="{StaticResource Surface.Card}">
@@ -135,6 +219,21 @@
         <ControlTemplate TargetType="ContentControl">
           <Border Background="{DynamicResource Brush.Scrim}">
             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Host for a dialog that fills the window (less a margin) by default and can be resized with
+       its grip; the dialog's own Width/Height, once dragged, centre it within this area. -->
+  <Style x:Key="Overlay.ResizableDialogHost" TargetType="ContentControl">
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ContentControl">
+          <Border Background="{DynamicResource Brush.Scrim}">
+            <ContentPresenter Margin="{StaticResource Space.24}" />
           </Border>
         </ControlTemplate>
       </Setter.Value>
@@ -600,19 +699,22 @@
     </Border>
   </DataTemplate>
 
+  <!-- Fills the window (less the host margin) until the corner grip is dragged; the dragged size
+       lives on the view model so Edit pricing reopens at the same size. -->
   <DataTemplate DataType="{x:Type vm:LinePricingViewModel}">
     <Border Style="{StaticResource Surface.Card}"
             CornerRadius="{StaticResource Radius.Dialog}"
-            Margin="{StaticResource Space.16}"
-            MaxWidth="920"
-            MaxHeight="580"
+            MinWidth="760"
+            MinHeight="400"
+            Width="{Binding DialogWidth, Mode=TwoWay}"
+            Height="{Binding DialogHeight, Mode=TwoWay}"
+            mvvm:DialogResizeBehavior.IsResizable="True"
             AutomationProperties.Name="Line pricing review">
       <Grid>
         <Grid.RowDefinitions>
           <RowDefinition Height="Auto" />
           <RowDefinition Height="Auto" />
           <RowDefinition Height="*" />
-          <RowDefinition Height="Auto" />
           <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
@@ -655,7 +757,8 @@
                 BorderBrush="{DynamicResource Brush.Border}"
                 BorderThickness="{StaticResource Border.Bottom}">
           <WrapPanel Orientation="Horizontal" VerticalAlignment="Top">
-            <StackPanel Width="180"
+            <!-- Wide enough for a 4 d.p. rate such as 12.3456 beside the "USD to AUD" suffix. -->
+            <StackPanel Width="240"
                         Margin="{StaticResource Space.Right12}"
                         Visibility="{Binding UsesFxRate, Converter={StaticResource BooleanToVisibilityConverter}}">
               <ContentControl Content="{Binding FxRate}" />
@@ -709,7 +812,12 @@
                   ScrollViewer.CanContentScroll="True"
                   ScrollViewer.VerticalScrollBarVisibility="Auto"
                   ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                  ColumnHeaderStyle="{StaticResource Grid.ColumnHeader}"
                   AutomationProperties.Name="Quote lines pricing grid">
+          <DataGrid.Resources>
+            <!-- Also reaches the filler header to the right of the last column. -->
+            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource Grid.ColumnHeader}" />
+          </DataGrid.Resources>
           <DataGrid.RowStyle>
             <Style TargetType="DataGridRow">
               <Setter Property="ToolTip" Value="{Binding RowErrorMessage}" />
@@ -719,7 +827,7 @@
           <DataGrid.Columns>
             <DataGridTextColumn Header="Line#" Binding="{Binding LineNumber}" IsReadOnly="True" Width="Auto" />
             <DataGridTextColumn Header="VPN" Binding="{Binding Vpn}" IsReadOnly="True" Width="Auto" />
-            <DataGridTemplateColumn Header="Description" Width="180" IsReadOnly="True">
+            <DataGridTemplateColumn Header="Description" Width="*" MinWidth="180" IsReadOnly="True">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>
                   <TextBlock VerticalAlignment="Center"
@@ -783,18 +891,8 @@
           </DataGrid.Columns>
         </DataGrid>
 
-        <!-- Legend -->
-        <Border Grid.Row="3"
-                Padding="{StaticResource Space.Horizontal16}"
-                Margin="{StaticResource Space.Top8}">
-          <TextBlock Style="{StaticResource Text.Caption}"
-                     Foreground="{DynamicResource Brush.TextMuted}"
-                     Text="* editable · Cost = supplier net cost (blank for Iris; filled for CPQ / Indirect)" />
-        </Border>
-
         <!-- Totals footer + Cancel / Next -->
-        <Border Grid.Row="4"
-                Margin="{StaticResource Space.Top8}"
+        <Border Grid.Row="3"
                 Padding="{StaticResource Space.16}"
                 Background="{DynamicResource Brush.SurfaceInset}"
                 BorderBrush="{DynamicResource Brush.Border}"
@@ -842,6 +940,34 @@
             </StackPanel>
           </DockPanel>
         </Border>
+
+        <!-- Corner resize grip: drag to resize, double-click to fill the window again. At 14 DIP
+             with a 2 DIP inset it stays inside the footer's 16 DIP padding, clear of Next. -->
+        <Thumb Grid.Row="3"
+               Width="14"
+               Height="14"
+               Margin="0,0,2,2"
+               HorizontalAlignment="Right"
+               VerticalAlignment="Bottom"
+               Cursor="SizeNWSE"
+               Focusable="False"
+               ToolTip="Drag to resize · double-click to fill the window"
+               mvvm:DialogResizeBehavior.IsGrip="True"
+               AutomationProperties.Name="Resize line pricing">
+          <Thumb.Template>
+            <ControlTemplate TargetType="Thumb">
+              <Grid Background="Transparent">
+                <Path HorizontalAlignment="Right"
+                      VerticalAlignment="Bottom"
+                      Stroke="{DynamicResource Brush.TextMuted}"
+                      StrokeThickness="1.2"
+                      StrokeStartLineCap="Round"
+                      StrokeEndLineCap="Round"
+                      Data="M 11,3 L 3,11 M 11,7 L 7,11" />
+              </Grid>
+            </ControlTemplate>
+          </Thumb.Template>
+        </Thumb>
       </Grid>
     </Border>
   </DataTemplate>

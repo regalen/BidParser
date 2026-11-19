@@ -13,6 +13,15 @@
     <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
   </Style>
 
+  <!-- The implicit style above lives in Application resources, so it also reaches the TextBlock a
+       ContentPresenter generates for string content inside control templates, and its explicit
+       Foreground beats the control's own. Templates that colour their text (filled buttons,
+       tooltips, grid headers) scope this style over their ContentPresenter so the text follows the
+       hosting control's Foreground instead. Fonts are unchanged. -->
+  <Style x:Key="Text.ControlForeground" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+    <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Control}}" />
+  </Style>
+
   <Style x:Key="Text.WindowTitle" TargetType="TextBlock">
     <Setter Property="FontSize" Value="20" />
     <Setter Property="FontWeight" Value="{StaticResource Weight.SemiBold}" />
