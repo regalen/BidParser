@@ -59,9 +59,9 @@
         <Button DockPanel.Dock="Right"
                 Margin="{StaticResource Space.Right8}"
                 Style="{StaticResource Button.Compact}"
-                Command="{Binding ViewUpdateCommand}"
-                AutomationProperties.Name="View update"
-                Content="View update" />
+                Command="{Binding DownloadUpdateCommand}"
+                AutomationProperties.Name="Download the latest BidParser.exe"
+                Content="Download update" />
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
           <TextBlock Style="{StaticResource Text.BodySecondary}"
                      Foreground="{DynamicResource Brush.InfoText}"

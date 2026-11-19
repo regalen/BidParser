@@ -129,9 +129,13 @@ compares it with the public repository's latest stable GitHub release. One leadi
 from the release tag and build metadata does not affect precedence. An invalid version, older/equal
 release, 404, timeout, rate limit, malformed response, or blocked GitHub produces no notification.
 
-A newer release shows a dismissible bar for the current session. **View update** opens a URL built
-from the fixed public repository base and the validated tag. The application never trusts an API-
-supplied download URL and does not download, install, replace, elevate, or auto-update itself.
+A newer release shows a dismissible bar for the current session. **Download update** opens the
+fixed direct-download URL
+`https://github.com/regalen/BidParser/releases/latest/download/BidParser.exe` in the default
+browser, which downloads the latest release's executable; the user then replaces their copy. GitHub
+resolves `releases/latest` to the same latest stable release the check compared against. The URL is
+compiled in from the fixed public repository base; the application never trusts an API-supplied
+download URL and does not itself download, install, replace, elevate, or auto-update.
 
 ## Build and publish
 
@@ -211,7 +215,7 @@ Windows x64 without a separately installed .NET runtime or elevation. Verify:
   keyboard-only navigation (`Tab`/`Escape`), high-contrast rendering, and saved workbook col K/T/V
   values.
 - Valid public configuration, offline fallback, unsupported-schema fallback, independent endpoint
-  failures, update notification/view/dismissal, blocked GitHub, and rate limiting.
+  failures, update notification/download/dismissal, blocked GitHub, and rate limiting.
 - A fresh download from the public release, plus absence of quote copies, history, database,
   registry writes, services, scheduled tasks, and leftover staging files.
 

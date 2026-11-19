@@ -89,7 +89,7 @@ public sealed class MainWindowViewModel : ObservableObject
         OpenFolderCommand = new RelayCommand(OpenSavedFolder, () => SavedPath is not null);
         CopyDetailsCommand = new RelayCommand(CopyDetails, () => Result is FailureResultViewModel);
         EscapeCommand = new RelayCommand(Escape);
-        ViewUpdateCommand = new RelayCommand(ViewUpdate, () => update is not null);
+        DownloadUpdateCommand = new RelayCommand(DownloadUpdate, () => update is not null);
         DismissUpdateCommand = new RelayCommand(DismissUpdate);
 
         Refresh();
@@ -114,7 +114,7 @@ public sealed class MainWindowViewModel : ObservableObject
     public RelayCommand OpenFolderCommand { get; }
     public RelayCommand CopyDetailsCommand { get; }
     public RelayCommand EscapeCommand { get; }
-    public RelayCommand ViewUpdateCommand { get; }
+    public RelayCommand DownloadUpdateCommand { get; }
     public RelayCommand DismissUpdateCommand { get; }
 
     public VendorViewModel? SelectedVendor
@@ -388,7 +388,7 @@ public sealed class MainWindowViewModel : ObservableObject
         updateDismissed = false;
         OnPropertyChanged(nameof(HasUpdate));
         OnPropertyChanged(nameof(UpdateMessage));
-        ViewUpdateCommand.NotifyCanExecuteChanged();
+        DownloadUpdateCommand.NotifyCanExecuteChanged();
     }
 
     private IEnumerable<NumericFieldViewModel> AllPricingFields
@@ -629,11 +629,12 @@ public sealed class MainWindowViewModel : ObservableObject
         }
     }
 
-    private void ViewUpdate()
+    /// <summary>Hands the fixed download URL to the default browser, which downloads the new executable.</summary>
+    private void DownloadUpdate()
     {
         if (update is { } available)
         {
-            shell.Open(available.ReleasePage.ToString());
+            shell.Open(available.Download.ToString());
         }
     }
 

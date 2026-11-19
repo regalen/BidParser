@@ -167,13 +167,14 @@ public sealed class TransportAndUpdateTests
         => (await Check(installed, tag)).Should().BeNull();
 
     [Fact]
-    public async Task The_release_page_is_built_from_the_tag_and_the_fixed_repository()
+    public async Task The_download_is_the_fixed_latest_executable_url()
     {
         var update = await Check("1.0.0", "v2.0.0");
 
-        update!.ReleasePage.Should().Be(new Uri($"{DesktopEndpoints.PublicRepository}/releases/tag/v2.0.0"));
-        // Never the html_url the payload offered.
-        update.ReleasePage.Host.Should().Be("github.com");
+        update!.Download.Should().Be(new Uri("https://github.com/regalen/BidParser/releases/latest/download/BidParser.exe"));
+        update.Download.Should().Be(DesktopEndpoints.LatestDownload);
+        // Never the html_url or asset URL the payload offered.
+        update.Download.Host.Should().Be("github.com");
         update.Installed.Should().Be("1.0.0");
         update.Latest.Should().Be("2.0.0");
     }

@@ -61,8 +61,9 @@ endpoint contracts.
   applied independently on the WPF dispatcher.
 - **Update semantics** — `NuGet.Versioning` compares the installed informational version with the
   latest stable release tag after stripping one `v`; build metadata is ignored. Only a newer stable
-  release shows the session-dismissible bar. The release page is reconstructed from a fixed base;
-  no payload URL, binary download, installer, elevation, or replacement is trusted/performed.
+  release shows the session-dismissible bar. **Download update** opens the compiled-in
+  `releases/latest/download/BidParser.exe` URL (fixed base) in the browser; no payload URL is
+  trusted, and the app performs no download, installer, elevation, or replacement itself.
 - **Packaging** — the checked-in `win-x64` profile is self-contained, single-file, native-library
   self-extracting, untrimmed, not ReadyToRun, and embeds symbols. Windows CI requires exactly one
   `BidParser.exe`, verifies Product/File version resources, smoke-launches it, and publishes its
