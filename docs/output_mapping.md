@@ -614,17 +614,18 @@ write time.
 
 | Column | Value |
 |---|---|
-| A / B | Numeric sequence / `JUNIPER` |
+| A / B | `Line#` flattened to text `N` / `N.01` ([sequencing](juniper_iris_xlsx.md#line-sequencing)); numeric counter only when the source has no `Line#` column / `JUNIPER` |
 | D / E / F | Source `Part Number` / `Description` / `Quantity` |
 | K | Per-line Uplift (`item.Margin ?? options.Margin`) |
 | S | `USD` |
-| T | `Msrp × (1 − IM% / 100)` (`item.ImPercent ?? options.ImPercent`), rounded to cents, midpoint away from zero |
-| U | Source `Unit Price` as Foreign MSRP |
+| T | `Msrp × (1 − IM% / 100)` (`item.ImPercent ?? options.ImPercent`), rounded to cents, midpoint away from zero; `0.0001` for an included (`incl.`) component |
+| U | Source `Unit Price` as Foreign MSRP; `0.0001` for an included (`incl.`) component |
 | V | Header-level User Exchange Rate (`options.FxRate`) |
 
 Local MSRP (H), local Cost (I), and IM% (X) are blank. Remaining optional columns are
 blank; standard headers and end-loop sentinel apply. Genuine zero MSRP or calculated cost uses
-`NonZeroPrice`. Per-line IM% is required for every non-cancelled line with `Msrp > 0`
+`NonZeroPrice`; a zero-MSRP line (an included component) costs zero and needs no IM%. Per-line IM%
+is required for every non-cancelled line with `Msrp > 0`
 (`0 ≤ IM% ≤ 100`, at most two decimal places). IM% 100 writes the zero-price sentinel; values above
 100 are rejected, so column T is never negative.
 For MSRP 427, IM% 15 produces Foreign Cost 362.95; IM% 27.53 produces 309.45.

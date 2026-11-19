@@ -48,6 +48,31 @@ public sealed class LinePricingViewModelTests
     }
 
     [Fact]
+    public void Iris_included_zero_msrp_line_needs_no_im_and_costs_zero()
+    {
+        var preview = CreateIrisPreview() with
+        {
+            Lines =
+            [
+                new(0, "1", "AP-SYN", "Synthetic access point", 2, 100.00m, null, null, false),
+                new(1, "1.01", "BRKT-SYN", "INCLUDED: Synthetic bracket", 2, 0m, null, null, false)
+            ]
+        };
+        var vm = new LinePricingViewModel(
+            preview,
+            "Juniper_Iris.xlsx",
+            new VendorDefaults(FxRate: 1.5m, Margin: 5m, ImPercent: 20m));
+
+        var included = vm.Rows[1];
+        included.IsImEditable.Should().BeFalse();
+        included.ImErrorMessage.Should().BeNull();
+        included.UnitCost.Should().Be(0m);
+        included.UnitPrice.Should().Be(0m);
+        vm.IsValid.Should().BeTrue();
+        vm.TotalCost.Should().Be(160m);
+    }
+
+    [Fact]
     public void Prefill_from_vendor_defaults_populates_fx_header_and_row_uplifts()
     {
         var preview = CreateR5Preview();
