@@ -30,6 +30,13 @@ public static class LinePricingMath
         if (calculatesCostFromMsrp)
         {
             var msrp = item.Msrp ?? throw new ArgumentException("MSRP is required to calculate cost.", nameof(item));
+            // A zero MSRP (e.g. an Iris "incl." component) costs zero whatever the discount, so it
+            // needs no IM% — the review popups never offer one for it.
+            if (msrp == 0m)
+            {
+                return 0m;
+            }
+
             var im = item.ImPercent ?? headerImPercent
                 ?? throw new ArgumentException("IM% is required to calculate cost from MSRP.", nameof(item));
             return CostFromMsrp(msrp, im);

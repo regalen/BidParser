@@ -147,6 +147,18 @@ public class LinePricingMathTests
     }
 
     [Fact]
+    public void Iris_zero_msrp_needs_no_im_but_positive_msrp_still_does()
+    {
+        // An Iris "incl." line has MSRP 0 and the review popups never offer it an IM%.
+        var included = new LineItem { Vpn = "INCL-SKU", Qty = 4, Cost = 0m, Msrp = 0m };
+        LinePricingMath.EffectiveUnitCost(included, calculatesCostFromMsrp: true).Should().Be(0m);
+
+        var priced = included with { Msrp = 100m };
+        ((Action)(() => LinePricingMath.EffectiveUnitCost(priced, calculatesCostFromMsrp: true)))
+            .Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
     public void MidpointRounding_DerivedIm_And_ZeroTotalPrice()
     {
         // Midpoint away from zero: 1.005 -> 1.01

@@ -244,6 +244,155 @@ public sealed class JuniperIrisXlsxParserTests
         WithWorkbook(workbook, path => parser.Parse(path).Validation.Matches.Should().BeTrue());
     }
 
+    [Fact]
+    public void Fixture_line_numbers_become_parent_sequences()
+    {
+        parser.Parse(Fixture).LineItems.Select(item => item.LineSequence).Should().Equal("1", "2");
+    }
+
+    [Fact]
+    public void Included_components_are_zero_price_lines_and_line_numbers_flatten_to_two_levels()
+    {
+        using var workbook = BundledWorkbook();
+        WithWorkbook(workbook, path =>
+        {
+            var result = parser.Parse(path);
+            result.LineItems.Select(item => (item.LineSequence, item.Vpn, item.Qty, item.Msrp, item.Cost)).Should().Equal(
+                ("1", "SYN-AP-01", 2, 100m, 0m),
+                ("1.01", "SYN-BRKT-01", 2, 0m, 0m),      // 1.1   incl.
+                ("1.02", "SYN-SUB-01", 2, 50m, 0m),      // 1.2   priced child
+                ("1.03", "SYN-SUB-BND-A", 2, 0m, 0m),    // 1.2.1 incl., third level flattened
+                ("1.04", "SYN-SUB-BND-B", 2, 0m, 0m),    // 1.2.2 "INCL" with a stray price list
+                ("2", "SYN-RTR-01", 1, 10m, 0m),
+                ("2.01", "SYN-CBL-01", 1, 0m, 0m),       // 2.1   blank Unit Price and Price List
+                ("2.02", "SYN-SVC-01", 1, 5m, 0m));      // 2.1.1 priced third level
+            result.LineItems[1].Raw["Unit Price"].Should().Be("incl.");
+            result.Validation.ComputedTotal.Should().Be(315m);
+            result.Validation.QuotedTotal.Should().Be(315m);
+            result.Validation.Matches.Should().BeTrue();
+        });
+    }
+
+    [Theory]
+    [InlineData(new[] { "1.0", "1.1", "2.1", "2.2" }, new[] { "1", "1.01", "2", "2.01" })]
+    [InlineData(new[] { "1", "1.1", "1.1.1", "1.2", "2" }, new[] { "1", "1.01", "1.02", "1.03", "2" })]
+    [InlineData(new[] { "1.0", "", "1.1" }, new[] { "1", "2", "3" })]
+    [InlineData(new[] { "01.0", "1.1", "1.0.0" }, new[] { "1", "1.01", "2" })]
+    public void Line_number_edge_cases_never_attach_a_child_to_the_wrong_parent(string[] lineNumbers, string[] expected)
+    {
+        using var workbook = PricedLinesWorkbook(lineNumbers);
+        WithWorkbook(workbook, path => parser.Parse(path).LineItems.Select(item => item.LineSequence)
+            .Should().Equal(expected));
+    }
+
+    [Fact]
+    public void Ten_or_more_children_keep_two_digit_ordering()
+    {
+        var lineNumbers = new[] { "1.0" }.Concat(Enumerable.Range(1, 10).Select(i => $"1.{i}")).ToArray();
+        using var workbook = PricedLinesWorkbook(lineNumbers);
+        WithWorkbook(workbook, path => parser.Parse(path).LineItems.Select(item => item.LineSequence)
+            .Should().EndWith(["1.09", "1.10"]));
+    }
+
+    [Fact]
+    public void Blank_unit_price_with_a_price_list_is_still_rejected()
+    {
+        using var workbook = new XLWorkbook(Fixture);
+        workbook.Worksheet(1).Cell(2, 5).Clear();
+        WithWorkbook(workbook, path => ((Action)(() => parser.Parse(path))).Should().Throw<ParseError>()
+            .Which.Stage.Should().Be("extract"));
+    }
+
+    [Fact]
+    public async Task Writer_emits_included_lines_with_sentinel_prices_and_needs_no_im_for_them()
+    {
+        using var source = BundledWorkbook();
+        var input = Path.Combine(Path.GetTempPath(), $"iris-{Guid.NewGuid():N}.xlsx");
+        var output = Path.Combine(Path.GetTempPath(), $"iris-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            source.SaveAs(input);
+            var quote = await new QuoteParseService(new ParserRegistry(), new SourceFormatInspector())
+                .ParseAsync(new QuoteParseRequest(input, Vendors.Juniper, parser.Slug));
+            var linePricing = quote.Result.LineItems
+                .Select((item, idx) => new LinePricingEntry(idx, item.Vpn, Margin: 5m,
+                    ImPercent: item.Msrp is > 0m ? 20m : null))
+                .ToList();
+            await new WorkbookWriteService().WriteAsync(
+                new WorkbookWriteRequest(quote, output, FxRate: 1.5m, LinePricing: linePricing));
+
+            using var workbook = new XLWorkbook(output);
+            var sheet = workbook.Worksheet(CrmTemplates.ForeignUplift);
+            Enumerable.Range(3, 8).Select(row => sheet.Cell(row, 1).GetString())
+                .Should().Equal("1", "1.01", "1.02", "1.03", "1.04", "2", "2.01", "2.02");
+            foreach (var row in new[] { 4, 6, 7, 9 })
+            {
+                sheet.Cell(row, 20).GetValue<decimal>().Should().Be(0.0001m); // TemplateLayout.ZeroPriceSentinel
+                sheet.Cell(row, 21).GetValue<decimal>().Should().Be(0.0001m); // TemplateLayout.ZeroPriceSentinel
+            }
+            sheet.Cell(3, 20).GetValue<decimal>().Should().Be(80m);
+            sheet.Cell(3, 21).GetValue<decimal>().Should().Be(100m);
+            sheet.Cell(5, 20).GetValue<decimal>().Should().Be(40m);
+        }
+        finally
+        {
+            File.Delete(input);
+            File.Delete(output);
+        }
+    }
+
+    /// <summary>One priced synthetic line (10 USD × 1) per Line#, plus a matching Quote Total.</summary>
+    private static XLWorkbook PricedLinesWorkbook(IReadOnlyList<string> lineNumbers)
+        => IrisWorkbook(
+            lineNumbers.Select((line, i) => new object?[]
+            {
+                "01 - Group", line, $"SYN-PART-{i:D2}", "Synthetic part", "Juniper Networks",
+                10, 1, 10, 0, 10, "Juniper Price List for APAC (USD)"
+            }).ToArray(),
+            10 * lineNumbers.Count);
+
+    /// <summary>
+    /// Fully synthetic Iris BOM with included components at the second and third level, a priced
+    /// third-level row, an "incl." row with a stray price list, and a row with neither a Unit
+    /// Price nor a Price List. Quote Total counts priced rows only: 200 + 100 + 10 + 5 = 315.
+    /// </summary>
+    private static XLWorkbook BundledWorkbook()
+    {
+        const string usd = "Juniper Price List for APAC (USD)";
+        object?[][] rows =
+        [
+            ["01 - Group A", "1.0", "SYN-AP-01", "Synthetic access point", "Juniper Networks", 100, 2, 200, 0, 200, usd],
+            ["01 - Group A", "1.1", "SYN-BRKT-01", "INCLUDED: Synthetic bracket", "Juniper Networks", "incl.", 2, null, null, null, null],
+            ["01 - Group A", "1.2", "SYN-SUB-01", "Synthetic subscription", "Juniper Networks", 50, 2, 100, 0, 100, usd],
+            ["01 - Group A", "1.2.1", "SYN-SUB-BND-A", "INCLUDED: Synthetic bundled service A", "Juniper Networks", "incl.", 2, null, null, null, null],
+            ["01 - Group A", "1.2.2", "SYN-SUB-BND-B", "INCLUDED: Synthetic bundled service B", "Juniper Networks", "INCL", 2, null, null, null, usd],
+            ["02 - Group B", "2.0", "SYN-RTR-01", "Synthetic router", "Juniper Networks", 10, 1, 10, 0, 10, usd],
+            ["02 - Group B", "2.1", "SYN-CBL-01", "INCLUDED: Synthetic cable", "Juniper Networks", null, 1, null, null, null, null],
+            ["02 - Group B", "2.1.1", "SYN-SVC-01", "Synthetic support", "Juniper Networks", 5, 1, 5, 0, 5, usd],
+        ];
+        return IrisWorkbook(rows, 315);
+    }
+
+    private static XLWorkbook IrisWorkbook(object?[][] rows, int quoteTotal)
+    {
+        var workbook = new XLWorkbook();
+        var sheet = workbook.AddWorksheet("Sheet1");
+        string[] headers = ["Design Group", "Line#", "Part Number", "Description", "Manufacturer",
+            "Unit Price", "Quantity", "Sub Total", "Discount", "Total", "Price List"];
+        for (var col = 0; col < headers.Length; col++) sheet.Cell(1, col + 1).Value = headers[col];
+        for (var r = 0; r < rows.Length; r++)
+        for (var c = 0; c < rows[r].Length; c++)
+        {
+            var value = rows[r][c];
+            var cell = sheet.Cell(r + 2, c + 1);
+            if (value is int number) cell.Value = number;
+            else if (value is string text) cell.Value = text;
+        }
+        sheet.Cell(rows.Length + 2, 3).Value = "Quote Total";
+        sheet.Cell(rows.Length + 2, 10).Value = quoteTotal;
+        return workbook;
+    }
+
     private static void WithWorkbook(XLWorkbook workbook, Action<string> action)
     {
         var path = Path.Combine(Path.GetTempPath(), $"iris-{Guid.NewGuid():N}.xlsx");
