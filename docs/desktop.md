@@ -45,7 +45,10 @@ folder and update dismissal last only for the running process.
 5. For `SupportsLinePricing` formats, complete the in-window **Review & set line pricing** overlay
    (Step 1: Pricing): enter the header Exchange Rate, optionally bulk-apply IM% and Uplift across
    all lines, edit individual rows, review live totals (the header badge names the currency, so
-   the totals carry no prefix), and select **Next**. Selecting **Cancel** (or `Escape`) discards
+   the totals carry no prefix), and select **Next**. Every grid cell uses the same 12-DIP Inter
+   text, vertically centred. Each row's IM% and Uplift box shows its state as you type or apply:
+   a red border while the value is missing or invalid, green once it is valid, and neutral for an
+   optional CPQ/Indirect IM% left blank. Selecting **Cancel** (or `Escape`) discards
    the in-memory parse and returns to the drop zone. The overlay fills the window less a 24-DIP
    margin, so maximizing or resizing BidParser enlarges it; its bottom-right grip resizes it within
    the window (minimum 760×400 DIP), and double-clicking the grip returns it to filling the window.
@@ -209,7 +212,8 @@ Windows x64 without a separately installed .NET runtime or elevation. Verify:
   cancellation warnings; HP/Lenovo/SAID split ZIPs; conflict overwrite/copy; and workbook integrity.
 - Juniper CPQ, Indirect, and Iris per-line pricing review overlay: header Exchange Rate, header
   **Apply** for IM% and Uplift, single-row overrides, CPQ IM% clear-to-revert, live totals,
-  centred column headers and readable tooltips in light and dark themes, white text on filled
+  centred column headers and readable tooltips in light and dark themes, uniform vertically
+  centred cell text, IM%/Uplift borders turning red→green on typing and on **Apply to all**, white text on filled
   buttons, a 4 dp Exchange Rate fully visible, grip resize/maximize/double-click reset,
   description ellipsis and hover tooltip, **Edit pricing** round-trip from the result card,
   keyboard-only navigation (`Tab`/`Escape`), high-contrast rendering, and saved workbook col K/T/V

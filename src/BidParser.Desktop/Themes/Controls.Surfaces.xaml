@@ -162,6 +162,88 @@
     </Setter>
   </Style>
 
+  <!-- Data grid body text. One explicit size and family for every cell, vertically centred:
+       DataGridTextColumn otherwise uses its own top-aligned element style at the system font,
+       while template columns pick up the application's larger implicit TextBlock style. -->
+  <Style x:Key="Grid.CellText" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Font.Primary}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="{StaticResource Weight.Regular}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Margin" Value="{StaticResource Space.Horizontal8}" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+  </Style>
+
+  <!-- Editable grid cell (IM%, Uplift). The border reports the field's state: red while the value
+       is missing or invalid, green once it is valid, neutral when an optional field is blank. The
+       template keeps that colour while focused (focus thickens the border instead of recolouring
+       it), so the state is visible while the user types. Derived styles supply the state triggers. -->
+  <Style x:Key="Grid.CellInput" TargetType="TextBox">
+    <Setter Property="Width" Value="82" />
+    <Setter Property="Height" Value="{StaticResource Size.CompactControl}" />
+    <Setter Property="Padding" Value="6,0" />
+    <Setter Property="FontFamily" Value="{StaticResource Font.Primary}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="HorizontalContentAlignment" Value="Right" />
+    <Setter Property="TextAlignment" Value="Right" />
+    <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+    <Setter Property="CaretBrush" Value="{DynamicResource Brush.TextPrimary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
+    <Setter Property="BorderThickness" Value="{StaticResource Border.All}" />
+    <Setter Property="Validation.ErrorTemplate" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="TextBox">
+          <Border x:Name="Chrome"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{StaticResource Radius.Bar}"
+                  SnapsToDevicePixels="True">
+            <ScrollViewer x:Name="PART_ContentHost"
+                          Margin="{TemplateBinding Padding}"
+                          VerticalAlignment="Center"
+                          Focusable="False"
+                          HorizontalScrollBarVisibility="Hidden"
+                          VerticalScrollBarVisibility="Hidden" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Chrome" Property="BorderThickness" Value="{StaticResource Border.Focus}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Foreground" Value="{DynamicResource Brush.TextDisabled}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="Grid.CellInput.ImPercent" TargetType="TextBox" BasedOn="{StaticResource Grid.CellInput}">
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding IsImValueValid}" Value="True">
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Success}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding HasImError}" Value="True">
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Error}" />
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
+  <Style x:Key="Grid.CellInput.Uplift" TargetType="TextBox" BasedOn="{StaticResource Grid.CellInput}">
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding IsUpliftValueValid}" Value="True">
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Success}" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding HasUpliftError}" Value="True">
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Error}" />
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
   <Style x:Key="Grid.ColumnHeader" TargetType="DataGridColumnHeader">
     <Setter Property="Background" Value="{DynamicResource Brush.SurfaceInset}" />
     <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
@@ -825,36 +907,26 @@
             </Style>
           </DataGrid.RowStyle>
           <DataGrid.Columns>
-            <DataGridTextColumn Header="Line#" Binding="{Binding LineNumber}" IsReadOnly="True" Width="Auto" />
-            <DataGridTextColumn Header="VPN" Binding="{Binding Vpn}" IsReadOnly="True" Width="Auto" />
+            <DataGridTextColumn Header="Line#" Binding="{Binding LineNumber}" ElementStyle="{StaticResource Grid.CellText}" IsReadOnly="True" Width="Auto" />
+            <DataGridTextColumn Header="VPN" Binding="{Binding Vpn}" ElementStyle="{StaticResource Grid.CellText}" IsReadOnly="True" Width="Auto" />
             <DataGridTemplateColumn Header="Description" Width="*" MinWidth="180" IsReadOnly="True">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>
-                  <TextBlock VerticalAlignment="Center"
-                             Margin="{StaticResource Space.Horizontal8}"
+                  <TextBlock Style="{StaticResource Grid.CellText}"
                              Text="{Binding Description}"
-                             TextTrimming="CharacterEllipsis"
                              ToolTip="{Binding Description}"
                              AutomationProperties.Name="{Binding Description}" />
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Qty" Binding="{Binding Qty}" IsReadOnly="True" Width="Auto" />
-            <DataGridTextColumn Header="MSRP" Binding="{Binding MsrpDisplay}" IsReadOnly="True" Width="Auto" />
+            <DataGridTextColumn Header="Qty" Binding="{Binding Qty}" ElementStyle="{StaticResource Grid.CellText}" IsReadOnly="True" Width="Auto" />
+            <DataGridTextColumn Header="MSRP" Binding="{Binding MsrpDisplay}" ElementStyle="{StaticResource Grid.CellText}" IsReadOnly="True" Width="Auto" />
             <DataGridTemplateColumn Header="IM%*" Width="96">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>
                   <Grid Margin="{StaticResource Space.2}">
-                    <TextBox Width="82"
-                             Height="{StaticResource Size.CompactControl}"
-                             Padding="6,0"
-                             VerticalContentAlignment="Center"
-                             HorizontalContentAlignment="Right"
-                             Background="{DynamicResource Brush.Surface}"
-                             Foreground="{DynamicResource Brush.TextPrimary}"
-                             BorderBrush="{DynamicResource Brush.BorderStrong}"
-                             BorderThickness="{StaticResource Border.All}"
-                             Text="{Binding ImPercent, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"
+                    <TextBox Style="{StaticResource Grid.CellInput.ImPercent}"
+                             Text="{Binding ImPercent, UpdateSourceTrigger=PropertyChanged}"
                              Visibility="{Binding IsImEditable, Converter={StaticResource BooleanToVisibilityConverter}}"
                              ToolTip="{Binding ImErrorMessage}"
                              AutomationProperties.Name="Line IM%" />
@@ -862,23 +934,15 @@
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Cost" Binding="{Binding SourceCostDisplay}" IsReadOnly="True" Width="Auto" />
-            <DataGridTextColumn Header="Unit Cost" Binding="{Binding UnitCostDisplay}" IsReadOnly="True" Width="Auto" />
-            <DataGridTextColumn Header="Ext Cost" Binding="{Binding ExtCostDisplay}" IsReadOnly="True" Width="Auto" />
+            <DataGridTextColumn Header="Cost" Binding="{Binding SourceCostDisplay}" ElementStyle="{StaticResource Grid.CellText}" IsReadOnly="True" Width="Auto" />
+            <DataGridTextColumn Header="Unit Cost" Binding="{Binding UnitCostDisplay}" ElementStyle="{StaticResource Grid.CellText}" IsReadOnly="True" Width="Auto" />
+            <DataGridTextColumn Header="Ext Cost" Binding="{Binding ExtCostDisplay}" ElementStyle="{StaticResource Grid.CellText}" IsReadOnly="True" Width="Auto" />
             <DataGridTemplateColumn Header="Uplift%*" Width="96">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>
                   <Grid Margin="{StaticResource Space.2}">
-                    <TextBox Width="82"
-                             Height="{StaticResource Size.CompactControl}"
-                             Padding="6,0"
-                             VerticalContentAlignment="Center"
-                             HorizontalContentAlignment="Right"
-                             Background="{DynamicResource Brush.Surface}"
-                             Foreground="{DynamicResource Brush.TextPrimary}"
-                             BorderBrush="{DynamicResource Brush.BorderStrong}"
-                             BorderThickness="{StaticResource Border.All}"
-                             Text="{Binding Uplift, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"
+                    <TextBox Style="{StaticResource Grid.CellInput.Uplift}"
+                             Text="{Binding Uplift, UpdateSourceTrigger=PropertyChanged}"
                              Visibility="{Binding IsUpliftEditable, Converter={StaticResource BooleanToVisibilityConverter}}"
                              ToolTip="{Binding UpliftErrorMessage}"
                              AutomationProperties.Name="Line Uplift%" />
@@ -886,8 +950,8 @@
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Unit Price" Binding="{Binding UnitPriceDisplay}" IsReadOnly="True" Width="Auto" />
-            <DataGridTextColumn Header="Ext Price" Binding="{Binding ExtPriceDisplay}" IsReadOnly="True" Width="Auto" />
+            <DataGridTextColumn Header="Unit Price" Binding="{Binding UnitPriceDisplay}" ElementStyle="{StaticResource Grid.CellText}" IsReadOnly="True" Width="Auto" />
+            <DataGridTextColumn Header="Ext Price" Binding="{Binding ExtPriceDisplay}" ElementStyle="{StaticResource Grid.CellText}" IsReadOnly="True" Width="Auto" />
           </DataGrid.Columns>
         </DataGrid>
 
