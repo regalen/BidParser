@@ -203,8 +203,8 @@ dotnet test tests/BidParser.Parsing.Tests/BidParser.Parsing.Tests.csproj
 
 The parser/application/output suite is the fast one (819 tests) and needs no container runtime.
 The full suite, `dotnet test BidParser.sln`, additionally runs the 212 API integration tests
-against a SQL Server testcontainer and 129 cross-platform desktop configuration/update tests
-(1160 tests total).
+against a SQL Server testcontainer and 131 cross-platform desktop configuration/update tests
+(1162 tests total).
 
 **Build the desktop host**
 

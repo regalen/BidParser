@@ -94,6 +94,65 @@ public sealed class LinePricingViewModelTests
     }
 
     [Fact]
+    public void Iris_field_states_turn_from_error_to_valid_on_typing_and_on_apply_to_all()
+    {
+        var vm = new LinePricingViewModel(CreateIrisPreview(), "Juniper_Iris.xlsx");
+        var row = vm.Rows[0];
+
+        // Required and empty: both fields start in the error (red) state.
+        row.HasImError.Should().BeTrue();
+        row.IsImValueValid.Should().BeFalse();
+        row.HasUpliftError.Should().BeTrue();
+        row.IsUpliftValueValid.Should().BeFalse();
+
+        // Typing a valid value turns the field valid (green) immediately.
+        row.Uplift = 6m.ToString(CultureInfo.CurrentCulture);
+        row.HasUpliftError.Should().BeFalse();
+        row.IsUpliftValueValid.Should().BeTrue();
+
+        // An invalid value turns it back to error.
+        row.Uplift = 150m.ToString(CultureInfo.CurrentCulture);
+        row.HasUpliftError.Should().BeTrue();
+        row.IsUpliftValueValid.Should().BeFalse();
+
+        // Apply to all validates before announcing the new text, so a listener reacting to the
+        // ImPercent/Uplift change already sees the new, valid state — never the stale error.
+        var statesSeenOnTextChange = new List<(string Property, bool HasError, bool IsValid)>();
+        row.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(LinePricingRowViewModel.ImPercent))
+                statesSeenOnTextChange.Add((e.PropertyName, row.HasImError, row.IsImValueValid));
+            if (e.PropertyName == nameof(LinePricingRowViewModel.Uplift))
+                statesSeenOnTextChange.Add((e.PropertyName, row.HasUpliftError, row.IsUpliftValueValid));
+        };
+        vm.HeaderImPercent.Text = 35m.ToString(CultureInfo.CurrentCulture);
+        vm.ApplyImPercentCommand.Execute(null);
+        vm.HeaderUplift.Text = 6m.ToString(CultureInfo.CurrentCulture);
+        vm.ApplyUpliftCommand.Execute(null);
+
+        statesSeenOnTextChange.Should().Equal(
+            (nameof(LinePricingRowViewModel.ImPercent), false, true),
+            (nameof(LinePricingRowViewModel.Uplift), false, true));
+        vm.Rows.Should().AllSatisfy(r =>
+        {
+            r.IsImValueValid.Should().BeTrue();
+            r.IsUpliftValueValid.Should().BeTrue();
+        });
+    }
+
+    [Fact]
+    public void Cleared_optional_cpq_im_is_neutral_rather_than_valid_or_error()
+    {
+        var vm = new LinePricingViewModel(CreateR5Preview(), "Juniper_CPQ.xlsx");
+        var row = vm.Rows[0];
+        row.IsImValueValid.Should().BeTrue();   // derived IM% shown
+
+        row.ImPercent = string.Empty;          // revert to the source cost
+        row.HasImError.Should().BeFalse();
+        row.IsImValueValid.Should().BeFalse();
+    }
+
+    [Fact]
     public void ApplyIm_and_ApplyUplift_overwrite_row_edits_and_mark_cpq_overrides()
     {
         var preview = CreateR5Preview();

@@ -9,7 +9,7 @@ using BidParser.Output;
 
 namespace BidParser.Desktop.ViewModels;
 
-public sealed class LinePricingRowViewModel : ObservableObject, IDataErrorInfo
+public sealed class LinePricingRowViewModel : ObservableObject
 {
     private readonly LinePricingLine line;
     private readonly bool imPercentRequired;
@@ -186,14 +186,13 @@ public sealed class LinePricingRowViewModel : ObservableObject, IDataErrorInfo
     public string? RowErrorMessage => imErrorMessage ?? upliftErrorMessage;
     public bool IsValid => imErrorMessage is null && upliftErrorMessage is null;
 
-    string IDataErrorInfo.Error => RowErrorMessage ?? string.Empty;
-
-    string IDataErrorInfo.this[string columnName] => columnName switch
-    {
-        nameof(ImPercent) => imErrorMessage ?? string.Empty,
-        nameof(Uplift) => upliftErrorMessage ?? string.Empty,
-        _ => string.Empty
-    };
+    // Field states drive the per-cell border: red while the value is missing or invalid, green as
+    // soon as it holds a valid value, neutral when an optional field is left blank. They are raised
+    // with the other calculated properties, after validation, so they are never stale.
+    public bool HasImError => imErrorMessage is not null;
+    public bool IsImValueValid => rowImEditable && imErrorMessage is null && imPercentText.Trim().Length > 0;
+    public bool HasUpliftError => upliftErrorMessage is not null;
+    public bool IsUpliftValueValid => !line.IsCancelled && upliftErrorMessage is null && upliftText.Trim().Length > 0;
 
     internal void ApplyHeaderImPercent(decimal value)
     {
@@ -205,8 +204,10 @@ public sealed class LinePricingRowViewModel : ObservableObject, IDataErrorInfo
         imPercentText = value.ToString("F2", CultureInfo.CurrentCulture);
         IsImOverridden = true;
         IsImEditedAfterApply = false;
-        OnPropertyChanged(nameof(ImPercent));
+        // Validate before announcing the new text, so anything reading the row's error state on
+        // the change notification sees the new state rather than the previous one.
         Recalculate(notifyParent: true);
+        OnPropertyChanged(nameof(ImPercent));
     }
 
     internal void ApplyHeaderUplift(decimal value)
@@ -218,8 +219,8 @@ public sealed class LinePricingRowViewModel : ObservableObject, IDataErrorInfo
 
         upliftText = value.ToString("F2", CultureInfo.CurrentCulture);
         IsUpliftEditedAfterApply = false;
-        OnPropertyChanged(nameof(Uplift));
         Recalculate(notifyParent: true);
+        OnPropertyChanged(nameof(Uplift));
     }
 
     public LinePricingEntry ToEntry()
@@ -373,6 +374,10 @@ public sealed class LinePricingRowViewModel : ObservableObject, IDataErrorInfo
         OnPropertyChanged(nameof(UpliftErrorMessage));
         OnPropertyChanged(nameof(RowErrorMessage));
         OnPropertyChanged(nameof(IsValid));
+        OnPropertyChanged(nameof(HasImError));
+        OnPropertyChanged(nameof(IsImValueValid));
+        OnPropertyChanged(nameof(HasUpliftError));
+        OnPropertyChanged(nameof(IsUpliftValueValid));
     }
 
     private static bool TryParseDecimal(string raw, out decimal parsed) =>
