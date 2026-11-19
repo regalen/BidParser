@@ -30,9 +30,11 @@ public static class DesktopEndpoints
     public const long MaxReleaseMetadataBytes = 128 * 1024;
 
     /// <summary>
-    /// Builds the release page from a validated tag and this fixed base — never from a URL the API
-    /// happened to return.
+    /// Direct download of the latest release's executable, compiled in from this fixed base — never
+    /// a URL the API happened to return. GitHub resolves <c>releases/latest</c> to the same latest
+    /// stable release <see cref="LatestRelease"/> reports, and every release publishes exactly one
+    /// <c>BidParser.exe</c>.
     /// </summary>
-    public static Uri ReleasePage(string tag)
-        => new($"{PublicRepository}/releases/tag/{Uri.EscapeDataString(tag)}");
+    public static readonly Uri LatestDownload =
+        new($"{PublicRepository}/releases/latest/download/BidParser.exe");
 }

@@ -4,12 +4,13 @@ using NuGet.Versioning;
 
 namespace BidParser.Desktop.Configuration;
 
-/// <summary>An update worth telling the user about, with a release page built from the fixed base URL.</summary>
-public sealed record AvailableUpdate(string Installed, string Latest, Uri ReleasePage);
+/// <summary>An update worth telling the user about, with the fixed direct-download URL.</summary>
+public sealed record AvailableUpdate(string Installed, string Latest, Uri Download);
 
 /// <summary>
 /// Compares the installed version against the latest public release. Purely informational: it
-/// downloads nothing, replaces nothing, and shows nothing at all when anything goes wrong.
+/// downloads nothing itself, replaces nothing, and shows nothing at all when anything goes wrong.
+/// The user starts the download in their browser from the notification.
 /// </summary>
 public sealed class UpdateCheckService(PublicDocumentFetcher fetcher) : IUpdateCheckService
 {
@@ -39,7 +40,7 @@ public sealed class UpdateCheckService(PublicDocumentFetcher fetcher) : IUpdateC
         // "1.2.3+abc" and "1.2.3" are the same release. The endpoint excludes drafts and
         // prereleases, so a prerelease build is only notified when a stable release overtakes it.
         return VersionComparer.VersionRelease.Compare(latest, installed) > 0
-            ? new AvailableUpdate(installed.ToNormalizedString(), latest.ToNormalizedString(), DesktopEndpoints.ReleasePage(tag))
+            ? new AvailableUpdate(installed.ToNormalizedString(), latest.ToNormalizedString(), DesktopEndpoints.LatestDownload)
             : null;
     }
 
