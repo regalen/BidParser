@@ -11,6 +11,7 @@ import {
   PRICING_INPUT_LIMITS,
   type PricingInputKind,
   acceptsPartialInput,
+  normalisePricingInput,
   isFxRate4dp,
   isImPercent,
   isUplift,
@@ -65,7 +66,7 @@ export function LinePricingModal({
    * A refused change keeps the previous value and briefly explains the limit.
    */
   const guardInput = (kind: PricingInputKind, lineLabel: string | null, raw: string, apply: (value: string) => void) => {
-    const value = raw.trim();
+    const value = normalisePricingInput(raw);
     if (acceptsPartialInput(kind, value)) {
       // An accepted edit means the user has moved on, so a notice about an earlier refused
       // keystroke must not linger and read as a current error.

@@ -108,6 +108,15 @@ const PARTIAL_INPUT: Record<PricingInputKind, RegExp> = {
 };
 
 /**
+ * Canonicalises a typed or pasted pricing value: trims it and gives a bare leading decimal point
+ * its zero (".6538" -> "0.6538"), which the submit validators and the API require.
+ */
+export function normalisePricingInput(raw: string): string {
+  const value = raw.trim();
+  return value.startsWith('.') ? `0${value}` : value;
+}
+
+/**
  * Whether `value` may stay in the field while the user is typing: empty and part-typed values
  * such as "12." are allowed, values that can never become valid are not.
  */
