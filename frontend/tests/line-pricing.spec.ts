@@ -302,6 +302,12 @@ test('pricing inputs refuse out-of-range values and totals hide until every line
   await expect(dialog.getByLabel('IM% · Discount off MSRP')).toHaveValue('15');
   await dialog.getByLabel('FX (AUD:USD)').fill('-1');
   await expect(dialog.getByLabel('FX (AUD:USD)')).toHaveValue('0.6520');
+  // A bare leading decimal point gains its zero rather than leaving an unsubmittable value.
+  await dialog.getByLabel('FX (AUD:USD)').fill('.6538');
+  await expect(dialog.getByLabel('FX (AUD:USD)')).toHaveValue('0.6538');
+  await lineUplift.fill('.5');
+  await expect(lineUplift).toHaveValue('0.5');
+  await lineUplift.fill('99.99');
 
   // A blank line hides every total and blocks Submit until it is completed again.
   const line2Uplift = dialog.getByLabel('Line 2 Uplift%');
