@@ -142,6 +142,20 @@ export interface RuntimeConfigurationAdmin {
   htmlAllowlist: string[];
 }
 
+export interface AnnouncementAdmin {
+  enabled: boolean;
+  html: string;
+  updatedAt: string | null;
+  validationError: string | null;
+  htmlAllowlist: string[];
+}
+
+/** The banner for the current login session; both fields are null when no announcement is active. */
+export interface ActiveAnnouncement {
+  html: string | null;
+  dismissalKey: string | null;
+}
+
 export interface HistoryRow {
   id: number;
   sourceFilename: string;

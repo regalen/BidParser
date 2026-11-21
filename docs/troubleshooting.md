@@ -291,6 +291,17 @@ validation error. Correct the identifiers or values and save it again; the stric
 will replace it with canonical JSON. Until repaired, `/api/parse-ui-config` returns empty maps so
 normal parsing and manual numeric entry remain available.
 
+**An announcement save is rejected with "unsupported markup".**
+The banner accepts only `strong`, `b`, `em`, `i`, `u`, `br` and `<a href>` links using `http`,
+`https` or `mailto`. Paragraphs, spans, styles, images, event handlers and other link schemes are
+refused rather than stripped, so what is published always matches what was typed. Use the toolbar
+buttons, or remove the offending tag.
+
+**A user says the announcement came back after they dismissed it.**
+That is intended. Dismissal lasts for the current login session only. The banner returns at the next
+login, after a password change (which re-issues the session), every 24 hours in a session longer than
+24 hours, and for every user whenever an administrator saves the announcement, even if the text is unchanged.
+
 **A metrics or monitoring XLSX export fails before the download starts.**
 Both exports use a seekable delete-on-close file under the operating system temporary directory and
 open a dedicated non-retrying SQL connection for forward-only row streaming. Check that the app

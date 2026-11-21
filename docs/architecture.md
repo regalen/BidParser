@@ -271,6 +271,10 @@ If a stored document no longer passes current validation, the Admin API returns 
 the validation error so that page remains the recovery path; the parse-facing API still degrades to
 empty maps.
 
+The same table holds the site announcement (key `announcement`), edited at the top of the Runtime
+Configuration page and served to every active user by `GET /api/announcement`. It is web-only:
+the desktop host has no announcement.
+
 Desktop configuration is a separate distribution/trust model, not a client for `runtime_configs`.
 Schema-v1 guidance and vendor defaults are embedded for offline startup, then independently replaced
 in memory by validated public documents when available. They are never cached or persisted and can

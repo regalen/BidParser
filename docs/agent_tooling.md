@@ -92,9 +92,11 @@ install — that trades a portable dependency for a machine-specific one.
 
 `@playwright/test` is a separate thing: the frontend devDependency for repeatable E2E specs
 **committed to the repository**. `frontend/playwright.config.ts` and
-`frontend/tests/administrative-enhancements.spec.ts` currently provide seven mocked-API checks for
-XLSM file selection, Juniper foreign template selection and mismatch warnings, currency guidance,
-parser-capability-driven On Cost, and runtime-configuration interactions. Run them from `frontend/`
+the specs under `frontend/tests/` currently provide twelve mocked-API checks:
+`administrative-enhancements.spec.ts` covers XLSM file selection, Juniper foreign template selection
+and mismatch warnings, currency guidance, parser-capability-driven On Cost, and runtime-configuration
+interactions; `line-pricing.spec.ts` covers per-line pricing review and input limits; and
+`announcement.spec.ts` covers announcement rendering, safe markup and session-scoped dismissal. Run them from `frontend/`
 with `npx playwright test`; there is no CI job for this harness.
 
 Add a committed spec when it buys durable regression protection:

@@ -86,6 +86,7 @@ builder.Services.AddScoped<ParseService>();
 builder.Services.AddScoped<FailedParseJobRecorder>();
 builder.Services.AddScoped<RetentionService>();
 builder.Services.AddScoped<RuntimeConfigurationService>();
+builder.Services.AddScoped<AnnouncementService>();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddRateLimiter(options =>
@@ -194,6 +195,7 @@ app.MapHistoryEndpoints();
 app.MapMetricsEndpoints();
 app.MapMonitoringEndpoints();
 app.MapRuntimeConfigurationEndpoints();
+app.MapAnnouncementEndpoints();
 
 app.MapFallbackToFile("index.html");
 
