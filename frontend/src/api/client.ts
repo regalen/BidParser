@@ -7,6 +7,8 @@ import type {
   ParserInfo,
   ParsePreview,
   ParseUiConfig,
+  ActiveAnnouncement,
+  AnnouncementAdmin,
   RuntimeConfigurationAdmin,
   RuntimeConfigDocument,
   User,
@@ -142,6 +144,20 @@ export const api = {
   updateVendorDefaults(json: string): Promise<RuntimeConfigDocument> {
     return request<RuntimeConfigDocument>('/admin/runtime-config/vendor-defaults', {
       method: 'PUT', body: JSON.stringify({ json }),
+    });
+  },
+
+  announcement(): Promise<ActiveAnnouncement> {
+    return request<ActiveAnnouncement>('/announcement');
+  },
+
+  adminAnnouncement(): Promise<AnnouncementAdmin> {
+    return request<AnnouncementAdmin>('/admin/announcement');
+  },
+
+  updateAnnouncement(enabled: boolean, html: string): Promise<AnnouncementAdmin> {
+    return request<AnnouncementAdmin>('/admin/announcement', {
+      method: 'PUT', body: JSON.stringify({ enabled, html }),
     });
   },
 

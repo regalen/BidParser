@@ -19,6 +19,9 @@ namespace BidParser.Api.Auth;
 public sealed class SessionCookieAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
     public const string SchemeName = "SessionCookie";
+
+    /// <summary>Unix seconds at which the current session cookie was issued; identifies one login session.</summary>
+    public const string SessionIssuedAtClaim = "sessionIssuedAt";
     public const string CookieName = "bidparser_session";
     private readonly SessionTokenService _tokens;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -79,7 +82,8 @@ public sealed class SessionCookieAuthHandler : AuthenticationHandler<Authenticat
             new(ClaimTypes.NameIdentifier, user.Id.ToString(CultureInfo.InvariantCulture)),
             new(ClaimTypes.Name, user.Username),
             new(ClaimTypes.Role, user.Role.ToString().ToLowerInvariant()),
-            new("mustChangePassword", user.MustChangePassword ? "true" : "false")
+            new("mustChangePassword", user.MustChangePassword ? "true" : "false"),
+            new(SessionIssuedAtClaim, payload.IssuedAt.ToString(CultureInfo.InvariantCulture))
         ];
 
         var identity = new ClaimsIdentity(claims, SchemeName);

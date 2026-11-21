@@ -5,4 +5,5 @@ public static class RuntimeConfigKeys
 {
     public const string GuidanceMessages = "guidanceMessages";
     public const string VendorDefaults = "vendorDefaults";
+    public const string Announcement = "announcement";
 }

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBeforeUnload, useBlocker } from 'react-router';
 
 import { api, ApiError } from '../../api/client';
+import { AnnouncementEditor } from '../../components/AnnouncementEditor';
 import { AppHeader } from '../../components/AppHeader';
 import { Footer } from '../../components/Footer';
 import type { RuntimeConfigDocument, RuntimeConfigurationAdmin } from '../../types';
@@ -26,6 +27,7 @@ export function RuntimeConfigurationPage() {
   const [notices, setNotices] = useState<EditorMessages>({});
   const [saving, setSaving] = useState<EditorFlags>(cleanFlags);
   const [copied, setCopied] = useState<EditorKind | null>(null);
+  const [announcementDirty, setAnnouncementDirty] = useState(false);
 
   const load = useCallback(() => {
     let active = true;
@@ -56,7 +58,7 @@ export function RuntimeConfigurationPage() {
     guidance: guidance !== savedGuidance,
     defaults: defaults !== savedDefaults,
   }), [defaults, guidance, savedDefaults, savedGuidance]);
-  const dirty = dirtyByEditor.guidance || dirtyByEditor.defaults;
+  const dirty = dirtyByEditor.guidance || dirtyByEditor.defaults || announcementDirty;
 
   useBeforeUnload(useCallback((event) => {
     if (!dirty) return;
@@ -147,11 +149,15 @@ export function RuntimeConfigurationPage() {
       <AppHeader contentClassName="max-w-6xl px-6 lg:px-8" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8 lg:px-8">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Runtime Configuration</h1>
-        <p className="mt-1 text-sm text-slate-500">Manage parse defaults and result guidance without restarting the application.</p>
+        <p className="mt-1 text-sm text-slate-500">Manage the site announcement, parse defaults and result guidance without restarting the application.</p>
 
-        {loading && <div className="card mt-8 p-6 text-slate-500">Loading configuration…</div>}
+        <div className="mt-8">
+          <AnnouncementEditor onDirtyChange={setAnnouncementDirty} />
+        </div>
+
+        {loading && <div className="card mt-6 p-6 text-slate-500">Loading configuration…</div>}
         {!loading && loadError && (
-          <div className="card mt-8 p-6">
+          <div className="card mt-6 p-6">
             <p className="text-sm text-red-600">{loadError}</p>
             <button type="button" className="button mt-4" onClick={load}>Retry</button>
           </div>
@@ -159,7 +165,7 @@ export function RuntimeConfigurationPage() {
 
         {!loading && config && (
           <>
-            <section className="card mt-8 p-6">
+            <section className="card mt-6 p-6">
               <h2 className="font-bold text-slate-900">Configuration reference</h2>
               <p className="mt-1 text-sm text-slate-500">Use these live parser and vendor identifiers in the JSON documents.</p>
               <div className="mt-5 grid gap-6 lg:grid-cols-2">

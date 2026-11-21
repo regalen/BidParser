@@ -66,6 +66,18 @@ public sealed record ParseUiConfigResponse(
     IReadOnlyDictionary<string, RuntimeVendorDefaultsResponse> VendorDefaults,
     IReadOnlyDictionary<string, string> GuidanceByParserSlug);
 
+public sealed record AnnouncementUpdateRequest(bool Enabled, string? Html);
+
+public sealed record AnnouncementAdminResponse(
+    bool Enabled,
+    string Html,
+    DateTime? UpdatedAt,
+    string? ValidationError,
+    IReadOnlyList<string> HtmlAllowlist);
+
+/// <summary>The banner for the current session; both fields are null when no announcement is active.</summary>
+public sealed record ActiveAnnouncementResponse(string? Html, string? DismissalKey);
+
 public sealed record MetricsKpis(
     int TotalParses,
     int ActiveUsers,

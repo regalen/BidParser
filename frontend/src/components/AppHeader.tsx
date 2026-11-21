@@ -2,10 +2,12 @@ import { Link } from 'react-router';
 
 import { AccountChip } from './AccountChip';
 import { AdminMenu } from './AdminMenu';
+import { AnnouncementBanner } from './AnnouncementBanner';
 
 /**
  * `contentClassName` must match the page's <main> max width and horizontal padding, so the logo
- * lines up with the content's left edge and the account controls with its right edge.
+ * lines up with the content's left edge and the account controls with its right edge. The
+ * administrator announcement renders inside the sticky header, beneath its main row.
  */
 export function AppHeader({
   bare = false,
@@ -28,6 +30,7 @@ export function AppHeader({
           </div>
         )}
       </div>
+      {!bare && <AnnouncementBanner contentClassName={contentClassName} />}
     </header>
   );
 }
