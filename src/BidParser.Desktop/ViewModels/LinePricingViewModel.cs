@@ -388,6 +388,18 @@ public sealed class LinePricingRowViewModel : ObservableObject
         value is null ? "—" : value.Value.ToString("N2", CultureInfo.CurrentCulture);
 }
 
+/// <summary>The grid columns the line filter can search.</summary>
+public enum LinePricingFilterColumn
+{
+    All,
+    Vpn,
+    Description,
+    ImPercent,
+    Uplift
+}
+
+public sealed record LinePricingFilterOption(LinePricingFilterColumn Column, string Name);
+
 public sealed class LinePricingViewModel : ObservableObject
 {
     private readonly Action onNext;
@@ -395,6 +407,9 @@ public sealed class LinePricingViewModel : ObservableObject
     private LinePricingTotals totals = new(0m, 0m, 0m, null);
     private double dialogWidth = double.NaN;
     private double dialogHeight = double.NaN;
+    private LinePricingFilterOption filterOption;
+    private string filterText = string.Empty;
+    private bool showOnlyNeedingAttention;
 
     public LinePricingViewModel(
         LinePricingPreview preview,
@@ -408,18 +423,19 @@ public sealed class LinePricingViewModel : ObservableObject
         this.onNext = onNext ?? (() => { });
         this.onCancel = onCancel ?? (() => { });
 
-        FxRate = new NumericFieldViewModel("Exchange rate", "USD to AUD", "4 d.p.", decimals: 4, mustBePositive: true)
+        // The label carries the quote's own currency, so a non-USD quote reads e.g. "FX EUR:AUD".
+        FxRate = new NumericFieldViewModel($"FX {Currency}:AUD", string.Empty, string.Empty, decimals: 4, mustBePositive: true)
         {
             IsRequired = preview.UsesFxRate,
             RejectExcessPrecision = true
         };
-        HeaderImPercent = new NumericFieldViewModel("IM%", "%", "Discount off MSRP", decimals: 2)
+        HeaderImPercent = new NumericFieldViewModel("IM%", "%", string.Empty, decimals: 2)
         {
             IsRequired = false,
             RejectExcessPrecision = true,
             MaxInclusiveValue = 100m
         };
-        HeaderUplift = new NumericFieldViewModel("Uplift", "%", "margin on sale price", decimals: 2)
+        HeaderUplift = new NumericFieldViewModel("Uplift", "%", string.Empty, decimals: 2)
         {
             IsRequired = false,
             RejectExcessPrecision = true,
@@ -438,6 +454,18 @@ public sealed class LinePricingViewModel : ObservableObject
                 defaults?.ImPercent,
                 defaults?.Margin,
                 OnRowsOrHeaderChanged)));
+
+        FilterOptions =
+        [
+            new(LinePricingFilterColumn.All, "VPN or description"),
+            new(LinePricingFilterColumn.Vpn, "VPN"),
+            new(LinePricingFilterColumn.Description, "Description"),
+            new(LinePricingFilterColumn.ImPercent, "IM%"),
+            new(LinePricingFilterColumn.Uplift, "Uplift%")
+        ];
+        filterOption = FilterOptions[0];
+        VisibleRows = new ObservableCollection<LinePricingRowViewModel>(Rows);
+        ClearFilterCommand = new RelayCommand(ClearFilter, () => IsFiltered);
 
         FxRate.PropertyChanged += (_, _) => OnRowsOrHeaderChanged();
         HeaderImPercent.PropertyChanged += (_, _) => OnRowsOrHeaderChanged();
@@ -465,7 +493,7 @@ public sealed class LinePricingViewModel : ObservableObject
     public string SourceFilename { get; }
     public string Subtitle => $"{SourceFilename} · {Preview.ParserDisplayName} · {Preview.Lines.Count} {(Preview.Lines.Count == 1 ? "line" : "lines")}";
     public string Currency => string.IsNullOrWhiteSpace(Preview.Currency) ? "USD" : Preview.Currency;
-    public string CurrencyBadgeText => $"All values {Currency}";
+    public string CurrencyBadgeText => $"Currency: {Currency}";
     public bool UsesFxRate => Preview.UsesFxRate;
     public bool ImPercentEditable => Preview.ImPercentEditable;
     public bool ImPercentRequired => Preview.ImPercentRequired;
@@ -494,6 +522,60 @@ public sealed class LinePricingViewModel : ObservableObject
     public NumericFieldViewModel HeaderUplift { get; }
 
     public ObservableCollection<LinePricingRowViewModel> Rows { get; }
+
+    /// <summary>
+    /// The rows the grid shows. Filtering only hides rows: totals, validation, Submit and both
+    /// <c>Apply to all</c> commands still cover every line. The view is re-filtered when the filter
+    /// changes, never while a cell is being edited, so a row cannot vanish under the user's cursor.
+    /// </summary>
+    public ObservableCollection<LinePricingRowViewModel> VisibleRows { get; }
+
+    public IReadOnlyList<LinePricingFilterOption> FilterOptions { get; }
+
+    public LinePricingFilterOption SelectedFilterOption
+    {
+        get => filterOption;
+        set
+        {
+            if (value is not null && SetProperty(ref filterOption, value))
+            {
+                RefreshFilter();
+            }
+        }
+    }
+
+    public string FilterText
+    {
+        get => filterText;
+        set
+        {
+            if (SetProperty(ref filterText, value ?? string.Empty))
+            {
+                RefreshFilter();
+            }
+        }
+    }
+
+    /// <summary>Shows only lines whose IM% or Uplift is missing or invalid.</summary>
+    public bool ShowOnlyNeedingAttention
+    {
+        get => showOnlyNeedingAttention;
+        set
+        {
+            if (SetProperty(ref showOnlyNeedingAttention, value))
+            {
+                RefreshFilter();
+            }
+        }
+    }
+
+    public bool IsFiltered => filterText.Trim().Length > 0 || showOnlyNeedingAttention;
+
+    public string FilterSummary => IsFiltered
+        ? $"Showing {VisibleRows.Count} of {Rows.Count} {(Rows.Count == 1 ? "line" : "lines")}"
+        : string.Empty;
+
+    public RelayCommand ClearFilterCommand { get; }
 
     public RelayCommand ApplyImPercentCommand { get; }
     public RelayCommand ApplyUpliftCommand { get; }
@@ -528,6 +610,54 @@ public sealed class LinePricingViewModel : ObservableObject
     public bool IsValid =>
         (!Preview.UsesFxRate || (FxRate.Value is > 0m && !FxRate.HasError))
         && Rows.All(row => row.IsValid);
+
+    private bool Matches(LinePricingRowViewModel row)
+    {
+        if (showOnlyNeedingAttention && (row.IsCancelled || row.IsValid))
+        {
+            return false;
+        }
+
+        var text = filterText.Trim();
+        if (text.Length == 0)
+        {
+            return true;
+        }
+
+        return filterOption.Column switch
+        {
+            LinePricingFilterColumn.Vpn => Contains(row.Vpn, text),
+            LinePricingFilterColumn.Description => Contains(row.Description, text),
+            LinePricingFilterColumn.ImPercent => row.IsImEditable && Contains(row.ImPercent, text),
+            LinePricingFilterColumn.Uplift => row.IsUpliftEditable && Contains(row.Uplift, text),
+            _ => Contains(row.Vpn, text) || Contains(row.Description, text)
+        };
+    }
+
+    private static bool Contains(string value, string text) =>
+        value.Contains(text, StringComparison.CurrentCultureIgnoreCase);
+
+    private void RefreshFilter()
+    {
+        VisibleRows.Clear();
+        foreach (var row in Rows.Where(Matches))
+        {
+            VisibleRows.Add(row);
+        }
+
+        OnPropertyChanged(nameof(IsFiltered));
+        OnPropertyChanged(nameof(FilterSummary));
+        ClearFilterCommand.NotifyCanExecuteChanged();
+    }
+
+    private void ClearFilter()
+    {
+        filterText = string.Empty;
+        showOnlyNeedingAttention = false;
+        OnPropertyChanged(nameof(FilterText));
+        OnPropertyChanged(nameof(ShowOnlyNeedingAttention));
+        RefreshFilter();
+    }
 
     public IReadOnlyList<LinePricingEntry> ToEntries() =>
         Rows.Select(row => row.ToEntry()).ToList();

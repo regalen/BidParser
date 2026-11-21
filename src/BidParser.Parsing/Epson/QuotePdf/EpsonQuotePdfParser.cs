@@ -22,6 +22,7 @@ public sealed partial class EpsonQuotePdfParser : IParser
     ];
 
     public string Slug => ParserSlugs.EpsonQuotePdf;
+    public bool HasBidRevision => false;
     public string DisplayName => "Quote (PDF)";
     public string Vendor => Vendors.Epson;
     public string AcceptedMime => "application/pdf";

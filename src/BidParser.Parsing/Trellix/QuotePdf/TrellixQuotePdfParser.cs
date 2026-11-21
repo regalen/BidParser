@@ -46,6 +46,7 @@ public sealed partial class TrellixQuotePdfParser : IParser
     ];
 
     public string Slug => ParserSlugs.TrellixQuotePdf;
+    public bool HasBidRevision => false;
     public string DisplayName => "Quote (PDF)";
     public string Vendor => Vendors.Trellix;
     public string AcceptedMime => "application/pdf";

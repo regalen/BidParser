@@ -23,6 +23,7 @@ public sealed class CiscoCcwQuoteXlsParser : IParser
     }
 
     public string Slug => ParserSlugs.CiscoCcwQuoteXls;
+    public bool HasBidRevision => false;
     public string DisplayName => "CCW Quote (XLS)";
     public string Vendor => Vendors.Cisco;
     public string AcceptedMime => "application/vnd.ms-excel";

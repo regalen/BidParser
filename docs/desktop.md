@@ -43,14 +43,23 @@ folder and update dismissal last only for the running process.
    is checked around selection, detection, parsing, splitting, and writing; cancellation inside one
    synchronous parser call is best-effort and its eventual result is discarded.
 5. For `SupportsLinePricing` formats, complete the in-window **Review & set line pricing** overlay
-   (Step 1: Pricing): enter the header Exchange Rate, optionally bulk-apply IM% and Uplift across
-   all lines, edit individual rows, review live totals (the header badge names the currency, so
-   the totals carry no prefix), and select **Next**. Every grid cell uses the same 12-DIP Inter
-   text, vertically centred. Each row's IM% and Uplift box shows its state as you type or apply:
+   (Step 1: Pricing): enter the header exchange rate (labelled `FX {currency}:AUD` from the
+   quote's currency), optionally bulk-apply IM% and Uplift across all lines, edit individual rows,
+   review live totals (the `Currency: {currency}` badge names the currency, so the totals carry no
+   prefix), and select **Submit**. The three header boxes share one width. A filter row narrows the
+   grid by VPN or description, VPN, Description, IM% or Uplift% (case-insensitive "contains"), and
+   **Only lines needing attention** shows lines whose IM% or Uplift is missing or invalid; filtering
+   only hides rows — totals, validation, **Submit** and both **Apply to all** buttons still cover
+   every line, and the grid is re-filtered only when the filter changes, never mid-edit. Grid
+   columns size to their content so the IM%/Uplift boxes are never clipped; Description takes the
+   remaining width and shrinks first (to 120 DIP) before the grid scrolls horizontally. Every grid
+   cell uses the theme's text, vertically centred. Each row's IM% and Uplift box shows its state as you type or apply:
    a red border while the value is missing or invalid, green once it is valid, and neutral for an
    optional CPQ/Indirect IM% left blank. Selecting **Cancel** (or `Escape`) discards
    the in-memory parse and returns to the drop zone. The overlay fills the window less a 24-DIP
-   margin, so maximizing or resizing BidParser enlarges it; its bottom-right grip resizes it within
+   margin, so maximizing or resizing BidParser enlarges it. When it opens, a normal (not maximized)
+   window smaller than 1320×820 DIP grows towards that size around its centre, clamped to its
+   monitor's work area; it never shrinks; its bottom-right grip resizes it within
    the window (minimum 760×400 DIP), and double-clicking the grip returns it to filling the window.
    The dragged size survives **Edit pricing** but is never persisted.
 6. Review the persistent result area (Step 2: Result) and choose **Save** or **Save anyway** (or
@@ -76,20 +85,33 @@ or unnecessary source paths.
 ## Themes and accessibility
 
 The 960×620-DIP window has an 840×560 minimum, standard Windows chrome, a fixed 320-DIP settings
-column, star-width result workspace, and bottom command bar. Light and dark resources follow the
-Windows app-mode preference and update during the session; Windows high-contrast mode switches to
-the `SystemColors` resource set. No theme setting is persisted.
+column, star-width result workspace, and bottom command bar. The command bar shows the version on
+the left and `© Ingram Micro. All rights reserved.` centred across the bar. FX Rate, Uplift,
+Discount Off MSRP and On Cost boxes share one fixed width (`Size.NumericInput`) with their unit
+beside the box. The result card shows the bid number alone for formats whose parser declares
+`HasBidRevision => false`, and `{bidNumber}.{bidRevision}` (e.g. `1602533408.1`) otherwise; output
+filenames and the web app's history are unchanged.
 
-Filled command buttons (**Parse quote**, **Save**, **Next**, **Replace**) use dedicated
-`Brush.PrimaryButton*` / `Brush.DestructiveButton*` fills with white text in both light and dark
-themes, rather than `Brush.Accent`, which stays bright for focus rings and highlights. Tooltips
-match the active theme (surface background, strong border, primary text). The application-wide
-implicit `TextBlock` style sets an explicit foreground that would otherwise override a control's own
-text colour inside templates, so templates that colour their text scope `Text.ControlForeground`
-over their `ContentPresenter`; do the same for any new template that sets its own foreground.
+The UI uses WPF's built-in Windows 11 (Fluent) theme. `App.xaml` merges
+`PresentationFramework.Fluent;component/Themes/Fluent.xaml` first, and `App.OnStartup` sets
+`ThemeMode = System`, so WPF itself follows the Windows light/dark app mode and high-contrast mode,
+including changes made during the session, and draws the Mica backdrop where Windows supports it
+(solid background elsewhere). Controls, fonts (Segoe UI Variable), the accent colour (the user's
+Windows accent), corners, focus visuals and tooltips are the theme's defaults. No theme setting is
+persisted. `ThemeMode` is marked experimental (`WPF0001`), which the project suppresses.
 
-Inter Regular and SemiBold are packaged WPF resources with Segoe UI fallback. The application
-manifest declares Per-Monitor-V2 awareness. Controls carry accessible names, logical tab order,
+The app's own dictionaries in `Themes/` only fix layout sizes and text alignment (field widths,
+control heights, right-aligned numbers, centred grid headers) and lay out app-specific surfaces —
+cards, InfoBar-style message bars, the drop zone, overlay dialogs — using the theme's brushes
+(`CardBackgroundFillColorDefaultBrush`, `SystemFillColor*Brush`, `TextFillColor*Brush`, …). There
+is deliberately no implicit `TextBlock` style, because one would override the text colour inside
+every Fluent control template. Keyed control styles derive from the theme's
+(`BasedOn="{StaticResource DefaultButtonStyle}"`, `AccentButtonStyle`, …); a keyed style without
+`BasedOn` would silently fall back to the pre-Windows 11 look. The **Parse quote**, **Save**,
+**Submit** and overwrite **Replace** buttons are accent buttons. The editable IM%/Uplift grid cells
+keep a small template of their own so their red/green state border stays visible while focused.
+
+The application manifest declares Per-Monitor-V2 awareness. Controls carry accessible names, logical tab order,
 keyboard actions, and live-region status updates. Before release, manually verify both themes,
 high contrast, keyboard/focus/Narrator behavior, and 100%, 125%, 150%, and 200% display scaling on
 Windows.
@@ -132,8 +154,10 @@ compares it with the public repository's latest stable GitHub release. One leadi
 from the release tag and build metadata does not affect precedence. An invalid version, older/equal
 release, 404, timeout, rate limit, malformed response, or blocked GitHub produces no notification.
 
-A newer release shows a dismissible bar for the current session. **Download update** opens the
-fixed direct-download URL
+A newer release shows a dismissible bar for the current session reading
+`An update is available. Installed {installed} > Latest {latest}`. **Copy link** copies the same
+fixed URL to the clipboard (for pasting into a browser other than the default) and confirms with
+**Link copied**. **Download update** opens the fixed direct-download URL
 `https://github.com/regalen/BidParser/releases/latest/download/BidParser.exe` in the default
 browser, which downloads the latest release's executable; the user then replaces their copy. GitHub
 resolves `releases/latest` to the same latest stable release the check compared against. The URL is
@@ -213,8 +237,8 @@ Windows x64 without a separately installed .NET runtime or elevation. Verify:
 - Juniper CPQ, Indirect, and Iris per-line pricing review overlay: header Exchange Rate, header
   **Apply** for IM% and Uplift, single-row overrides, CPQ IM% clear-to-revert, live totals,
   centred column headers and readable tooltips in light and dark themes, uniform vertically
-  centred cell text, IM%/Uplift borders turning red→green on typing and on **Apply to all**, white text on filled
-  buttons, a 4 dp Exchange Rate fully visible, grip resize/maximize/double-click reset,
+  centred cell text, IM%/Uplift borders turning red→green on typing and on **Apply to all**, readable
+  text on accent buttons, a 4 dp Exchange Rate fully visible, grip resize/maximize/double-click reset,
   description ellipsis and hover tooltip, **Edit pricing** round-trip from the result card,
   keyboard-only navigation (`Tab`/`Escape`), high-contrast rendering, and saved workbook col K/T/V
   values.
@@ -231,7 +255,7 @@ Juniper requires explicit CPQ, Indirect, or Iris selection; no Auto entry is off
 formats use Foreign Uplift only and declare `SupportsLinePricing => true`. Main-window FX, Uplift,
 and IM% fields are hidden; after **Parse quote**, the in-window pricing review overlay collects
 header Exchange Rate (`> 0`, up to 4 dp) and per-line IM% (`0 ≤ IM% ≤ 100`, up to 2 dp) and
-Uplift (`0 ≤ Uplift < 100`, up to 2 dp). Out-of-range values are flagged and block **Next**,
+Uplift (`0 ≤ Uplift < 100`, up to 2 dp). Out-of-range values are flagged and block **Submit**,
 and the totals read "—" until every line is valid. For Iris, every non-cancelled line with `Msrp > 0`
 requires IM% and BidParser calculates Foreign Cost from MSRP less IM%, rounded to cents. For CPQ
 and Indirect, each line displays its derived IM% and writes the unrounded source cost to column T

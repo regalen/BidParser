@@ -17,6 +17,7 @@ public sealed class NutanixHardwareOnlyXlsxParser : IParser
     private const string QuoteDBanner = NutanixXlsxSignatures.QuoteDBanner;
 
     public string Slug => ParserSlugs.NutanixHardwareOnlyXlsx;
+    public bool HasBidRevision => false;
     public string DisplayName => "Hardware Only (XLSX)";
     public string Vendor => Vendors.Nutanix;
     public string AcceptedMime => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";

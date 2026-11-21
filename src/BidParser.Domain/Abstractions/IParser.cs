@@ -71,6 +71,14 @@ public interface IParser
     /// </summary>
     string SolutionSplitLabel => "Solution ID";
 
+    /// <summary>
+    /// Whether the source document carries a bid revision of its own. Formats without one
+    /// (they clean their bid identity with <c>BidMetadataCleaner.CleanRevisionless</c>) still store
+    /// the default revision for filenames and history, but return <see langword="false"/> so hosts
+    /// display the bid number alone. A presentation trait; defaults to <see langword="true"/>.
+    /// </summary>
+    bool HasBidRevision => true;
+
     /// <summary>How this format's output filenames are composed. Defaults to BidScoped.</summary>
     OutputNameStyle OutputNameStyle => OutputNameStyle.BidScoped;
 

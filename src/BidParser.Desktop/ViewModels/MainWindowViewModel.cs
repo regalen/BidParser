@@ -44,6 +44,7 @@ public sealed class MainWindowViewModel : ObservableObject
     private bool isSaving;
     private AvailableUpdate? update;
     private bool updateDismissed;
+    private bool updateLinkCopied;
 
     public MainWindowViewModel(
         ParserCatalog catalog,
@@ -90,6 +91,7 @@ public sealed class MainWindowViewModel : ObservableObject
         CopyDetailsCommand = new RelayCommand(CopyDetails, () => Result is FailureResultViewModel);
         EscapeCommand = new RelayCommand(Escape);
         DownloadUpdateCommand = new RelayCommand(DownloadUpdate, () => update is not null);
+        CopyUpdateLinkCommand = new RelayCommand(CopyUpdateLink, () => update is not null);
         DismissUpdateCommand = new RelayCommand(DismissUpdate);
 
         Refresh();
@@ -115,6 +117,7 @@ public sealed class MainWindowViewModel : ObservableObject
     public RelayCommand CopyDetailsCommand { get; }
     public RelayCommand EscapeCommand { get; }
     public RelayCommand DownloadUpdateCommand { get; }
+    public RelayCommand CopyUpdateLinkCommand { get; }
     public RelayCommand DismissUpdateCommand { get; }
 
     public VendorViewModel? SelectedVendor
@@ -331,7 +334,15 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public string UpdateMessage => update is null
         ? string.Empty
-        : $"Installed {update.Installed} · Latest {update.Latest}";
+        : $"Installed {update.Installed} > Latest {update.Latest}";
+
+    /// <summary>The fixed download URL, shown as the copy button's tooltip.</summary>
+    public string? UpdateLink => update?.Download.ToString();
+
+    /// <summary>Confirms a copy in place, so the user knows the link is on the clipboard.</summary>
+    public string CopyUpdateLinkText => updateLinkCopied ? "Link copied" : "Copy link";
+
+    public string CopyrightText => "© Ingram Micro. All rights reserved.";
 
     public bool CanParse =>
         SelectedVendor is not null
@@ -360,7 +371,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public string SecondaryActionText => isParsing ? "Cancel" : "Reset";
 
-    public string PricingHeading => $"{SelectedVendor?.Name ?? "Vendor"} pricing".ToUpperInvariant();
+    public string PricingHeading => $"{SelectedVendor?.Name ?? "Vendor"} pricing";
 
     public string SplitLabel => $"Split output by {SelectedParser?.Descriptor.SolutionSplitLabel ?? "Solution ID"}";
 
@@ -386,9 +397,13 @@ public sealed class MainWindowViewModel : ObservableObject
     {
         update = available;
         updateDismissed = false;
+        updateLinkCopied = false;
         OnPropertyChanged(nameof(HasUpdate));
         OnPropertyChanged(nameof(UpdateMessage));
+        OnPropertyChanged(nameof(UpdateLink));
+        OnPropertyChanged(nameof(CopyUpdateLinkText));
         DownloadUpdateCommand.NotifyCanExecuteChanged();
+        CopyUpdateLinkCommand.NotifyCanExecuteChanged();
     }
 
     private IEnumerable<NumericFieldViewModel> AllPricingFields
@@ -638,6 +653,20 @@ public sealed class MainWindowViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Copies the same fixed download URL to the clipboard, for users who want to paste it into a
+    /// browser other than their default.
+    /// </summary>
+    private void CopyUpdateLink()
+    {
+        if (update is { } available)
+        {
+            clipboard.SetText(available.Download.ToString());
+            updateLinkCopied = true;
+            OnPropertyChanged(nameof(CopyUpdateLinkText));
+        }
+    }
+
     private void DismissUpdate()
     {
         updateDismissed = true;
@@ -730,8 +759,8 @@ public sealed class MainWindowViewModel : ObservableObject
         {
             facts.Add(new ResultFactViewModel(
                 "Bid number",
-                parsed.Result.Metadata.BidRevision is { Length: > 0 } revision
-                    ? $"{bidNumber} v{revision}"
+                parsed.Parser.HasBidRevision && parsed.Result.Metadata.BidRevision is { Length: > 0 } revision
+                    ? $"{bidNumber}.{revision}"
                     : bidNumber));
         }
         facts.Add(new ResultFactViewModel("Line items", lineCount.ToString(CultureInfo.CurrentCulture)));

@@ -17,6 +17,7 @@ namespace BidParser.Parsing.Hp.ServicesXlsx;
 public sealed class HpServicesXlsxParser : IParser
 {
     public string Slug => ParserSlugs.HpServicesXlsx;
+    public bool HasBidRevision => false;
     public string DisplayName => "Services (XLSX)";
     public string Vendor => Vendors.Hp;
     public string AcceptedMime => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";

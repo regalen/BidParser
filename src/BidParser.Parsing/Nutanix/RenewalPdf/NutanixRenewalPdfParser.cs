@@ -15,6 +15,7 @@ namespace BidParser.Parsing.Nutanix.RenewalPdf;
 public sealed partial class NutanixRenewalPdfParser : IParser
 {
     public string Slug => ParserSlugs.NutanixRenewalPdf;
+    public bool HasBidRevision => false;
     public string DisplayName => "Renewal (PDF)";
     public string Vendor => Vendors.Nutanix;
     public string AcceptedMime => "application/pdf";

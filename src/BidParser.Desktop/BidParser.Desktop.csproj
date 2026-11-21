@@ -8,6 +8,8 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>BidParser</AssemblyName>
     <RootNamespace>BidParser.Desktop</RootNamespace>
+    <!-- Application.ThemeMode (the built-in Windows 11 Fluent theme) is marked experimental. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,8 +32,5 @@
   <ItemGroup>
     <Resource Include="Assets\Brand\BidParser.ico" />
     <Resource Include="Assets\Brand\bidparser-icon.png" />
-    <Resource Include="Assets\Fonts\Inter-Regular.ttf" />
-    <Resource Include="Assets\Fonts\Inter-SemiBold.ttf" />
-    <Resource Include="Assets\Licenses\Inter-OFL.txt" />
   </ItemGroup>
 </Project>

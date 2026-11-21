@@ -8,9 +8,7 @@
         MinWidth="{StaticResource Size.WindowMinWidth}"
         MinHeight="{StaticResource Size.WindowMinHeight}"
         Icon="Assets/Brand/BidParser.ico"
-        Background="{DynamicResource Brush.WindowBackground}"
-        FontFamily="{StaticResource Font.Primary}"
-        Foreground="{DynamicResource Brush.TextPrimary}"
+        Style="{DynamicResource DefaultWindowStyle}"
         WindowStartupLocation="CenterScreen"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">
@@ -32,23 +30,17 @@
     <Border Grid.Row="0"
             Height="{StaticResource Size.UpdateBar}"
             Padding="{StaticResource Space.Horizontal16}"
-            Background="{DynamicResource Brush.InfoWash}"
-            BorderBrush="{DynamicResource Brush.Border}"
+            Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}"
+            BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
             BorderThickness="{StaticResource Border.Bottom}"
             Visibility="{Binding HasUpdate, Converter={StaticResource BooleanToVisibilityConverter}}"
             AutomationProperties.LiveSetting="Polite">
       <DockPanel LastChildFill="True">
-        <Border Width="{StaticResource Size.MessageGlyph}"
-                Height="{StaticResource Size.MessageGlyph}"
+        <Border Style="{StaticResource Glyph.Message}"
                 Margin="{StaticResource Space.Right8}"
                 VerticalAlignment="Center"
-                Background="{DynamicResource Brush.Accent}"
-                CornerRadius="{StaticResource Radius.Control}">
-          <TextBlock HorizontalAlignment="Center"
-                     VerticalAlignment="Center"
-                     Foreground="{DynamicResource Brush.Surface}"
-                     FontSize="11"
-                     FontWeight="{StaticResource Weight.Bold}"
+                Background="{DynamicResource SystemFillColorAttentionBrush}">
+          <TextBlock Style="{StaticResource Glyph.Text}"
                      Text="i" />
         </Border>
         <Button DockPanel.Dock="Right"
@@ -59,18 +51,23 @@
         <Button DockPanel.Dock="Right"
                 Margin="{StaticResource Space.Right8}"
                 Style="{StaticResource Button.Compact}"
+                Command="{Binding CopyUpdateLinkCommand}"
+                Content="{Binding CopyUpdateLinkText}"
+                ToolTip="{Binding UpdateLink}"
+                AutomationProperties.Name="Copy the download link for the latest BidParser.exe" />
+        <Button DockPanel.Dock="Right"
+                Margin="{StaticResource Space.Right8}"
+                Style="{StaticResource Button.Compact}"
                 Command="{Binding DownloadUpdateCommand}"
                 AutomationProperties.Name="Download the latest BidParser.exe"
                 Content="Download update" />
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-          <TextBlock Style="{StaticResource Text.BodySecondary}"
-                     Foreground="{DynamicResource Brush.InfoText}"
-                     Text="A newer version of BidParser is available." />
-          <TextBlock Margin="{StaticResource Space.Horizontal8}"
-                     Style="{StaticResource Text.Caption}"
-                     Foreground="{DynamicResource Brush.InfoText}"
-                     Text="{Binding UpdateMessage}" />
-        </StackPanel>
+        <!-- One TextBlock, so both parts share a size and a baseline. -->
+        <TextBlock VerticalAlignment="Center"
+                   FontSize="14"
+                   TextTrimming="CharacterEllipsis">
+          <Run Foreground="{DynamicResource TextFillColorPrimaryBrush}" Text="An update is available." />
+          <Run Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="{Binding UpdateMessage, Mode=OneWay}" />
+        </TextBlock>
       </DockPanel>
     </Border>
 
@@ -83,8 +80,8 @@
       <!-- Settings: fixed width, frozen while a parse is running. -->
       <Border Grid.Column="0"
               Padding="{StaticResource Space.Panel}"
-              Background="{DynamicResource Brush.Surface}"
-              BorderBrush="{DynamicResource Brush.Border}"
+              Background="{DynamicResource LayerFillColorDefaultBrush}"
+              BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
               BorderThickness="{StaticResource Border.Right}"
               IsEnabled="{Binding IsSettingsEnabled}">
         <Grid>
@@ -95,7 +92,7 @@
           </Grid.RowDefinitions>
 
           <StackPanel Grid.Row="0">
-            <TextBlock Style="{StaticResource Text.SectionHeading}" Text="QUOTE SETTINGS" />
+            <TextBlock Style="{StaticResource Text.SectionHeading}" Text="Quote settings" />
 
             <TextBlock Margin="{StaticResource Space.Top12}" Style="{StaticResource Text.FormLabel}" Text="Vendor" />
             <Grid Margin="{StaticResource Space.Top4}">
@@ -112,7 +109,7 @@
               </ComboBox>
               <TextBlock Margin="{StaticResource Space.Input}"
                          VerticalAlignment="Center"
-                         Foreground="{DynamicResource Brush.TextSecondary}"
+                         Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                          IsHitTestVisible="False"
                          Text="Select vendor">
                 <TextBlock.Style>
@@ -164,13 +161,11 @@
                selected parser and template support none of them. -->
           <StackPanel Grid.Row="1" Margin="{StaticResource Space.Top24}">
             <StackPanel Visibility="{Binding Capabilities.SupportsLinePricing, Converter={StaticResource BooleanToVisibilityConverter}}">
-              <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="{StaticResource Border.Top}" />
+              <Border BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}" BorderThickness="{StaticResource Border.Top}" />
               <TextBlock Margin="{StaticResource Space.Top12}" Style="{StaticResource Text.SectionHeading}" Text="{Binding PricingHeading}" />
               <Border Margin="{StaticResource Space.Top8}"
                       Padding="{StaticResource Space.12}"
-                      Background="{DynamicResource Brush.SurfaceInset}"
-                      BorderBrush="{DynamicResource Brush.BorderStrong}"
-                      BorderThickness="{StaticResource Border.All}"
+                      Style="{StaticResource Surface.Card}"
                       CornerRadius="{StaticResource Radius.Control}">
                 <TextBlock Style="{StaticResource Text.Caption}"
                            TextWrapping="Wrap"
@@ -179,7 +174,7 @@
             </StackPanel>
 
             <StackPanel Visibility="{Binding Capabilities.HasAnyPricingField, Converter={StaticResource BooleanToVisibilityConverter}}">
-              <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="{StaticResource Border.Top}" />
+              <Border BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}" BorderThickness="{StaticResource Border.Top}" />
               <TextBlock Margin="{StaticResource Space.Top12}" Style="{StaticResource Text.SectionHeading}" Text="{Binding PricingHeading}" />
 
               <ContentControl Content="{Binding FxRate}"
@@ -213,7 +208,7 @@
           <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Margin="{StaticResource Space.Bottom12}" Style="{StaticResource Text.SectionHeading}" Text="QUOTE FILE" />
+        <TextBlock Grid.Row="0" Margin="{StaticResource Space.Bottom12}" Style="{StaticResource Text.SectionHeading}" Text="Quote file" />
         <Button Grid.Row="1"
                 Style="{StaticResource Surface.DropZone}"
                 Command="{Binding BrowseCommand}"
@@ -224,7 +219,7 @@
           <ContentControl Content="{Binding DropZone}" />
         </Button>
 
-        <TextBlock Grid.Row="2" Margin="{StaticResource Space.Vertical12}" Style="{StaticResource Text.SectionHeading}" Text="RESULT" />
+        <TextBlock Grid.Row="2" Margin="{StaticResource Space.Vertical12}" Style="{StaticResource Text.SectionHeading}" Text="Result" />
         <Border Grid.Row="3"
                 Style="{StaticResource Surface.Card}"
                 AutomationProperties.LiveSetting="Polite">
@@ -234,14 +229,14 @@
     </Grid>
 
     <ProgressBar Grid.Row="2"
-                 Style="{StaticResource Progress.Thin}"
+                 IsIndeterminate="True"
                  Visibility="{Binding IsParsing, Converter={StaticResource BooleanToVisibilityConverter}}"
                  AutomationProperties.Name="Parsing" />
 
     <Border Grid.Row="3"
             Padding="{StaticResource Space.CommandBar}"
-            Background="{DynamicResource Brush.Surface}"
-            BorderBrush="{DynamicResource Brush.Border}"
+            Background="{DynamicResource LayerFillColorDefaultBrush}"
+            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
             BorderThickness="{StaticResource Border.Top}">
       <Grid>
         <Grid.ColumnDefinitions>
@@ -251,6 +246,13 @@
         <TextBlock VerticalAlignment="Center"
                    Style="{StaticResource Text.FooterVersion}"
                    Text="{Binding VersionText}" />
+        <!-- Centred across the whole bar, not just the space left of the buttons. -->
+        <TextBlock Grid.ColumnSpan="2"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   IsHitTestVisible="False"
+                   Style="{StaticResource Text.FooterVersion}"
+                   Text="{Binding CopyrightText, Mode=OneTime}" />
         <StackPanel Grid.Column="1" Orientation="Horizontal">
           <Button Margin="{StaticResource Space.Right8}"
                   Style="{StaticResource Button.Secondary}"

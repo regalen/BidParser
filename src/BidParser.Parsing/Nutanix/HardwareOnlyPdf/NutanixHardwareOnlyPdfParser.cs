@@ -16,6 +16,7 @@ namespace BidParser.Parsing.Nutanix.HardwareOnlyPdf;
 public sealed partial class NutanixHardwareOnlyPdfParser : IParser
 {
     public string Slug => ParserSlugs.NutanixHardwareOnlyPdf;
+    public bool HasBidRevision => false;
     public string DisplayName => "Hardware Only (PDF)";
     public string Vendor => Vendors.Nutanix;
     public string AcceptedMime => "application/pdf";
