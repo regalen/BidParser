@@ -371,7 +371,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public string SecondaryActionText => isParsing ? "Cancel" : "Reset";
 
-    public string PricingHeading => $"{SelectedVendor?.Name ?? "Vendor"} pricing";
+    public string PricingHeading => "Required Fields";
 
     public string SplitLabel => $"Split output by {SelectedParser?.Descriptor.SolutionSplitLabel ?? "Solution ID"}";
 

@@ -431,4 +431,33 @@ public sealed class LinePricingViewModelTests
         vm.ShowOnlyNeedingAttention = true;
         vm.VisibleRows.Select(row => row.Vpn).Should().Equal("SVC-COR-EX2300-24P");
     }
+
+    [Fact]
+    public void Apply_to_all_applies_only_to_the_visible_rows()
+    {
+        var vm = new LinePricingViewModel(CreateR5Preview(), "quote.xlsx");
+        foreach (var row in vm.Rows)
+        {
+            row.Uplift = "5";
+        }
+
+        vm.FilterText = "EX2300";
+        vm.VisibleRows.Select(row => row.Vpn).Should().Equal("EX2300-24P", "SVC-COR-EX2300-24P");
+
+        vm.HeaderUplift.Text = "9";
+        vm.ApplyUpliftCommand.Execute(null);
+        vm.HeaderImPercent.Text = "40";
+        vm.ApplyImPercentCommand.Execute(null);
+
+        vm.Rows[0].Uplift.Should().Be(9m.ToString("F2", CultureInfo.CurrentCulture));
+        vm.Rows[2].Uplift.Should().Be(9m.ToString("F2", CultureInfo.CurrentCulture));
+        vm.Rows[1].Uplift.Should().Be("5");
+        vm.Rows[0].ImPercent.Should().Be(40m.ToString("F2", CultureInfo.CurrentCulture));
+        vm.Rows[1].ImPercent.Should().Be(50m.ToString("F2", CultureInfo.CurrentCulture));
+
+        // Unfiltered, Apply to all reaches every line again.
+        vm.ClearFilterCommand.Execute(null);
+        vm.ApplyUpliftCommand.Execute(null);
+        vm.Rows.Should().OnlyContain(row => row.Uplift == 9m.ToString("F2", CultureInfo.CurrentCulture));
+    }
 }

@@ -48,9 +48,10 @@ folder and update dismissal last only for the running process.
    review live totals (the `Currency: {currency}` badge names the currency, so the totals carry no
    prefix), and select **Submit**. The three header boxes share one width. A filter row narrows the
    grid by VPN or description, VPN, Description, IM% or Uplift% (case-insensitive "contains"), and
-   **Only lines needing attention** shows lines whose IM% or Uplift is missing or invalid; filtering
-   only hides rows — totals, validation, **Submit** and both **Apply to all** buttons still cover
-   every line, and the grid is re-filtered only when the filter changes, never mid-edit. Grid
+   **Only lines needing attention** shows lines whose IM% or Uplift is missing or invalid. Both
+   **Apply to all** buttons apply to the visible lines only (every line when no filter is set), so
+   users can filter and then bulk-apply to that subset; totals, validation and **Submit** still
+   cover every line, and the grid is re-filtered only when the filter changes, never mid-edit. Grid
    columns size to their content so the IM%/Uplift boxes are never clipped; Description takes the
    remaining width and shrinks first (to 120 DIP) before the grid scrolls horizontally. Every grid
    cell uses the theme's text, vertically centred. Each row's IM% and Uplift box shows its state as you type or apply:

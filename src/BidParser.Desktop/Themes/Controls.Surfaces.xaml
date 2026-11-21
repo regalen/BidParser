@@ -740,7 +740,7 @@
                       Style="{StaticResource Button.Secondary}"
                       Content="Apply to all"
                       Command="{Binding ApplyImPercentCommand}"
-                      AutomationProperties.Name="Apply IM% to all lines" />
+                      AutomationProperties.Name="Apply IM% to all visible lines" />
             </StackPanel>
 
             <StackPanel Orientation="Horizontal">
@@ -752,12 +752,12 @@
                       Style="{StaticResource Button.Secondary}"
                       Content="Apply to all"
                       Command="{Binding ApplyUpliftCommand}"
-                      AutomationProperties.Name="Apply Uplift to all lines" />
+                      AutomationProperties.Name="Apply Uplift to all visible lines" />
             </StackPanel>
           </WrapPanel>
         </Border>
 
-        <!-- Line filter: hides rows only; totals, validation and Apply to all cover every line. -->
+        <!-- Line filter: Apply to all acts on the visible rows; totals, validation and Submit cover every line. -->
         <Grid Grid.Row="2" Margin="16,12,16,8">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />

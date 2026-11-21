@@ -524,8 +524,8 @@ public sealed class LinePricingViewModel : ObservableObject
     public ObservableCollection<LinePricingRowViewModel> Rows { get; }
 
     /// <summary>
-    /// The rows the grid shows. Filtering only hides rows: totals, validation, Submit and both
-    /// <c>Apply to all</c> commands still cover every line. The view is re-filtered when the filter
+    /// The rows the grid shows. Both <c>Apply to all</c> commands apply to these rows only, so a
+    /// filter can target a subset of lines; totals, validation and Submit still cover every line. The view is re-filtered when the filter
     /// changes, never while a cell is being edited, so a row cannot vanish under the user's cursor.
     /// </summary>
     public ObservableCollection<LinePricingRowViewModel> VisibleRows { get; }
@@ -669,7 +669,8 @@ public sealed class LinePricingViewModel : ObservableObject
             return;
         }
 
-        foreach (var row in Rows)
+        // Only the rows the grid shows: filter first, then apply to that subset.
+        foreach (var row in VisibleRows)
         {
             row.ApplyHeaderImPercent(value);
         }
@@ -682,7 +683,7 @@ public sealed class LinePricingViewModel : ObservableObject
             return;
         }
 
-        foreach (var row in Rows)
+        foreach (var row in VisibleRows)
         {
             row.ApplyHeaderUplift(value);
         }
