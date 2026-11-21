@@ -8,7 +8,7 @@
   <DataTemplate DataType="{x:Type cfg:GuidanceParagraph}">
     <TextBlock Margin="{StaticResource Space.Bottom4}"
                Style="{StaticResource Text.BodySecondary}"
-               Foreground="{DynamicResource Brush.InfoText}"
+               Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                TextWrapping="Wrap"
                mvvm:GuidanceInlines.Runs="{Binding Runs}" />
   </DataTemplate>
@@ -22,11 +22,11 @@
       <TextBlock Margin="{StaticResource Space.Right8}"
                  VerticalAlignment="Top"
                  Style="{StaticResource Text.BodySecondary}"
-                 Foreground="{DynamicResource Brush.InfoText}"
+                 Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                  Text="•" />
       <TextBlock Grid.Column="1"
                  Style="{StaticResource Text.BodySecondary}"
-                 Foreground="{DynamicResource Brush.InfoText}"
+                 Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                  TextWrapping="Wrap"
                  mvvm:GuidanceInlines.Runs="{Binding Runs}" />
     </Grid>
@@ -35,9 +35,11 @@
   <DataTemplate DataType="{x:Type cfg:GuidanceBulletList}">
     <ItemsControl Margin="{StaticResource Space.Bottom4}" ItemsSource="{Binding Items}" />
   </DataTemplate>
+  <!-- Surfaces use the Windows 11 theme brushes: translucent cards over the Mica window, solid
+       dialogs over the smoke scrim, and InfoBar-style message bars. -->
   <Style x:Key="Surface.Card" TargetType="Border">
-    <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+    <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
     <Setter Property="BorderThickness" Value="{StaticResource Border.All}" />
     <Setter Property="CornerRadius" Value="{StaticResource Radius.Panel}" />
   </Style>
@@ -48,23 +50,44 @@
   </Style>
 
   <Style x:Key="Bar.Info" TargetType="Border" BasedOn="{StaticResource Surface.MessageBar}">
-    <Setter Property="Background" Value="{DynamicResource Brush.InfoWash}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Brush.InfoBorder}" />
+    <Setter Property="Background" Value="{DynamicResource SystemFillColorAttentionBackgroundBrush}" />
   </Style>
   <Style x:Key="Bar.Success" TargetType="Border" BasedOn="{StaticResource Surface.MessageBar}">
-    <Setter Property="Background" Value="{DynamicResource Brush.SuccessWash}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Brush.SuccessBorder}" />
+    <Setter Property="Background" Value="{DynamicResource SystemFillColorSuccessBackgroundBrush}" />
   </Style>
   <Style x:Key="Bar.Warning" TargetType="Border" BasedOn="{StaticResource Surface.MessageBar}">
-    <Setter Property="Background" Value="{DynamicResource Brush.WarningWash}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Brush.WarningBorder}" />
+    <Setter Property="Background" Value="{DynamicResource SystemFillColorCautionBackgroundBrush}" />
+  </Style>
+
+  <!-- A round InfoBar-style status icon: coloured disc, inverse glyph. -->
+  <Style x:Key="Glyph.Message" TargetType="Border">
+    <Setter Property="Width" Value="{StaticResource Size.MessageGlyph}" />
+    <Setter Property="Height" Value="{StaticResource Size.MessageGlyph}" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius.MessageGlyph}" />
+    <Setter Property="Background" Value="{DynamicResource SystemFillColorAttentionBrush}" />
+  </Style>
+  <Style x:Key="Glyph.Status" TargetType="Border" BasedOn="{StaticResource Glyph.Message}">
+    <Setter Property="Width" Value="{StaticResource Size.StatusGlyph}" />
+    <Setter Property="Height" Value="{StaticResource Size.StatusGlyph}" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius.StatusGlyph}" />
+  </Style>
+  <Style x:Key="Glyph.Text" TargetType="TextBlock">
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="{StaticResource Weight.Bold}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorInverseBrush}" />
   </Style>
 
   <!-- The drop zone hosts its own state surfaces, so the button itself contributes only the
        focus ring and the hit area. -->
   <Style x:Key="Surface.DropZone" TargetType="Button">
+    <!-- This style is not based on the theme's button, so it states the theme's text colour;
+         otherwise the drop zone's text falls back to black in dark mode. -->
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Focusable" Value="True" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="VerticalContentAlignment" Value="Stretch" />
     <Setter Property="Template">
@@ -72,7 +95,7 @@
         <ControlTemplate TargetType="Button">
           <Grid>
             <Border x:Name="FocusRing"
-                    BorderBrush="{DynamicResource Brush.Focus}"
+                    BorderBrush="{DynamicResource FocusStrokeColorOuterBrush}"
                     BorderThickness="{StaticResource Border.Focus}"
                     CornerRadius="{StaticResource Radius.Panel}"
                     Visibility="Collapsed" />
@@ -91,84 +114,9 @@
     </Setter>
   </Style>
 
-  <Style x:Key="Progress.Thin" TargetType="ProgressBar">
-    <Setter Property="Height" Value="{StaticResource Size.Progress}" />
-    <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
-    <Setter Property="Background" Value="{DynamicResource Brush.Border}" />
-    <Setter Property="IsIndeterminate" Value="True" />
-    <Setter Property="Template">
-      <Setter.Value>
-        <ControlTemplate TargetType="ProgressBar">
-          <Grid ClipToBounds="True">
-            <Border Background="{TemplateBinding Background}" CornerRadius="{StaticResource Radius.Bar}" />
-            <Border x:Name="PART_Indicator"
-                    HorizontalAlignment="Left"
-                    Background="{TemplateBinding Foreground}"
-                    CornerRadius="{StaticResource Radius.Bar}" />
-          </Grid>
-        </ControlTemplate>
-      </Setter.Value>
-    </Setter>
-  </Style>
-
-  <!-- Tooltips follow the theme like native Windows 11 tooltips: a surface-coloured card with a
-       border. The template scopes Text.ControlForeground and wrapping over string content, which
-       the application-level TextBlock style would otherwise recolour and leave on one line. -->
-  <Style TargetType="ToolTip">
-    <Setter Property="MaxWidth" Value="320" />
-    <Setter Property="Padding" Value="10,6" />
-    <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
-    <Setter Property="BorderThickness" Value="{StaticResource Border.All}" />
-    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
-    <Setter Property="FontFamily" Value="{StaticResource Font.Primary}" />
-    <Setter Property="FontSize" Value="12" />
-    <Setter Property="HasDropShadow" Value="True" />
-    <Setter Property="Template">
-      <Setter.Value>
-        <ControlTemplate TargetType="ToolTip">
-          <Border Background="{TemplateBinding Background}"
-                  BorderBrush="{TemplateBinding BorderBrush}"
-                  BorderThickness="{TemplateBinding BorderThickness}"
-                  CornerRadius="{StaticResource Radius.Control}"
-                  Padding="{TemplateBinding Padding}"
-                  SnapsToDevicePixels="True">
-            <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}">
-              <ContentPresenter.Resources>
-                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.ControlForeground}">
-                  <Setter Property="FontSize" Value="12" />
-                  <Setter Property="TextWrapping" Value="Wrap" />
-                </Style>
-              </ContentPresenter.Resources>
-            </ContentPresenter>
-          </Border>
-        </ControlTemplate>
-      </Setter.Value>
-    </Setter>
-  </Style>
-
-  <!-- Data grid column header: themed, centred and padded. The resize grippers keep the
-       PART_ names DataGrid looks for, so columns stay user-resizable. -->
-  <Style x:Key="Grid.ColumnHeaderGripper" TargetType="Thumb">
-    <Setter Property="Width" Value="8" />
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Cursor" Value="SizeWE" />
-    <Setter Property="Template">
-      <Setter.Value>
-        <ControlTemplate TargetType="Thumb">
-          <Border Background="{TemplateBinding Background}" />
-        </ControlTemplate>
-      </Setter.Value>
-    </Setter>
-  </Style>
-
-  <!-- Data grid body text. One explicit size and family for every cell, vertically centred:
-       DataGridTextColumn otherwise uses its own top-aligned element style at the system font,
-       while template columns pick up the application's larger implicit TextBlock style. -->
+  <!-- Data grid body text: vertically centred, trimmed, padded. Size and colour come from the
+       theme. -->
   <Style x:Key="Grid.CellText" TargetType="TextBlock">
-    <Setter Property="FontFamily" Value="{StaticResource Font.Primary}" />
-    <Setter Property="FontSize" Value="12" />
-    <Setter Property="FontWeight" Value="{StaticResource Weight.Regular}" />
     <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="Margin" Value="{StaticResource Space.Horizontal8}" />
     <Setter Property="TextTrimming" Value="CharacterEllipsis" />
@@ -177,21 +125,22 @@
   <!-- Editable grid cell (IM%, Uplift). The border reports the field's state: red while the value
        is missing or invalid, green once it is valid, neutral when an optional field is blank. The
        template keeps that colour while focused (focus thickens the border instead of recolouring
-       it), so the state is visible while the user types. Derived styles supply the state triggers. -->
+       it), so the state is visible while the user types. Derived styles supply the state triggers.
+       Fill, corners and text follow the Windows 11 text box. -->
   <Style x:Key="Grid.CellInput" TargetType="TextBox">
     <Setter Property="Width" Value="82" />
     <Setter Property="Height" Value="{StaticResource Size.CompactControl}" />
     <Setter Property="Padding" Value="6,0" />
-    <Setter Property="FontFamily" Value="{StaticResource Font.Primary}" />
-    <Setter Property="FontSize" Value="12" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="HorizontalContentAlignment" Value="Right" />
     <Setter Property="TextAlignment" Value="Right" />
-    <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
-    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
-    <Setter Property="CaretBrush" Value="{DynamicResource Brush.TextPrimary}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
+    <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    <Setter Property="CaretBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    <Setter Property="SelectionBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
     <Setter Property="BorderThickness" Value="{StaticResource Border.All}" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
     <Setter Property="Validation.ErrorTemplate" Value="{x:Null}" />
     <Setter Property="Template">
       <Setter.Value>
@@ -200,7 +149,7 @@
                   Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
-                  CornerRadius="{StaticResource Radius.Bar}"
+                  CornerRadius="{StaticResource Radius.Control}"
                   SnapsToDevicePixels="True">
             <ScrollViewer x:Name="PART_ContentHost"
                           Margin="{TemplateBinding Padding}"
@@ -210,11 +159,15 @@
                           VerticalScrollBarVisibility="Hidden" />
           </Border>
           <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+            </Trigger>
             <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource ControlFillColorInputActiveBrush}" />
               <Setter TargetName="Chrome" Property="BorderThickness" Value="{StaticResource Border.Focus}" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
-              <Setter Property="Foreground" Value="{DynamicResource Brush.TextDisabled}" />
+              <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -225,10 +178,10 @@
   <Style x:Key="Grid.CellInput.ImPercent" TargetType="TextBox" BasedOn="{StaticResource Grid.CellInput}">
     <Style.Triggers>
       <DataTrigger Binding="{Binding IsImValueValid}" Value="True">
-        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Success}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorSuccessBrush}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding HasImError}" Value="True">
-        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Error}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
       </DataTrigger>
     </Style.Triggers>
   </Style>
@@ -236,60 +189,27 @@
   <Style x:Key="Grid.CellInput.Uplift" TargetType="TextBox" BasedOn="{StaticResource Grid.CellInput}">
     <Style.Triggers>
       <DataTrigger Binding="{Binding IsUpliftValueValid}" Value="True">
-        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Success}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorSuccessBrush}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding HasUpliftError}" Value="True">
-        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Error}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
       </DataTrigger>
     </Style.Triggers>
   </Style>
 
-  <Style x:Key="Grid.ColumnHeader" TargetType="DataGridColumnHeader">
-    <Setter Property="Background" Value="{DynamicResource Brush.SurfaceInset}" />
-    <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
-    <Setter Property="FontFamily" Value="{StaticResource Font.Primary}" />
-    <Setter Property="FontSize" Value="13" />
-    <Setter Property="FontWeight" Value="{StaticResource Weight.SemiBold}" />
-    <Setter Property="Padding" Value="10,7" />
+  <!-- The theme's column header, with its text centred over the column. -->
+  <Style x:Key="Grid.ColumnHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource DefaultDataGridColumnHeaderStyle}">
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
-    <Setter Property="SnapsToDevicePixels" Value="True" />
-    <Setter Property="Template">
-      <Setter.Value>
-        <ControlTemplate TargetType="DataGridColumnHeader">
-          <Grid>
-            <Border Background="{TemplateBinding Background}"
-                    BorderBrush="{TemplateBinding BorderBrush}"
-                    BorderThickness="0,0,1,1"
-                    Padding="{TemplateBinding Padding}">
-              <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                TextElement.Foreground="{TemplateBinding Foreground}">
-                <ContentPresenter.Resources>
-                  <Style TargetType="TextBlock" BasedOn="{StaticResource Text.ControlForeground}">
-                    <Setter Property="FontSize" Value="13" />
-                    <Setter Property="FontWeight" Value="{StaticResource Weight.SemiBold}" />
-                  </Style>
-                </ContentPresenter.Resources>
-              </ContentPresenter>
-            </Border>
-            <Thumb x:Name="PART_LeftHeaderGripper"
-                   HorizontalAlignment="Left"
-                   Style="{StaticResource Grid.ColumnHeaderGripper}" />
-            <Thumb x:Name="PART_RightHeaderGripper"
-                   HorizontalAlignment="Right"
-                   Style="{StaticResource Grid.ColumnHeaderGripper}" />
-          </Grid>
-        </ControlTemplate>
-      </Setter.Value>
-    </Setter>
   </Style>
 
-  <Style x:Key="Surface.Dialog" TargetType="Border" BasedOn="{StaticResource Surface.Card}">
+  <Style x:Key="Surface.Dialog" TargetType="Border">
     <Setter Property="Width" Value="{StaticResource Size.DialogWidth}" />
+    <Setter Property="Background" Value="{DynamicResource SolidBackgroundFillColorQuarternaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
+    <Setter Property="BorderThickness" Value="{StaticResource Border.All}" />
     <Setter Property="CornerRadius" Value="{StaticResource Radius.Dialog}" />
-    <Setter Property="Padding" Value="{StaticResource Space.20}" />
+    <Setter Property="Padding" Value="{StaticResource Space.24}" />
   </Style>
 
   <!-- The single dialog host: scrim plus a centred dialog, drawn over the whole window rather
@@ -299,7 +219,7 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="ContentControl">
-          <Border Background="{DynamicResource Brush.Scrim}">
+          <Border Background="{DynamicResource SmokeFillColorDefaultBrush}">
             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
           </Border>
         </ControlTemplate>
@@ -314,7 +234,7 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="ContentControl">
-          <Border Background="{DynamicResource Brush.Scrim}">
+          <Border Background="{DynamicResource SmokeFillColorDefaultBrush}">
             <ContentPresenter Margin="{StaticResource Space.24}" />
           </Border>
         </ControlTemplate>
@@ -328,8 +248,8 @@
     <Grid>
       <Rectangle RadiusX="{StaticResource Radius.PanelValue}"
                  RadiusY="{StaticResource Radius.PanelValue}"
-                 Fill="{DynamicResource Brush.SurfaceEmpty}"
-                 Stroke="{DynamicResource Brush.BorderStrong}"
+                 Fill="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
+                 Stroke="{DynamicResource ControlStrongStrokeColorDefaultBrush}"
                  StrokeThickness="{StaticResource Size.BorderThickness}"
                  StrokeDashArray="4 2" />
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -342,14 +262,14 @@
                    Text="{Binding AcceptedCaption}" />
         <TextBlock Margin="{StaticResource Space.Top8}"
                    HorizontalAlignment="Center"
-                   Foreground="{DynamicResource Brush.Accent}"
+                   Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
                    FontWeight="{StaticResource Weight.SemiBold}"
                    FontSize="13"
                    Text="Browse…" />
         <TextBlock Margin="{StaticResource Space.Top4}"
                    HorizontalAlignment="Center"
                    Style="{StaticResource Text.Caption}"
-                   Foreground="{DynamicResource Brush.TextMuted}"
+                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                    Text="One file at a time · Ctrl+O opens the file picker" />
       </StackPanel>
     </Grid>
@@ -359,41 +279,35 @@
     <Grid>
       <Rectangle RadiusX="{StaticResource Radius.PanelValue}"
                  RadiusY="{StaticResource Radius.PanelValue}"
-                 Fill="{DynamicResource Brush.InfoWash}"
-                 Stroke="{DynamicResource Brush.Accent}"
-                 StrokeThickness="{StaticResource Size.FocusThickness}"
+                 Fill="{DynamicResource SystemFillColorAttentionBackgroundBrush}"
+                 Stroke="{DynamicResource AccentFillColorDefaultBrush}"
+                 StrokeThickness="2"
                  StrokeDashArray="4 2" />
       <TextBlock HorizontalAlignment="Center"
                  VerticalAlignment="Center"
-                 Foreground="{DynamicResource Brush.AccentHover}"
+                 Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
                  FontWeight="{StaticResource Weight.SemiBold}"
                  Text="Release to load" />
     </Grid>
   </DataTemplate>
 
   <DataTemplate DataType="{x:Type vm:InvalidDropZoneViewModel}">
-    <Border Background="{DynamicResource Brush.ErrorWash}"
-            BorderBrush="{DynamicResource Brush.Error}"
+    <Border Background="{DynamicResource SystemFillColorCriticalBackgroundBrush}"
+            BorderBrush="{DynamicResource SystemFillColorCriticalBrush}"
             BorderThickness="{StaticResource Border.All}"
             CornerRadius="{StaticResource Radius.Panel}"
             Padding="{StaticResource Space.16}">
       <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-        <Border Width="{StaticResource Size.MessageGlyph}"
-                Height="{StaticResource Size.MessageGlyph}"
+        <Border Style="{StaticResource Glyph.Message}"
                 Margin="{StaticResource Space.Right12}"
                 VerticalAlignment="Top"
-                Background="{DynamicResource Brush.Error}"
-                CornerRadius="{StaticResource Radius.Control}">
-          <TextBlock HorizontalAlignment="Center"
-                     VerticalAlignment="Center"
-                     Foreground="{DynamicResource Brush.Surface}"
-                     FontSize="11"
-                     FontWeight="{StaticResource Weight.Bold}"
+                Background="{DynamicResource SystemFillColorCriticalBrush}">
+          <TextBlock Style="{StaticResource Glyph.Text}"
                      Text="!" />
         </Border>
         <StackPanel>
           <TextBlock FontWeight="{StaticResource Weight.SemiBold}"
-                     Foreground="{DynamicResource Brush.ErrorText}"
+                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                      TextWrapping="Wrap"
                      Text="{Binding Headline}" />
           <TextBlock Margin="{StaticResource Space.Top4}"
@@ -406,10 +320,7 @@
   </DataTemplate>
 
   <DataTemplate DataType="{x:Type vm:FileDropZoneViewModel}">
-    <Border Background="{DynamicResource Brush.Surface}"
-            BorderBrush="{DynamicResource Brush.BorderStrong}"
-            BorderThickness="{StaticResource Border.All}"
-            CornerRadius="{StaticResource Radius.Panel}"
+    <Border Style="{StaticResource Surface.Card}"
             Padding="{StaticResource Space.Horizontal12}">
       <Grid VerticalAlignment="Center">
         <Grid.ColumnDefinitions>
@@ -422,14 +333,14 @@
         <Border Width="{StaticResource Size.FileBadgeWidth}"
                 Height="{StaticResource Size.FileBadgeHeight}"
                 Margin="{StaticResource Space.Right12}"
-                Background="{DynamicResource Brush.SurfaceInset}"
-                BorderBrush="{DynamicResource Brush.BorderStrong}"
+                Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
+                BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}"
                 BorderThickness="{StaticResource Border.All}"
                 CornerRadius="{StaticResource Radius.Bar}">
           <TextBlock HorizontalAlignment="Center"
                      VerticalAlignment="Bottom"
                      Margin="{StaticResource Space.Bottom4}"
-                     Foreground="{DynamicResource Brush.Error}"
+                     Foreground="{DynamicResource SystemFillColorCriticalBrush}"
                      FontSize="9"
                      FontWeight="{StaticResource Weight.Bold}"
                      Text="{Binding File.Badge}" />
@@ -447,7 +358,7 @@
           <TextBlock x:Name="Status"
                      Margin="{StaticResource Space.Top4}"
                      Style="{StaticResource Text.Caption}"
-                     Foreground="{DynamicResource Brush.TextMuted}"
+                     Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                      TextTrimming="CharacterEllipsis"
                      Text="{Binding Status}" />
         </StackPanel>
@@ -469,10 +380,10 @@
     </Border>
     <DataTemplate.Triggers>
       <DataTrigger Binding="{Binding Severity}" Value="{x:Static vm:FileStatusSeverity.Working}">
-        <Setter TargetName="Status" Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+        <Setter TargetName="Status" Property="Foreground" Value="{DynamicResource AccentTextFillColorPrimaryBrush}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Severity}" Value="{x:Static vm:FileStatusSeverity.Done}">
-        <Setter TargetName="Status" Property="Foreground" Value="{DynamicResource Brush.Success}" />
+        <Setter TargetName="Status" Property="Foreground" Value="{DynamicResource SystemFillColorSuccessBrush}" />
       </DataTrigger>
     </DataTemplate.Triggers>
   </DataTemplate>
@@ -484,13 +395,13 @@
       <Border Width="{StaticResource Size.Control}"
               Height="{StaticResource Size.Control}"
               HorizontalAlignment="Center"
-              Background="{DynamicResource Brush.SurfaceInset}"
-              BorderBrush="{DynamicResource Brush.BorderStrong}"
+              Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
+              BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}"
               BorderThickness="{StaticResource Border.All}"
               CornerRadius="{StaticResource Radius.Control}">
         <TextBlock HorizontalAlignment="Center"
                    VerticalAlignment="Center"
-                   Foreground="{DynamicResource Brush.TextMuted}"
+                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                    Text="↔" />
       </Border>
       <TextBlock Margin="{StaticResource Space.Top12}"
@@ -512,32 +423,26 @@
       </Grid.RowDefinitions>
 
       <Border x:Name="HeaderBand"
-              Background="{DynamicResource Brush.SuccessWash}"
-              BorderBrush="{DynamicResource Brush.SuccessBorder}"
+              Background="{DynamicResource SystemFillColorSuccessBackgroundBrush}"
+              BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
               BorderThickness="{StaticResource Border.Bottom}"
               CornerRadius="{StaticResource Radius.PanelTop}"
               Padding="{StaticResource Space.MessageBar}">
         <StackPanel Orientation="Horizontal">
           <Border x:Name="HeaderGlyphChrome"
-                  Width="{StaticResource Size.StatusGlyph}"
-                  Height="{StaticResource Size.StatusGlyph}"
+                  Style="{StaticResource Glyph.Status}"
                   Margin="{StaticResource Space.Right8}"
                   VerticalAlignment="Center"
-                  Background="{DynamicResource Brush.Success}"
-                  CornerRadius="{StaticResource Radius.Control}">
+                  Background="{DynamicResource SystemFillColorSuccessBrush}">
             <TextBlock x:Name="HeaderGlyph"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       Foreground="{DynamicResource Brush.Surface}"
-                       FontSize="11"
-                       FontWeight="{StaticResource Weight.Bold}"
+                       Style="{StaticResource Glyph.Text}"
                        Text="✓" />
           </Border>
           <TextBlock x:Name="HeaderText"
                      VerticalAlignment="Center"
                      FontSize="16"
                      FontWeight="{StaticResource Weight.SemiBold}"
-                     Foreground="{DynamicResource Brush.SuccessText}"
+                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                      TextWrapping="Wrap"
                      Text="{Binding Headline}" />
         </StackPanel>
@@ -560,7 +465,7 @@
             <ItemsControl.ItemTemplate>
               <DataTemplate>
                 <StackPanel Margin="{StaticResource Space.Bottom12}">
-                  <TextBlock Style="{StaticResource Text.SectionHeading}" Text="{Binding Label}" />
+                  <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding Label}" />
                   <TextBlock Margin="{StaticResource Space.Top2}"
                              FontWeight="{StaticResource Weight.SemiBold}"
                              TextTrimming="CharacterEllipsis"
@@ -579,11 +484,11 @@
                   <StackPanel Orientation="Horizontal">
                     <TextBlock Margin="{StaticResource Space.Right8}"
                                VerticalAlignment="Top"
-                               Foreground="{DynamicResource Brush.Warning}"
+                               Foreground="{DynamicResource SystemFillColorCautionBrush}"
                                FontWeight="{StaticResource Weight.Bold}"
                                Text="⚠" />
                     <TextBlock Style="{StaticResource Text.BodySecondary}"
-                               Foreground="{DynamicResource Brush.WarningText}"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                                TextWrapping="Wrap"
                                Text="{Binding}" />
                   </StackPanel>
@@ -596,17 +501,11 @@
                   Margin="{StaticResource Space.Bottom8}"
                   Visibility="{Binding Guidance, Converter={StaticResource EmptyToVisibility}}">
             <StackPanel Orientation="Horizontal">
-              <Border Width="{StaticResource Size.MessageGlyph}"
-                      Height="{StaticResource Size.MessageGlyph}"
+              <Border Style="{StaticResource Glyph.Message}"
                       Margin="{StaticResource Space.Right8}"
                       VerticalAlignment="Top"
-                      Background="{DynamicResource Brush.Accent}"
-                      CornerRadius="{StaticResource Radius.Control}">
-                <TextBlock HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           Foreground="{DynamicResource Brush.Surface}"
-                           FontSize="11"
-                           FontWeight="{StaticResource Weight.Bold}"
+                      Background="{DynamicResource SystemFillColorAttentionBrush}">
+                <TextBlock Style="{StaticResource Glyph.Text}"
                            Text="i" />
               </Border>
               <ItemsControl ItemsSource="{Binding Guidance.Blocks}" />
@@ -622,7 +521,7 @@
               </Grid.ColumnDefinitions>
               <TextBlock VerticalAlignment="Center"
                          Style="{StaticResource Text.BodySecondary}"
-                         Foreground="{DynamicResource Brush.SuccessText}"
+                         Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                          TextTrimming="CharacterEllipsis"
                          Text="{Binding SavedMessage}"
                          ToolTip="{Binding SavedPath}" />
@@ -652,11 +551,11 @@
     </Grid>
     <DataTemplate.Triggers>
       <DataTrigger Binding="{Binding Severity}" Value="{x:Static vm:ResultSeverity.Warning}">
-        <Setter TargetName="HeaderBand" Property="Background" Value="{DynamicResource Brush.WarningWash}" />
-        <Setter TargetName="HeaderBand" Property="BorderBrush" Value="{DynamicResource Brush.WarningBorder}" />
-        <Setter TargetName="HeaderGlyphChrome" Property="Background" Value="{DynamicResource Brush.Warning}" />
+        <Setter TargetName="HeaderBand" Property="Background" Value="{DynamicResource SystemFillColorCautionBackgroundBrush}" />
+        <Setter TargetName="HeaderBand" Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
+        <Setter TargetName="HeaderGlyphChrome" Property="Background" Value="{DynamicResource SystemFillColorCautionBrush}" />
         <Setter TargetName="HeaderGlyph" Property="Text" Value="!" />
-        <Setter TargetName="HeaderText" Property="Foreground" Value="{DynamicResource Brush.WarningText}" />
+        <Setter TargetName="HeaderText" Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
       </DataTrigger>
     </DataTemplate.Triggers>
   </DataTemplate>
@@ -676,29 +575,23 @@
         <RowDefinition Height="*" />
       </Grid.RowDefinitions>
 
-      <Border Background="{DynamicResource Brush.ErrorWash}"
-              BorderBrush="{DynamicResource Brush.ErrorBorder}"
+      <Border Background="{DynamicResource SystemFillColorCriticalBackgroundBrush}"
+              BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
               BorderThickness="{StaticResource Border.Bottom}"
               CornerRadius="{StaticResource Radius.PanelTop}"
               Padding="{StaticResource Space.MessageBar}">
         <StackPanel Orientation="Horizontal">
-          <Border Width="{StaticResource Size.StatusGlyph}"
-                  Height="{StaticResource Size.StatusGlyph}"
+          <Border Style="{StaticResource Glyph.Status}"
                   Margin="{StaticResource Space.Right8}"
                   VerticalAlignment="Center"
-                  Background="{DynamicResource Brush.Error}"
-                  CornerRadius="{StaticResource Radius.Control}">
-            <TextBlock HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       Foreground="{DynamicResource Brush.Surface}"
-                       FontSize="11"
-                       FontWeight="{StaticResource Weight.Bold}"
+                  Background="{DynamicResource SystemFillColorCriticalBrush}">
+            <TextBlock Style="{StaticResource Glyph.Text}"
                        Text="!" />
           </Border>
           <TextBlock VerticalAlignment="Center"
                      FontSize="16"
                      FontWeight="{StaticResource Weight.SemiBold}"
-                     Foreground="{DynamicResource Brush.ErrorText}"
+                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                      TextWrapping="Wrap"
                      Text="{Binding Headline}" />
         </StackPanel>
@@ -712,23 +605,14 @@
                      TextWrapping="Wrap"
                      Text="{Binding NextStep}" />
 
-          <ToggleButton x:Name="DetailsToggle"
-                        Margin="{StaticResource Space.Top12}"
-                        HorizontalAlignment="Left"
-                        Style="{StaticResource Toggle.Subtle}"
-                        Content="Technical details"
-                        AutomationProperties.Name="Show technical details" />
-          <Border Margin="{StaticResource Space.Top8}"
-                  Padding="{StaticResource Space.12}"
-                  Background="{DynamicResource Brush.SurfaceInset}"
-                  BorderBrush="{DynamicResource Brush.Border}"
-                  BorderThickness="{StaticResource Border.All}"
-                  CornerRadius="{StaticResource Radius.Bar}"
-                  Visibility="{Binding IsChecked, ElementName=DetailsToggle, Converter={StaticResource BooleanToVisibilityConverter}}">
+          <Expander Margin="{StaticResource Space.Top12}"
+                    HorizontalAlignment="Stretch"
+                    Header="Technical details"
+                    AutomationProperties.Name="Technical details">
             <TextBlock Style="{StaticResource Text.Metadata}"
                        TextWrapping="Wrap"
                        Text="{Binding TechnicalDetails}" />
-          </Border>
+          </Expander>
 
           <StackPanel Margin="{StaticResource Space.Top12}" Orientation="Horizontal">
             <Button Margin="{StaticResource Space.Right8}"
@@ -768,7 +652,7 @@
                   Command="{Binding SaveCopyCommand}"
                   AutomationProperties.Name="Save a copy" />
           <Button Margin="{StaticResource Space.Right8}"
-                  Style="{StaticResource Button.Destructive}"
+                  Style="{StaticResource Button.Primary}"
                   Content="Replace"
                   Command="{Binding ReplaceCommand}"
                   AutomationProperties.Name="Replace the existing workbook" />
@@ -785,6 +669,7 @@
        lives on the view model so Edit pricing reopens at the same size. -->
   <DataTemplate DataType="{x:Type vm:LinePricingViewModel}">
     <Border Style="{StaticResource Surface.Card}"
+            Background="{DynamicResource SolidBackgroundFillColorQuarternaryBrush}"
             CornerRadius="{StaticResource Radius.Dialog}"
             MinWidth="760"
             MinHeight="400"
@@ -796,6 +681,7 @@
         <Grid.RowDefinitions>
           <RowDefinition Height="Auto" />
           <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
           <RowDefinition Height="*" />
           <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -803,15 +689,14 @@
         <!-- Dialog header -->
         <Border Grid.Row="0"
                 Padding="{StaticResource Space.16}"
-                BorderBrush="{DynamicResource Brush.Border}"
+                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
                 BorderThickness="{StaticResource Border.Bottom}">
           <DockPanel LastChildFill="False">
             <TextBlock DockPanel.Dock="Left"
                        VerticalAlignment="Center"
                        Style="{StaticResource Text.SectionHeading}"
-                       FontSize="13"
-                       Foreground="{DynamicResource Brush.TextPrimary}"
-                       Text="LINE PRICING" />
+                       FontSize="20"
+                       Text="Line pricing" />
             <TextBlock DockPanel.Dock="Left"
                        Margin="{StaticResource Space.Horizontal12}"
                        VerticalAlignment="Center"
@@ -820,13 +705,13 @@
             <Border DockPanel.Dock="Right"
                     Padding="{StaticResource Space.Horizontal8}"
                     VerticalAlignment="Center"
-                    Background="{DynamicResource Brush.InfoWash}"
-                    BorderBrush="{DynamicResource Brush.InfoBorder}"
+                    Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                     BorderThickness="{StaticResource Border.All}"
                     CornerRadius="{StaticResource Radius.Bar}">
               <TextBlock Style="{StaticResource Text.Caption}"
                          FontWeight="{StaticResource Weight.SemiBold}"
-                         Foreground="{DynamicResource Brush.InfoText}"
+                         Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                          Text="{Binding CurrencyBadgeText}" />
             </Border>
           </DockPanel>
@@ -835,48 +720,98 @@
         <!-- Header inputs + Apply buttons -->
         <Border Grid.Row="1"
                 Padding="{StaticResource Space.16}"
-                Background="{DynamicResource Brush.SurfaceInset}"
-                BorderBrush="{DynamicResource Brush.Border}"
+                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
                 BorderThickness="{StaticResource Border.Bottom}">
           <WrapPanel Orientation="Horizontal" VerticalAlignment="Top">
-            <!-- Wide enough for a 4 d.p. rate such as 12.3456 beside the "USD to AUD" suffix. -->
-            <StackPanel Width="240"
-                        Margin="{StaticResource Space.Right12}"
+            <!-- Every numeric box shares Size.NumericInput, so the three header fields line up. -->
+            <StackPanel Margin="0,0,32,0"
                         Visibility="{Binding UsesFxRate, Converter={StaticResource BooleanToVisibilityConverter}}">
               <ContentControl Content="{Binding FxRate}" />
             </StackPanel>
 
             <StackPanel Orientation="Horizontal"
-                        Margin="{StaticResource Space.Right12}"
+                        Margin="0,0,32,0"
                         Visibility="{Binding ImPercentEditable, Converter={StaticResource BooleanToVisibilityConverter}}">
-              <StackPanel Width="160">
+              <StackPanel>
                 <ContentControl Content="{Binding HeaderImPercent}" />
               </StackPanel>
-              <Button Margin="6,30,0,0"
+              <Button Margin="6,35,0,0"
                       VerticalAlignment="Top"
                       Style="{StaticResource Button.Secondary}"
                       Content="Apply to all"
                       Command="{Binding ApplyImPercentCommand}"
-                      AutomationProperties.Name="Apply IM% to all lines" />
+                      AutomationProperties.Name="Apply IM% to all visible lines" />
             </StackPanel>
 
             <StackPanel Orientation="Horizontal">
-              <StackPanel Width="160">
+              <StackPanel>
                 <ContentControl Content="{Binding HeaderUplift}" />
               </StackPanel>
-              <Button Margin="6,30,0,0"
+              <Button Margin="6,35,0,0"
                       VerticalAlignment="Top"
                       Style="{StaticResource Button.Secondary}"
                       Content="Apply to all"
                       Command="{Binding ApplyUpliftCommand}"
-                      AutomationProperties.Name="Apply Uplift to all lines" />
+                      AutomationProperties.Name="Apply Uplift to all visible lines" />
             </StackPanel>
           </WrapPanel>
         </Border>
 
-        <!-- 12-column DataGrid -->
-        <DataGrid Grid.Row="2"
-                  ItemsSource="{Binding Rows}"
+        <!-- Line filter: Apply to all acts on the visible rows; totals, validation and Submit cover every line. -->
+        <Grid Grid.Row="2" Margin="16,12,16,8">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Margin="{StaticResource Space.Right8}"
+                     VerticalAlignment="Center"
+                     Style="{StaticResource Text.FormLabel}"
+                     Text="Filter" />
+          <ComboBox Grid.Column="1"
+                    Width="190"
+                    Margin="{StaticResource Space.Right8}"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource Input.ComboBox}"
+                    ItemsSource="{Binding FilterOptions}"
+                    SelectedItem="{Binding SelectedFilterOption}"
+                    DisplayMemberPath="Name"
+                    AutomationProperties.Name="Filter column" />
+          <TextBox Grid.Column="2"
+                   Width="220"
+                   Margin="{StaticResource Space.Right12}"
+                   VerticalAlignment="Center"
+                   Style="{StaticResource Input.TextBox}"
+                   Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
+                   AutomationProperties.Name="Filter text" />
+          <CheckBox Grid.Column="3"
+                    Margin="{StaticResource Space.Right12}"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource Input.CheckBox}"
+                    Content="Only lines needing attention"
+                    IsChecked="{Binding ShowOnlyNeedingAttention}"
+                    AutomationProperties.Name="Show only lines with a missing or invalid IM% or Uplift" />
+          <Button Grid.Column="4"
+                  VerticalAlignment="Center"
+                  Style="{StaticResource Button.Subtle}"
+                  Content="Clear"
+                  Command="{Binding ClearFilterCommand}"
+                  Visibility="{Binding IsFiltered, Converter={StaticResource BooleanToVisibilityConverter}}"
+                  AutomationProperties.Name="Clear the line filter" />
+          <TextBlock Grid.Column="5"
+                     HorizontalAlignment="Right"
+                     VerticalAlignment="Center"
+                     Style="{StaticResource Text.Caption}"
+                     Text="{Binding FilterSummary}" />
+        </Grid>
+
+        <!-- 12-column DataGrid. Every column sizes to its content so nothing is clipped;
+             Description takes what is left and gives way first when the window is narrow. -->
+        <DataGrid Grid.Row="3"
+                  ItemsSource="{Binding VisibleRows}"
                   AutoGenerateColumns="False"
                   CanUserAddRows="False"
                   CanUserDeleteRows="False"
@@ -884,10 +819,8 @@
                   CanUserSortColumns="False"
                   HeadersVisibility="Column"
                   GridLinesVisibility="Horizontal"
-                  HorizontalGridLinesBrush="{DynamicResource Brush.Border}"
-                  Background="{DynamicResource Brush.Surface}"
-                  RowBackground="{DynamicResource Brush.Surface}"
-                  AlternatingRowBackground="{DynamicResource Brush.Surface}"
+                  HorizontalGridLinesBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+                  Background="Transparent"
                   BorderThickness="0"
                   SelectionMode="Single"
                   SelectionUnit="FullRow"
@@ -901,15 +834,14 @@
             <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource Grid.ColumnHeader}" />
           </DataGrid.Resources>
           <DataGrid.RowStyle>
-            <Style TargetType="DataGridRow">
+            <Style TargetType="DataGridRow" BasedOn="{StaticResource DefaultDataGridRowStyle}">
               <Setter Property="ToolTip" Value="{Binding RowErrorMessage}" />
-              <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
             </Style>
           </DataGrid.RowStyle>
           <DataGrid.Columns>
             <DataGridTextColumn Header="Line#" Binding="{Binding LineNumber}" ElementStyle="{StaticResource Grid.CellText}" IsReadOnly="True" Width="Auto" />
             <DataGridTextColumn Header="VPN" Binding="{Binding Vpn}" ElementStyle="{StaticResource Grid.CellText}" IsReadOnly="True" Width="Auto" />
-            <DataGridTemplateColumn Header="Description" Width="*" MinWidth="180" IsReadOnly="True">
+            <DataGridTemplateColumn Header="Description" Width="*" MinWidth="120" IsReadOnly="True">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>
                   <TextBlock Style="{StaticResource Grid.CellText}"
@@ -921,7 +853,7 @@
             </DataGridTemplateColumn>
             <DataGridTextColumn Header="Qty" Binding="{Binding Qty}" ElementStyle="{StaticResource Grid.CellText}" IsReadOnly="True" Width="Auto" />
             <DataGridTextColumn Header="MSRP" Binding="{Binding MsrpDisplay}" ElementStyle="{StaticResource Grid.CellText}" IsReadOnly="True" Width="Auto" />
-            <DataGridTemplateColumn Header="IM%*" Width="96">
+            <DataGridTemplateColumn Header="IM%*" Width="Auto" MinWidth="120">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>
                   <Grid Margin="{StaticResource Space.2}">
@@ -937,7 +869,7 @@
             <DataGridTextColumn Header="Cost" Binding="{Binding SourceCostDisplay}" ElementStyle="{StaticResource Grid.CellText}" IsReadOnly="True" Width="Auto" />
             <DataGridTextColumn Header="Unit Cost" Binding="{Binding UnitCostDisplay}" ElementStyle="{StaticResource Grid.CellText}" IsReadOnly="True" Width="Auto" />
             <DataGridTextColumn Header="Ext Cost" Binding="{Binding ExtCostDisplay}" ElementStyle="{StaticResource Grid.CellText}" IsReadOnly="True" Width="Auto" />
-            <DataGridTemplateColumn Header="Uplift%*" Width="96">
+            <DataGridTemplateColumn Header="Uplift%*" Width="Auto" MinWidth="120">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>
                   <Grid Margin="{StaticResource Space.2}">
@@ -955,38 +887,39 @@
           </DataGrid.Columns>
         </DataGrid>
 
-        <!-- Totals footer + Cancel / Next -->
-        <Border Grid.Row="3"
+        <!-- Totals footer + Cancel / Submit -->
+        <Border Grid.Row="4"
                 Padding="{StaticResource Space.16}"
-                Background="{DynamicResource Brush.SurfaceInset}"
-                BorderBrush="{DynamicResource Brush.Border}"
-                BorderThickness="{StaticResource Border.Top}">
+                Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+                BorderThickness="{StaticResource Border.Top}"
+                CornerRadius="0,0,8,8">
           <DockPanel LastChildFill="False">
             <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
               <StackPanel Margin="{StaticResource Space.Right12}">
-                <TextBlock Style="{StaticResource Text.SectionHeading}" Text="TOTAL COST" />
+                <TextBlock Style="{StaticResource Text.Caption}" Text="Total cost" />
                 <TextBlock Margin="{StaticResource Space.Top2}"
                            FontWeight="{StaticResource Weight.SemiBold}"
                            Text="{Binding TotalCostDisplay}" />
               </StackPanel>
               <StackPanel Margin="{StaticResource Space.Right12}">
-                <TextBlock Style="{StaticResource Text.SectionHeading}" Text="TOTAL PRICE" />
+                <TextBlock Style="{StaticResource Text.Caption}" Text="Total price" />
                 <TextBlock Margin="{StaticResource Space.Top2}"
                            FontWeight="{StaticResource Weight.SemiBold}"
                            Text="{Binding TotalPriceDisplay}" />
               </StackPanel>
               <StackPanel Margin="{StaticResource Space.Right12}">
-                <TextBlock Style="{StaticResource Text.SectionHeading}" Text="TOTAL MARGIN $" />
+                <TextBlock Style="{StaticResource Text.Caption}" Text="Total margin $" />
                 <TextBlock Margin="{StaticResource Space.Top2}"
                            FontWeight="{StaticResource Weight.SemiBold}"
-                           Foreground="{DynamicResource Brush.SuccessText}"
+                           Foreground="{DynamicResource SystemFillColorSuccessBrush}"
                            Text="{Binding TotalMarginAmountDisplay}" />
               </StackPanel>
               <StackPanel>
-                <TextBlock Style="{StaticResource Text.SectionHeading}" Text="TOTAL MARGIN %" />
+                <TextBlock Style="{StaticResource Text.Caption}" Text="Total margin %" />
                 <TextBlock Margin="{StaticResource Space.Top2}"
                            FontWeight="{StaticResource Weight.SemiBold}"
-                           Foreground="{DynamicResource Brush.SuccessText}"
+                           Foreground="{DynamicResource SystemFillColorSuccessBrush}"
                            Text="{Binding TotalMarginPercentDisplay}" />
               </StackPanel>
             </StackPanel>
@@ -998,7 +931,7 @@
                       Command="{Binding CancelCommand}"
                       AutomationProperties.Name="Cancel pricing review" />
               <Button Style="{StaticResource Button.Primary}"
-                      Content="Next"
+                      Content="Submit"
                       Command="{Binding NextCommand}"
                       AutomationProperties.Name="Confirm pricing and continue" />
             </StackPanel>
@@ -1007,7 +940,7 @@
 
         <!-- Corner resize grip: drag to resize, double-click to fill the window again. At 14 DIP
              with a 2 DIP inset it stays inside the footer's 16 DIP padding, clear of Next. -->
-        <Thumb Grid.Row="3"
+        <Thumb Grid.Row="4"
                Width="14"
                Height="14"
                Margin="0,0,2,2"
@@ -1023,7 +956,7 @@
               <Grid Background="Transparent">
                 <Path HorizontalAlignment="Right"
                       VerticalAlignment="Bottom"
-                      Stroke="{DynamicResource Brush.TextMuted}"
+                      Stroke="{DynamicResource TextFillColorTertiaryBrush}"
                       StrokeThickness="1.2"
                       StrokeStartLineCap="Round"
                       StrokeEndLineCap="Round"

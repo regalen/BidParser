@@ -366,7 +366,7 @@ public sealed class LinePricingViewModelTests
         vm.TotalMarginPercent.Should().Be(4.61m);
 
         // The header badge names the currency once; the totals are bare numbers.
-        vm.CurrencyBadgeText.Should().Be("All values USD");
+        vm.CurrencyBadgeText.Should().Be("Currency: USD");
         vm.TotalCostDisplay.Should().Be(2550.00m.ToString("N2", CultureInfo.CurrentCulture));
         vm.TotalPriceDisplay.Should().Be(2673.27m.ToString("N2", CultureInfo.CurrentCulture));
         vm.TotalMarginAmountDisplay.Should().Be(123.27m.ToString("N2", CultureInfo.CurrentCulture));
@@ -377,5 +377,87 @@ public sealed class LinePricingViewModelTests
         entries[0].Should().Be(new LinePricingEntry(0, "EX2300-24P", 5m, null));
         entries[1].Should().Be(new LinePricingEntry(1, "EX-SFP-10GE-DAC-1M", 8m, 55m));
         entries[2].Should().Be(new LinePricingEntry(2, "SVC-COR-EX2300-24P", 0m, null));
+    }
+
+    [Fact]
+    public void Currency_badge_and_fx_label_follow_the_quote_currency()
+    {
+        var vm = new LinePricingViewModel(CreateR5Preview() with { Currency = "EUR" }, "quote.xlsx");
+
+        vm.CurrencyBadgeText.Should().Be("Currency: EUR");
+        vm.FxRate.Label.Should().Be("FX EUR:AUD");
+        vm.HeaderImPercent.Label.Should().Be("IM%");
+        vm.HeaderUplift.Label.Should().Be("Uplift");
+    }
+
+    [Fact]
+    public void Filter_hides_rows_without_changing_totals_or_entries()
+    {
+        var vm = new LinePricingViewModel(CreateR5Preview(), "quote.xlsx");
+        foreach (var row in vm.Rows)
+        {
+            row.Uplift = "5";
+        }
+        var totalPrice = vm.TotalPrice;
+
+        vm.FilterText = "sfp";
+        vm.VisibleRows.Select(row => row.Vpn).Should().Equal("EX-SFP-10GE-DAC-1M");
+        vm.FilterSummary.Should().Be("Showing 1 of 3 lines");
+
+        vm.SelectedFilterOption = vm.FilterOptions.Single(option => option.Column == LinePricingFilterColumn.Description);
+        vm.FilterText = "juniper care";
+        vm.VisibleRows.Select(row => row.Vpn).Should().Equal("SVC-COR-EX2300-24P");
+
+        vm.TotalPrice.Should().Be(totalPrice);
+        vm.ToEntries().Should().HaveCount(3);
+
+        vm.ClearFilterCommand.Execute(null);
+        vm.VisibleRows.Should().HaveCount(3);
+        vm.IsFiltered.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Filter_by_uplift_and_lines_needing_attention()
+    {
+        var vm = new LinePricingViewModel(CreateR5Preview(), "quote.xlsx");
+        vm.Rows[0].Uplift = "5";
+        vm.Rows[1].Uplift = "12.5";
+
+        vm.SelectedFilterOption = vm.FilterOptions.Single(option => option.Column == LinePricingFilterColumn.Uplift);
+        vm.FilterText = "12";
+        vm.VisibleRows.Select(row => row.Vpn).Should().Equal("EX-SFP-10GE-DAC-1M");
+
+        vm.FilterText = string.Empty;
+        vm.ShowOnlyNeedingAttention = true;
+        vm.VisibleRows.Select(row => row.Vpn).Should().Equal("SVC-COR-EX2300-24P");
+    }
+
+    [Fact]
+    public void Apply_to_all_applies_only_to_the_visible_rows()
+    {
+        var vm = new LinePricingViewModel(CreateR5Preview(), "quote.xlsx");
+        foreach (var row in vm.Rows)
+        {
+            row.Uplift = "5";
+        }
+
+        vm.FilterText = "EX2300";
+        vm.VisibleRows.Select(row => row.Vpn).Should().Equal("EX2300-24P", "SVC-COR-EX2300-24P");
+
+        vm.HeaderUplift.Text = "9";
+        vm.ApplyUpliftCommand.Execute(null);
+        vm.HeaderImPercent.Text = "40";
+        vm.ApplyImPercentCommand.Execute(null);
+
+        vm.Rows[0].Uplift.Should().Be(9m.ToString("F2", CultureInfo.CurrentCulture));
+        vm.Rows[2].Uplift.Should().Be(9m.ToString("F2", CultureInfo.CurrentCulture));
+        vm.Rows[1].Uplift.Should().Be("5");
+        vm.Rows[0].ImPercent.Should().Be(40m.ToString("F2", CultureInfo.CurrentCulture));
+        vm.Rows[1].ImPercent.Should().Be(50m.ToString("F2", CultureInfo.CurrentCulture));
+
+        // Unfiltered, Apply to all reaches every line again.
+        vm.ClearFilterCommand.Execute(null);
+        vm.ApplyUpliftCommand.Execute(null);
+        vm.Rows.Should().OnlyContain(row => row.Uplift == 9m.ToString("F2", CultureInfo.CurrentCulture));
     }
 }

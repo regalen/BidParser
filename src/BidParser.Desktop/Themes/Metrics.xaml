@@ -10,12 +10,13 @@
   <GridLength x:Key="Size.CommandBar">57</GridLength>
   <sys:Double x:Key="Size.Control">32</sys:Double>
   <sys:Double x:Key="Size.CompactControl">26</sys:Double>
-  <sys:Double x:Key="Size.Progress">2</sys:Double>
+  <!-- Every numeric pricing box is the same width, wide enough for a 4 d.p. rate; its unit sits
+       beside it. -->
+  <sys:Double x:Key="Size.NumericInput">130</sys:Double>
   <sys:Double x:Key="Size.PrimaryMinWidth">112</sys:Double>
   <sys:Double x:Key="Size.SecondaryMinWidth">96</sys:Double>
   <sys:Double x:Key="Size.IconSmall">16</sys:Double>
   <GridLength x:Key="Size.FileRegion">132</GridLength>
-  <sys:Double x:Key="Size.FocusThickness">2</sys:Double>
   <sys:Double x:Key="Size.BorderThickness">1</sys:Double>
   <sys:Double x:Key="Size.Chevron">10</sys:Double>
   <sys:Double x:Key="Size.DialogWidth">460</sys:Double>
@@ -59,7 +60,7 @@
   <Thickness x:Key="Space.MessageBar">12,9</Thickness>
   <Thickness x:Key="Space.Button">16,0</Thickness>
   <Thickness x:Key="Space.ButtonCompact">10,0</Thickness>
-  <Thickness x:Key="Space.Input">10,0,8,0</Thickness>
+  <Thickness x:Key="Space.Input">11,0,8,0</Thickness>
   <Thickness x:Key="Border.Left">1,0,0,0</Thickness>
   <Thickness x:Key="Border.Right">0,0,1,0</Thickness>
   <Thickness x:Key="Border.Top">0,1,0,0</Thickness>
@@ -67,14 +68,14 @@
   <Thickness x:Key="Border.All">1</Thickness>
   <Thickness x:Key="Border.Focus">2</Thickness>
 
-  <sys:Double x:Key="Radius.PanelValue">6</sys:Double>
+  <!-- Windows 11 geometry: 4 DIP controls, 8 DIP cards and dialogs, round status glyphs. -->
+  <sys:Double x:Key="Radius.PanelValue">8</sys:Double>
 
-  <CornerRadius x:Key="Radius.Bar">2</CornerRadius>
+  <CornerRadius x:Key="Radius.Bar">4</CornerRadius>
   <CornerRadius x:Key="Radius.Control">4</CornerRadius>
-  <CornerRadius x:Key="Radius.Panel">6</CornerRadius>
-  <CornerRadius x:Key="Radius.ControlRight">0,3,3,0</CornerRadius>
+  <CornerRadius x:Key="Radius.Panel">8</CornerRadius>
   <CornerRadius x:Key="Radius.Dialog">8</CornerRadius>
-  <CornerRadius x:Key="Radius.PanelTop">6,6,0,0</CornerRadius>
-
-  <Duration x:Key="Duration.Color">0:0:0.12</Duration>
+  <CornerRadius x:Key="Radius.PanelTop">8,8,0,0</CornerRadius>
+  <CornerRadius x:Key="Radius.MessageGlyph">8</CornerRadius>
+  <CornerRadius x:Key="Radius.StatusGlyph">9</CornerRadius>
 </ResourceDictionary>

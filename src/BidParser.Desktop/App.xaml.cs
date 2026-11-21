@@ -12,7 +12,6 @@ namespace BidParser.Desktop;
 public partial class App : System.Windows.Application
 {
     private readonly CancellationTokenSource lifetime = new();
-    private WindowsThemeService? themeService;
     private HttpClient? httpClient;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -29,8 +28,10 @@ public partial class App : System.Windows.Application
         // opens with working guidance and defaults whether or not this machine has a network.
         var configuration = DesktopConfiguration.FromBundled(knownSlugs, knownVendors);
 
-        themeService = new WindowsThemeService(this);
-        themeService.Start();
+        // The built-in Windows 11 theme follows the Windows app mode (light/dark) and high
+        // contrast, including changes made while BidParser is running, and draws Mica behind
+        // the window where Windows supports it.
+        ThemeMode = ThemeMode.System;
 
         var viewModel = new MainWindowViewModel(
             new ParserCatalog(registry),
@@ -58,7 +59,6 @@ public partial class App : System.Windows.Application
         lifetime.Cancel();
         httpClient?.Dispose();
         lifetime.Dispose();
-        themeService?.Dispose();
         base.OnExit(e);
     }
 

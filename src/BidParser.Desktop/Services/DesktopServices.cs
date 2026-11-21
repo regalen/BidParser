@@ -22,11 +22,6 @@ public interface IShellLauncher
     void RevealInFolder(string path);
 }
 
-public interface IThemeService
-{
-    void Start();
-}
-
 /// <summary>
 /// Pricing values prefilled when a vendor is selected. Defaults never create a capability: a value
 /// for a field the selected template does not use stays collapsed and is never forwarded.

@@ -22,6 +22,7 @@ public sealed partial class DatalogicQuotePdfParser : IParser
     ];
 
     public string Slug => ParserSlugs.DatalogicQuotePdf;
+    public bool HasBidRevision => false;
     public string DisplayName => "Quote (PDF)";
     public string Vendor => Vendors.Datalogic;
     public string AcceptedMime => "application/pdf";

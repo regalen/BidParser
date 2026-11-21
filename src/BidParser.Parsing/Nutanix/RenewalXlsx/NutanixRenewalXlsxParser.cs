@@ -15,6 +15,7 @@ namespace BidParser.Parsing.Nutanix.RenewalXlsx;
 public sealed class NutanixRenewalXlsxParser : IParser
 {
     public string Slug => ParserSlugs.NutanixRenewalXlsx;
+    public bool HasBidRevision => false;
     public string DisplayName => "Renewal (XLSX)";
     public string Vendor => Vendors.Nutanix;
     public string AcceptedMime => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";

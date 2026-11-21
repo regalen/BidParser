@@ -17,6 +17,7 @@ public sealed class TrellixQuoteXlsmParser : IParser
     private const string SoftwareQty = "QTY Software or Support (Nodes)";
 
     public string Slug => ParserSlugs.TrellixQuoteXlsm;
+    public bool HasBidRevision => false;
     public string DisplayName => "Quote (XLSM)";
     public string Vendor => Vendors.Trellix;
     public string AcceptedMime => "application/vnd.ms-excel.sheet.macroEnabled.12";

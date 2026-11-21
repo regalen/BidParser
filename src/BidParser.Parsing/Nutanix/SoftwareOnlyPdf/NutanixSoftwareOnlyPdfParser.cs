@@ -17,6 +17,7 @@ namespace BidParser.Parsing.Nutanix.SoftwareOnlyPdf;
 public sealed partial class NutanixSoftwareOnlyPdfParser : IParser
 {
     public string Slug => ParserSlugs.NutanixSoftwareOnlyPdf;
+    public bool HasBidRevision => false;
     public string DisplayName => "Software Only (PDF)";
     public string Vendor => Vendors.Nutanix;
     public string AcceptedMime => "application/pdf";

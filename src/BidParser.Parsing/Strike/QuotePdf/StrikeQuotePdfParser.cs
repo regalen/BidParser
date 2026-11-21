@@ -16,6 +16,7 @@ public sealed partial class StrikeQuotePdfParser : IParser
     private const double ContentBandGutter = 5.0;
     private static readonly string[] Columns = ["Product Code", "Description", "QTY", "Price", "Value"];
     public string Slug => ParserSlugs.StrikeQuotePdf;
+    public bool HasBidRevision => false;
     public string DisplayName => "Quote (PDF)";
     public string Vendor => Vendors.Strike;
     public string AcceptedMime => "application/pdf";

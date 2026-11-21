@@ -87,6 +87,30 @@ public sealed class ParserBidMetadataTests
     }
 
     /// <summary>
+    /// Formats with no source revision say so, so hosts show the bid number alone rather than the
+    /// stored default revision. Every other registered parser carries a revision.
+    /// </summary>
+    [Fact]
+    public void Only_revisionless_formats_declare_no_bid_revision()
+    {
+        string[] revisionless =
+        [
+            ParserSlugs.NutanixSoftwareOnlyPdf, ParserSlugs.NutanixSoftwareOnlyXlsx,
+            ParserSlugs.NutanixRenewalPdf, ParserSlugs.NutanixRenewalXlsx,
+            ParserSlugs.NutanixHardwareOnlyPdf, ParserSlugs.NutanixHardwareOnlyXlsx,
+            ParserSlugs.HpOneConfigXlsx, ParserSlugs.HpServicesXlsx, ParserSlugs.CiscoCcwQuoteXls,
+            ParserSlugs.DatalogicQuotePdf, ParserSlugs.EpsonQuotePdf, ParserSlugs.StrikeQuotePdf,
+            ParserSlugs.JuniperCpqXlsx, ParserSlugs.TrellixQuotePdf, ParserSlugs.TrellixQuoteXlsm
+        ];
+
+        var declaredRevisionless = new ParserRegistry().Parsers
+            .Where(parser => !parser.HasBidRevision)
+            .Select(parser => parser.Slug);
+
+        declaredRevisionless.Should().BeEquivalentTo(revisionless);
+    }
+
+    /// <summary>
     /// An unreadable revision must not discard the bid number that was read, and must not cost the
     /// user the parse: the workbook content is unaffected by bid metadata.
     /// </summary>

@@ -15,6 +15,7 @@ namespace BidParser.Parsing.Hp.OneConfigXlsx;
 public sealed class HpOneConfigXlsxParser : IParser
 {
     public string Slug => ParserSlugs.HpOneConfigXlsx;
+    public bool HasBidRevision => false;
     public string DisplayName => "OneConfig (XLSX)";
     public string Vendor => Vendors.Hp;
     public string AcceptedMime => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";

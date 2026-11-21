@@ -4,8 +4,10 @@
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
-        <!-- Dictionary 0 is the theme: the theme service swaps it and nothing else changes. -->
-        <ResourceDictionary Source="Themes/Colors.Light.xaml" />
+        <!-- The built-in Windows 11 (Fluent) theme comes first so the dictionaries after it can
+             derive from its control styles and use its theme brushes. App.OnStartup sets
+             ThemeMode = System, so WPF itself follows Windows light, dark and high-contrast modes. -->
+        <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/Fluent.xaml" />
         <ResourceDictionary Source="Themes/Metrics.xaml" />
         <ResourceDictionary Source="Themes/Typography.xaml" />
         <ResourceDictionary Source="Themes/Converters.xaml" />

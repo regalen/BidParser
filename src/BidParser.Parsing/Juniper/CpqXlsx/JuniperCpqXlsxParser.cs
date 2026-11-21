@@ -37,6 +37,7 @@ public sealed class JuniperCpqXlsxParser : IParser
     ];
 
     public string Slug => ParserSlugs.JuniperCpqXlsx;
+    public bool HasBidRevision => false;
     public string DisplayName => "CPQ (XLSX)";
     public string Vendor => Vendors.Juniper;
     public string AcceptedMime => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";

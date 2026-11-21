@@ -16,6 +16,7 @@ namespace BidParser.Parsing.Nutanix.SoftwareOnlyXlsx;
 public sealed class NutanixSoftwareOnlyXlsxParser : IParser
 {
     public string Slug => ParserSlugs.NutanixSoftwareOnlyXlsx;
+    public bool HasBidRevision => false;
     public string DisplayName => "Software Only (XLSX)";
     public string Vendor => Vendors.Nutanix;
     public string AcceptedMime => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
